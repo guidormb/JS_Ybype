@@ -22,3 +22,19 @@ body{margin:0; max-width:780px; margin:auto; padding:20px; background:var(--bg);
 [data-theme="dark"]{--bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --border:#334155}
 [data-theme="dark"] #btnTema{background:#1e293b; color:white}
 [data-theme="dark"] input{background:#1e293b !important; color:white; border-color:#334155}
+/* Botón del Login - que sea ancho y violeta */
+#formLogin button, #formRegistro button {
+  width: 100%;
+  padding: 14px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+#formLogin button:active, #formRegistro button:active {
+  background: #3730a3;
+}

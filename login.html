@@ -1,10 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script>
+  const logueado = localStorage.getItem('usuarioLogueado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+  if (logueado) {
+    window.location.replace('index.html');
+  }
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - CRUD</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=2">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 </head>

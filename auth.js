@@ -1,6 +1,6 @@
 const KEY_USERS = "auth_users"
 const KEY_SESSION = "auth_session"
-
+ 
 function getUsers(){ return JSON.parse(localStorage.getItem(KEY_USERS) || "[]") }
 function saveUsers(u){ localStorage.setItem(KEY_USERS, JSON.stringify(u)) }
 
@@ -11,7 +11,7 @@ if(localStorage.getItem(KEY_SESSION) && location.pathname.includes("login")){
 
 document.getElementById("formLogin")?.addEventListener("submit", e => {
   e.preventDefault()
-  const user = document.getElementById("loginUser").value.trim()
+  const user = document.getElementById("loginUser").value.trim().toLowerCase()
   const pass = document.getElementById("loginPass").value
   const users = getUsers()
   const found = users.find(u => u.user === user && u.pass === btoa(pass))
@@ -25,7 +25,7 @@ document.getElementById("formLogin")?.addEventListener("submit", e => {
 
 document.getElementById("formRegistro")?.addEventListener("submit", e => {
   e.preventDefault()
-  const user = document.getElementById("regUser").value.trim()
+  const user = document.getElementById("regUser").value.trim().toLowerCase()
   const pass = document.getElementById("regPass").value
   if(user.length < 3) return alert("Usuario mínimo 3 letras")
   if(pass.length < 4) return alert("Contraseña mínimo 4 caracteres")

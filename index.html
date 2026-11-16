@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script>
+    // Revisión instantánea antes de mostrar nada
+    const logueado = localStorage.getItem('usuarioLogueado') || localStorage.getItem('usuario') || localStorage.getItem('user');
+    if (!logueado) {
+      window.location.replace('login.html');
+    }
+  </script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>CRUD Usuarios</title>

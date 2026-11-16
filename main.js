@@ -22,7 +22,7 @@ document.addEventListener("visibilitychange", () => {
 
 const sesionUser = localStorage.getItem("auth_session")
 
-let usuarios = [{ id: 1, nombre: "Guido", edad: 29, email: "guido@mail.com" }]
+let usuarios = [{ id: 1, nombre: "Guido", edad: 35, email: "guido@mail.com" }]
 let proximoId = 2
 let idEnEdicion = null
 
