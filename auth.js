@@ -4,10 +4,7 @@ const KEY_SESSION = "auth_session"
 function getUsers(){ return JSON.parse(localStorage.getItem(KEY_USERS) || "[]") }
 function saveUsers(u){ localStorage.setItem(KEY_USERS, JSON.stringify(u)) }
 
-// Si ya está logueado y entra al login, mandalo al CRUD
-if(localStorage.getItem(KEY_SESSION) && location.pathname.includes("login")){
-  location.replace("index.html")
-}
+
 
 document.getElementById("formLogin")?.addEventListener("submit", e => {
   e.preventDefault()
