@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - CRUD</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
 </head>
 <body>
 <main class="container">
@@ -29,7 +31,8 @@
 </body>
 <script type="module" src="auth.js"></script>
 <script>
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
+  
 </script>
 </body>
 </html>
