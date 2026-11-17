@@ -1,11 +1,7 @@
 const KEY_USERS = "auth_users"
 const KEY_SESSION = "auth_session"
- 
-function getUsers(){ return JSON.parse(localStorage.getItem(KEY_USERS) || "[]") }
+ function getUsers(){ return JSON.parse(localStorage.getItem(KEY_USERS) || "[]") }
 function saveUsers(u){ localStorage.setItem(KEY_USERS, JSON.stringify(u)) }
-
-
-
 document.getElementById("formLogin")?.addEventListener("submit", e => {
   e.preventDefault()
   const user = document.getElementById("loginUser").value.trim().toLowerCase()
