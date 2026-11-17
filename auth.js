@@ -1,42 +1,58 @@
-const KEY_USERS = "auth_users"
-const KEY_SESSION = "auth_session"
- function getUsers(){ return JSON.parse(localStorage.getItem(KEY_USERS) || "[]") }
-function saveUsers(u){ localStorage.setItem(KEY_USERS, JSON.stringify(u)) }
-document.getElementById("formLogin")?.addEventListener("submit", e => {
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE'
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// 1. Proteger index.html
+const path = location.pathname
+if (path.includes('index.html') || path === '/' || path.endsWith('/')) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) location.replace('login.html')
+}
+
+window.logout = async () => {
+  await supabase.auth.signOut()
+  location.replace('login.html')
+}
+
+// 2. Login
+document.getElementById("formLogin")?.addEventListener("submit", async e => {
   e.preventDefault()
-  const user = document.getElementById("loginUser").value.trim().toLowerCase()
-  const pass = document.getElementById("loginPass").value
-  const users = getUsers()
-  const found = users.find(u => u.user === user && u.pass === btoa(pass))
-  if(found){
-    localStorage.setItem(KEY_SESSION, user)
-    location.replace("index.html")
+  const email = document.getElementById("loginUser").value.trim()
+  const password = document.getElementById("loginPass").value
+  document.getElementById("msg").textContent = "Verificando..."
+  
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) {
+    document.getElementById("msg").textContent = "❌ " + error.message
   } else {
-    document.getElementById("msg").textContent = "❌ Usuario o contraseña incorrectos"
+    location.replace("index.html")
   }
 })
 
-document.getElementById("formRegistro")?.addEventListener("submit", e => {
+// 3. Registro (crea usuario en Supabase)
+document.getElementById("formRegistro")?.addEventListener("submit", async e => {
   e.preventDefault()
-  const user = document.getElementById("regUser").value.trim().toLowerCase()
-  const pass = document.getElementById("regPass").value
-  if(user.length < 3) return alert("Usuario mínimo 3 letras")
-  if(pass.length < 4) return alert("Contraseña mínimo 4 caracteres")
-  let users = getUsers()
-  if(users.find(u => u.user === user)) return alert("Ese usuario ya existe")
-  users.push({ user, pass: btoa(pass) })
-  saveUsers(users)
-  alert("✅ Cuenta creada! Ahora logueate")
-  document.getElementById("formRegistro").style.display="none"
-  document.getElementById("formLogin").style.display="flex"
+  const email = document.getElementById("regUser").value.trim()
+  const password = document.getElementById("regPass").value
+  
+  const { error } = await supabase.auth.signUp({ email, password })
+  if (error) {
+    document.getElementById("msg").textContent = "❌ " + error.message
+  } else {
+    alert("✅ Cuenta creada! Ya podés entrar. Si te pide confirmar email, revisá tu correo.")
+    document.getElementById("formRegistro").style.display = "none"
+    document.getElementById("formLogin").style.display = "flex"
+  }
 })
 
 document.getElementById("linkRegistro")?.addEventListener("click", e => {
   e.preventDefault()
-  document.getElementById("formLogin").style.display="none"
-  document.getElementById("formRegistro").style.display="flex"
+  document.getElementById("formLogin").style.display = "none"
+  document.getElementById("formRegistro").style.display = "flex"
 })
 document.getElementById("btnVolver")?.addEventListener("click", () => {
-  document.getElementById("formRegistro").style.display="none"
-  document.getElementById("formLogin").style.display="flex"
+  document.getElementById("formRegistro").style.display = "none"
+  document.getElementById("formLogin").style.display = "flex"
 })

@@ -1,53 +1,30 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRUD App - Cloud</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0071e3">
-<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:sans-serif;background:#f5f5f7;padding:20px;max-width:600px;margin:0 auto}
-h1{font-size:28px;margin:20px 0 8px} .sub{color:#86868b;margin-bottom:24px;font-size:14px}
-.card{background:#fff;border-radius:18px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);margin-bottom:20px}
-input{width:100%;padding:14px;border:1px solid #d2d2d7;border-radius:12px;font-size:16px;margin-bottom:12px}
-.btn{width:100%;background:#0071e3;color:#fff;border:none;padding:14px;border-radius:12px;font-weight:600;cursor:pointer}
-.user-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #f0f0f0}
-.icon-btn{border:none;background:#f5f5f7;width:36px;height:36px;border-radius:10px;cursor:pointer}
-.badge{background:#0071e3;color:#fff;font-size:11px;padding:4px 8px;border-radius:20px}
-.status{font-size:13px;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none}
-.status.ok{background:#e8f5e9;color:#2e7d32;display:block}
-.status.err{background:#ffebee;color:#c62828;display:block}
-</style>
+  <title>CRUD App</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { padding: 8px; margin: 5px; }
+    table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+    td, th { border: 1px solid #ccc; padding: 8px; }
+  </style>
 </head>
 <body>
-<h1>CRUD App <span class="badge">CLOUD</span></h1>
-<p class="sub">Conectado a Supabase<br>Los datos se guardan en la nube</p>
-<div id="status" class="status"></div>
-<div class="card">
-<input id="nombre" placeholder="Nombre">
-<input id="email" placeholder="Email">
-<button id="btnSave" class="btn" onclick="saveUser()">Guardar en Supabase</button>
-<button id="btnCancel" class="btn" style="background:#e8e8ed;color:#000;margin-top:8px;display:none" onclick="cancelEdit()">Cancelar</button>
-</div>
-<div class="card"><b id="count">0 usuarios</b><div id="list" style="margin-top:12px">Cargando...</div></div>
-<script>
-const SUPABASE_URL='https://zbwpsemyeejebpfkaepz.supabase.co';
-const SUPABASE_KEY='sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
-const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let editingId=null,users=[];
-function showStatus(m,t){const e=document.getElementById('status');e.textContent=m;e.className='status '+t;setTimeout(()=>e.className='status',4000)}
-async function loadUsers(){const{data,error}=await supabaseClient.from('users').select('*').order('created_at',{ascending:false});if(error){showStatus(error.message,'err');return}users=data;render()}
-function render(){document.getElementById('count').textContent=users.length+' usuarios en la nube';const l=document.getElementById('list');if(!users.length){l.innerHTML='<p style="color:#86868b">No hay usuarios</p>';return}l.innerHTML=users.map(u=>`<div class="user-row"><div><b>${u.nombre}</b><br><span style="font-size:13px;color:#86868b">${u.email}</span></div><div><button class="icon-btn" onclick="editUser(${u.id})">✏️</button><button class="icon-btn" onclick="deleteUser(${u.id})">🗑️</button></div></div>`).join('')}
-async function saveUser(){const nombre=document.getElementById('nombre').value.trim(),email=document.getElementById('email').value.trim();if(!nombre||!email){showStatus('Completa todo','err');return}document.getElementById('btnSave').textContent='Guardando...';let err;if(editingId){err=(await supabaseClient.from('users').update({nombre,email}).eq('id',editingId)).error}else{err=(await supabaseClient.from('users').insert([{nombre,email}])).error}document.getElementById('btnSave').textContent=editingId?'Actualizar':'Guardar en Supabase';if(err)showStatus(err.message,'err');else{showStatus('Guardado!','ok');document.getElementById('nombre').value='';document.getElementById('email').value='';editingId=null;document.getElementById('btnCancel').style.display='none';loadUsers()}}
-function editUser(id){const u=users.find(x=>x.id===id);document.getElementById('nombre').value=u.nombre;document.getElementById('email').value=u.email;editingId=id;document.getElementById('btnSave').textContent='Actualizar';document.getElementById('btnCancel').style.display='block'}
-function cancelEdit(){editingId=null;document.getElementById('nombre').value='';document.getElementById('email').value='';document.getElementById('btnSave').textContent='Guardar en Supabase';document.getElementById('btnCancel').style.display='none'}
-async function deleteUser(id){if(!confirm('¿Borrar?'))return;const{error}=await supabaseClient.from('users').delete().eq('id',id);if(error)showStatus(error.message,'err');else{showStatus('Borrado','ok');loadUsers()}}
-loadUsers();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
-</script>
+  <h1>Mi CRUD - Users</h1>
+  
+  <input id="nombre" placeholder="Nombre" />
+  <input id="email" placeholder="Email" />
+  <input id="edad" type="number" placeholder="Edad" />
+  <button id="btn-guardar">Guardar</button>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Nombre</th><th>Email</th><th>Edad</th><th>Acción</th></tr>
+    </thead>
+    <tbody id="lista-users"></tbody>
+  </table>
+
+  <script src="main.js"></script>
 </body>
 </html>

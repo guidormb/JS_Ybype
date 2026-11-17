@@ -1,22 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <script>
-    if (localStorage.getItem('auth_session')) {
-      location.replace('index.html');
-    }
-  </script>
-  <meta charset="UTF-8">
-  <script>
-  const logueado = localStorage.getItem('usuarioLogueado') || localStorage.getItem('usuario') || localStorage.getItem('user');
-  if (logueado) {
-    window.location.replace('index.html');
-  }
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - CRUD</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 </head>
@@ -24,7 +12,7 @@
 <main class="container">
 <h1>Ingresar</h1>
 <form id="formLogin" class="form">
-<input id="loginUser" placeholder="Usuario" required>
+<input id="loginUser" placeholder="Tu email" type="email" required>
 <input id="loginPass" type="password" placeholder="Contraseña" required>
 <button type="submit">Entrar</button>
 </form>
@@ -32,7 +20,7 @@
 
 <form id="formRegistro" class="form" style="display:none">
 <h2>Registro</h2>
-<input id="regUser" placeholder="Nuevo usuario" required>
+<input id="regUser" placeholder="Tu email" type="email" required>
 <input id="regPass" type="password" placeholder="Nueva contraseña" required>
 <button type="submit">Crear cuenta</button>
 <button type="button" id="btnVolver">Volver</button>
@@ -40,8 +28,6 @@
 <p id="msg"></p>
 </main>
 <script type="module" src="auth.js"></script>
-<script>
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
-</script>
+<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js')</script>
 </body>
 </html>
