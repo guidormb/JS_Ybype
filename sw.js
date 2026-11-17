@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v10'; // <-- CADA VEZ que subas a Vercel, cambiá este número a v6, v7, etc.
+const CACHE_VERSION = 'v11'; // <-- CADA VEZ que subas a Vercel, cambiá este número a v6, v7, etc.
 const CACHE_NAME = `crud-cache-${CACHE_VERSION}`;
 
 // Archivos a guardar
