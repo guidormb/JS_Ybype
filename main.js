@@ -1,6 +1,5 @@
-// PEGA ACÁ TUS CLAVES DE SUPABASE
-const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
-const SUPABASE_ANON_KEY = 'TU_ANON_KEY_AQUI';
+const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -12,7 +11,7 @@ const listaUsers = document.getElementById('lista-users');
 
 async function cargarUsers() {
   const { data, error } = await supabaseClient.from('users').select('*').order('id', {ascending: true});
-  if (error) { console.error(error); return; }
+  if (error) { console.error(error); alert(error.message); return; }
   
   listaUsers.innerHTML = '';
   data.forEach(user => {
@@ -29,8 +28,8 @@ async function cargarUsers() {
 }
 
 async function guardarUser() {
-  const nombre = nombreInput.value;
-  const email = emailInput.value;
+  const nombre = nombreInput.value.trim();
+  const email = emailInput.value.trim();
   const edad = edadInput.value ? parseInt(edadInput.value) : null;
 
   if (!nombre || !email) { alert('Falta nombre o email'); return; }
@@ -43,7 +42,8 @@ async function guardarUser() {
 }
 
 async function borrarUser(id) {
-  await supabaseClient.from('users').delete().eq('id', id);
+  const { error } = await supabaseClient.from('users').delete().eq('id', id);
+  if(error) alert(error.message);
   cargarUsers();
 }
 
