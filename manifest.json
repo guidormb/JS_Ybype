@@ -1,13 +1,15 @@
 {
-  "name": "CRUD Usuarios",
-  "short_name": "CRUD",
-  "description": "Gestor de usuarios con modo oscuro",
-  "start_url": "login.html",
+  "name": "CRUD App Cloud",
+  "short_name": "CRUD App",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
+  "background_color": "#f5f5f7",
+  "theme_color": "#2563eb",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }

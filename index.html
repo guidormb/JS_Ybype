@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CRUD App - Cloud</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0071e3">
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -44,6 +47,7 @@ function editUser(id){const u=users.find(x=>x.id===id);document.getElementById('
 function cancelEdit(){editingId=null;document.getElementById('nombre').value='';document.getElementById('email').value='';document.getElementById('btnSave').textContent='Guardar en Supabase';document.getElementById('btnCancel').style.display='none'}
 async function deleteUser(id){if(!confirm('¿Borrar?'))return;const{error}=await supabaseClient.from('users').delete().eq('id',id);if(error)showStatus(error.message,'err');else{showStatus('Borrado','ok');loadUsers()}}
 loadUsers();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
 </script>
 </body>
 </html>
