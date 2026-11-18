@@ -235,3 +235,49 @@
             document.getElementById('seccion-panel').classList.remove('hidden');
             await cargarFacturasCliente(cliente.id);
         }
+               window.cerrarSesion = async function() {
+          try { await window.supabaseClient.auth.signOut(); } catch(e) {}
+          localStorage.clear();
+          document.getElementById('seccion-panel').classList.add('hidden');
+          document.getElementById('seccion-auth').classList.remove('hidden');
+          document.getElementById('user-info').classList.add('hidden');
+          window.location.reload();
+        };
+
+        window.cambiarContraseñaCliente = async function(event) {
+          event.preventDefault();
+          const nueva = document.getElementById('nueva-pass').value;
+          const conf = document.getElementById('confirma-pass').value;
+          if (nueva !== conf) { alert('Las contraseñas no coinciden'); return; }
+          if (nueva.length < 6) { alert('Mínimo 6 caracteres'); return; }
+          const { error } = await window.supabaseClient.auth.updateUser({ password: nueva });
+          const msg = document.getElementById('pass-msg');
+          if (error) { msg.textContent = '❌ ' + error.message; msg.classList.remove('hidden'); }
+          else { msg.textContent = '✅ Contraseña actualizada'; msg.classList.remove('hidden'); document.getElementById('form-cambiar-pass').reset(); }
+        };
+
+        async function cargarFacturasCliente(cliente_id) {
+          const supabase = window.supabaseClient;
+          const lista = document.getElementById('lista-facturas');
+          const contador = document.getElementById('contador-deuda');
+          const { data, error } = await supabase.from('facturas').select('*').eq('cliente_id', cliente_id).order('mes', { ascending: false });
+          if (error || !data || data.length === 0) {
+            lista.innerHTML = '<p class="text-xs text-slate-500 text-center py-3">Sin facturas generadas todavía.</p>';
+            if (contador) contador.textContent = 'Sin deuda';
+            return;
+          }
+          const pendientes = data.filter(f => f.estado === 'pendiente' || f.estado === 'vencida');
+          if (contador) contador.textContent = pendientes.length === 0 ? 'Al día ✅' : pendientes.length + ' pendientes';
+          lista.innerHTML = data.map(f => `
+            <div class="flex justify-between items-center border rounded-xl p-3 ${f.estado === 'pendiente' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}">
+              <div>
+                <p class="text-xs font-bold text-slate-800">Factura ${f.mes || ''}</p>
+                <p class="text-[11px] text-slate-500">${f.estado === 'pagada' ? 'Pagada ✅' : 'Pendiente'}</p>
+              </div>
+              <p class="text-sm font-bold text-slate-800">Gs. ${Number(f.monto || 0).toLocaleString('es-PY')}</p>
+            </div>
+          `).join('');
+        }
+    </script>
+</body>
+</html>
