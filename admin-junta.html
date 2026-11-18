@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperAdmin - Junta JSYBYPE</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body{font-family:system-ui;background:#f1f5f9;padding:16px}
+  .card{background:white;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
+  .big{font-size:28px;font-weight:800}
+  .green{color:#16a34a}.red{color:#dc2626}.orange{color:#ea580c}
+</style>
+</head>
+<body>
+<h2>Junta JSYBYPE - SuperAdmin</h2>
+<div class="card">Balance en Caja<div class="big green" id="balance">Cargando...</div></div>
+<div class="card">Deuda Total Socios<div class="big red" id="deuda">Cargando...</div></div>
+<div class="card">Socios Activos<div class="big" id="socios">...</div></div>
+<div class="card">Facturas Pendientes<div class="big orange" id="pendientes">...</div></div>
+
+<script>
+const supabase = window.supabase.createClient(
+  'TU_URL_SUPABASE',
+  'TU_ANON_KEY'
+);
+
+async function cargar(){
+  const {data: pagos} = await supabase.from('pagos').select('monto_pagado');
+  const {data: gastos} = await supabase.from('gastos').select('monto');
+  const {data: facturas} = await supabase.from('facturas').select('saldo_pendiente, estado');
+  const {data: clientes} = await supabase.from('clientes').select('id').eq('activo', true);
+
+  let cobrado = pagos?.reduce((s,p)=>s+(p.monto_pagado||0),0) || 0;
+  let gastado = gastos?.reduce((s,g)=>s+(g.monto||0),0) || 0;
+  let deuda = facturas?.filter(f=>f.estado!=='pagado').reduce((s,f)=>s+(f.saldo_pendiente||0),0) || 0;
+
+  document.getElementById('balance').textContent = (cobrado-gastado).toLocaleString('es-PY') + ' Gs';
+  document.getElementById('deuda').textContent = deuda.toLocaleString('es-PY') + ' Gs';
+  document.getElementById('socios').textContent = clientes?.length || 0;
+  document.getElementById('pendientes').textContent = facturas?.filter(f=>f.estado!=='pagado').length || 0;
+}
+cargar();
+// Tiempo real
+supabase.channel('junta').on('postgres_changes',{event:'*',schema:'public',table:'pagos'},cargar).subscribe();
+supabase.channel('junta2').on('postgres_changes',{event:'*',schema:'public',table:'facturas'},cargar).subscribe();
+</script>
+</body>
+</html>
