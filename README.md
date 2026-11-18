@@ -23,3 +23,5 @@ Hecho por Guido de San Lorenzo, Paraguay - aprendiendo programación desde cero.
 git add .
 git commit -m "agrega README y estructura final"
 git push
+
+prieba push 17/11
