@@ -22,7 +22,7 @@
 <div class="card">
 <h2 style="margin:0">Nuevo Socio</h2>
 <p style="color:#64748b;margin:6px 0 16px">Junta de Saneamiento - Tarifa fija 25.000 Gs</p>
-<input id="buscarCedula" type="text" placeholder="C.I. a editar Ej: 656565" inputmode="numeric">
+<input id="buscarCedula" type="text" placeholder="C.I. a editar Ej: 5656565" inputmode="numeric">
 <div class="topbar">
   <button onclick="buscarParaEditar()">✏️ Editar</button>
   <button onclick="cancelar()" style="background:#f59e0b">❌ Cancelar</button>
@@ -37,13 +37,13 @@
 <input id="apellido" placeholder="Ej: Benítez">
 
 <label>Cédula *</label>
-<input id="cedula" placeholder="Ej: 5123456" inputmode="numeric">
+<input id="cedula" placeholder="Ej: 5656565" inputmode="numeric">
 
 <label>Teléfono / WhatsApp *</label>
 <input id="telefono" placeholder="Ej: 0981 123456" inputmode="tel">
 
 <label>Dirección / Compañía</label>
-<input id="direccion" placeholder="Ej: Santa Rosa - Centro">
+<input id="direccion" placeholder="Ej: Ybypé 1ra.-Linea">
 
 <label>Nro. Cuenta *</label>
 <input id="cuenta" placeholder="Ej: 001" inputmode="numeric">
@@ -76,7 +76,7 @@ actualizarContador();
 
   async function buscarParaEditar() {
   const cedulaBuscar = document.getElementById('buscarCedula').value.trim();
-  if (!cedulaBuscar) { alert('Escribí una C.I. Ej: 6033725'); return; }
+  if (!cedulaBuscar) { alert('Escribí una C.I. Ej: 5656565'); return; }
   
   const { data: persona } = await db.from('personas').select('*').eq('cedula_ruc', cedulaBuscar).single();
   if (!persona) { alert('No existe esa C.I.'); return; }
