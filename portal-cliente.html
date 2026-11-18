@@ -148,50 +148,49 @@
             }
         });
 
-        window.manejarActivacionCuenta = async function(event) {
-            event.preventDefault();
-            const cedula = document.getElementById('reg-cedula').value.trim();
-            const password = document.getElementById('reg-password').value;
-            const passwordConf = document.getElementById('reg-password-conf').value;
-            const btn = document.getElementById('btn-activar');
-            if (password !== passwordConf) { mostrarMensajeAuth("❌ Las contraseñas no coinciden."); return; }
-            if (password.length < 6) { mostrarMensajeAuth("❌ La contraseña debe tener al menos 6 caracteres."); return; }
-            btn.textContent = "Verificando padrón...";
-            btn.disabled = true;
-            try {
-                const supabase = window.supabaseClient;
-                const { data: persona, error: errPersona } = await supabase.from('personas').select('id, nombre, apellido').eq('cedula_ruc', cedula).maybeSingle();
-                if (errPersona) throw new Error("Error al consultar padrón: " + errPersona.message);
-                if (!persona) throw new Error("Esta cédula no figura en el padrón de socios. Contacta con la administración de la Junta.");
-                const { data: cliente } = await supabase.from('clientes').select('id').eq('persona_id', persona.id).maybeSingle();
-                if (!cliente) throw new Error("Tu cédula está registrada, pero no tienes una cuenta de agua asignada.");
-                const emailFicticio = obtenerEmailInterno(cedula);
-                // CORREGIDO: Guarda vínculo cedula + persona_id en Auth
-                const { data: authData, error: errSignUp } = await supabase.auth.signUp({
-                    email: emailFicticio,
-                    password: password,
-                    options: { data: { cedula: cedula, persona_id: persona.id, rol: 'cliente' } }
-                });
-                if (errSignUp) {
-                    if (errSignUp.message.includes("already registered") || errSignUp.message.includes("already exists")) {
-                        throw new Error("Esta cédula ya tiene una contraseña creada. Ve a la pestaña 'Iniciar Sesión'.");
-                    }
-                    throw errSignUp;
-                }
-                // Si Confirm Email está desactivado, ya hay sesión. Si no, avisa.
-                if (!authData.session) {
-                    mostrarMensajeAuth("✅ Cuenta creada. Ahora inicia sesión con tu cédula.", false);
-                    window.cambiarTab('login');
-                    btn.textContent = "Activar Cuenta e Ingresar"; btn.disabled = false;
-                    return;
-                }
-                await cargarDatosPortalCliente(cedula);
-            } catch (err) {
-                mostrarMensajeAuth("❌ " + err.message);
-                btn.textContent = "Activar Cuenta e Ingresar"; btn.disabled = false;
-            }
-        }
+         window.manejarActivacionCuenta = async function(event) {
+    event.preventDefault();
+    const cedula = document.getElementById('reg-cedula').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const passwordConf = document.getElementById('reg-password-conf').value;
+    const btn = document.getElementById('btn-activar');
+    if (password !== passwordConf) { mostrarMensajeAuth("❌ Las contraseñas no coinciden."); return; }
+    if (password.length < 6) { mostrarMensajeAuth("❌ La contraseña debe tener al menos 6 caracteres."); return; }
+    btn.textContent = "Verificando padrón...";
+    btn.disabled = true;
+    try {
+        const supabase = window.supabaseClient;
+        // NUEVO: usa función segura, no consulta directa
+        const { data: check, error: errCheck } = await supabase.rpc('verificar_padron', { p_cedula: cedula });
+        if (errCheck) throw new Error("Error al consultar padrón: " + errCheck.message);
+        if (!check.existe) throw new Error("Esta cédula no figura en el padrón de socios. Contacta con la administración de la Junta.");
+        if (!check.tiene_cliente) throw new Error("Tu cédula está registrada, pero no tienes una cuenta de agua asignada.");
+        const persona_id = check.persona_id;
 
+        const emailFicticio = obtenerEmailInterno(cedula);
+        const { data: authData, error: errSignUp } = await supabase.auth.signUp({
+            email: emailFicticio,
+            password: password,
+            options: { data: { cedula: cedula, persona_id: persona_id, rol: 'cliente' } }
+        });
+        if (errSignUp) {
+            if (errSignUp.message.includes("already registered") || errSignUp.message.includes("already exists")) {
+                throw new Error("Esta cédula ya tiene una contraseña creada. Ve a la pestaña 'Iniciar Sesión'.");
+            }
+            throw errSignUp;
+        }
+        if (!authData.session) {
+            mostrarMensajeAuth("✅ Cuenta creada. Ahora inicia sesión con tu cédula.", false);
+            window.cambiarTab('login');
+            btn.textContent = "Activar Cuenta e Ingresar"; btn.disabled = false;
+            return;
+        }
+        await cargarDatosPortalCliente(cedula);
+    } catch (err) {
+        mostrarMensajeAuth("❌ " + err.message);
+        btn.textContent = "Activar Cuenta e Ingresar"; btn.disabled = false;
+    }
+}
         window.manejarLoginCliente = async function(event) {
             event.preventDefault();
             const cedula = document.getElementById('login-cedula').value.trim();
