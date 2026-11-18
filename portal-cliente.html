@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal del Cliente - Junta de Saneamiento</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK de Supabase por ESM -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        window.supabaseClient = supabase;
+    </script>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans">
+
+    <!-- HEADER -->
+    <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
+        <div>
+            <h1 class="font-bold text-base">💧 Junta de Saneamiento</h1>
+            <p class="text-[10px] text-blue-200">Portal de Consulta Ciudadana</p>
+        </div>
+        <div id="user-info" class="hidden text-right">
+            <span id="lbl-nombre-usuario" class="block text-xs font-semibold"></span> 
+            <button onclick="cerrarSesion()" class="mt-1 bg-blue-700 px-2.5 py-1 rounded text-[11px] hover:bg-blue-800 transition">Salir</button>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="p-4 max-w-md mx-auto w-full flex-grow">
+
+        <!-- VISTA 1: LOGIN CON CÉDULA Y CONTRASEÑA -->
+        <section id="seccion-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-4">
+            <div class="text-center mb-6">
+                <h2 class="text-xl font-extrabold text-slate-800">Consulta de Cuenta</h2>
+                <p class="text-xs text-slate-500 mt-1">Ingresa tu número de Cédula de Identidad y tu contraseña para ver tus facturas pendientes.</p>
+            </div>
+            
+            <form id="form-login-cliente" onsubmit="manejarLoginCliente(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Número de Cédula</label>
+                    <input type="text" id="input-cedula" required placeholder="Ej: 5656565" inputmode="numeric"
+                           class="w-full p-3 border border-slate-300 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Contraseña</label>
+                    <input type="password" id="input-password" required placeholder="••••••••" 
+                           class="w-full p-3 border border-slate-300 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                </div>
+                <button type="submit" id="btn-ingresar" 
+                        class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-sm">
+                    Consultar Estado de Cuenta
+                </button>
+            </form>
+            <div id="login-error" class="mt-3 text-red-600 bg-red-50 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+        </section>
+
+        <!-- VISTA 2: PANEL DEL CLIENTE (FACTURAS, SALDO Y CONFIGURACIÓN) -->
+        <section id="seccion-panel" class="hidden space-y-4 mt-2">
+            
+            <!-- Tarjeta de Resumen -->
+            <div class="bg-gradient-to-br from-blue-700 to-blue-800 text-white p-5 rounded-2xl shadow-md">
+                <p class="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Titular de la Cuenta</p>
+                <h3 id="panel-nombre-cliente" class="text-lg font-bold mt-0.5">--</h3>
+                <div class="mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs">
+                    <div>
+                        <span class="text-blue-200 block text-[10px]">N° DE CUENTA</span>
+                        <span id="panel-nro-cuenta" class="font-bold text-sm">--</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-blue-200 block text-[10px]">SALDO A FAVOR</span>
+                        <span id="panel-saldo-favor" class="font-bold text-sm text-emerald-300">Gs. 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listado de Facturas -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <div class="flex justify-between items-center mb-3 border-b pb-2">
+                    <h4 class="font-bold text-xs text-slate-700 uppercase tracking-wider">Facturas y Deudas</h4>
+                    <span id="contador-deuda" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">--</span>
+                </div>
+                
+                <div id="lista-facturas" class="space-y-3">
+                    <p class="text-xs text-slate-400 text-center py-6">Cargando facturas...</p>
+                </div>
+            </div>
+
+            <!-- Botón de WhatsApp para aviso de pagos -->
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
+                <p class="text-xs text-emerald-800 font-semibold mb-2">¿Ya realizaste tu pago o transferencia?</p>
+                <a id="btn-whatsapp" href="#" target="_blank" 
+                   class="inline-block bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition shadow-sm">
+                    💬 Enviar comprobante por WhatsApp
+                </a>
+            </div>
+
+            <!-- SECCIÓN: CAMBIAR CONTRASEÑA -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <h4 class="font-bold text-xs text-slate-700 uppercase tracking-wider mb-3 border-b pb-2">Seguridad de la Cuenta</h4>
+                
+                <form id="form-cambiar-pass" onsubmit="cambiarContraseñaCliente(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Nueva Contraseña</label>
+                        <input type="password" id="nueva-pass" required placeholder="Mínimo 6 caracteres" 
+                               class="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Confirmar Nueva Contraseña</label>
+                        <input type="password" id="confirma-pass" required placeholder="Repite la contraseña" 
+                               class="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50">
+                    </div>
+                    <button type="submit" id="btn-cambiar-pass"
+                            class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-slate-900 transition">
+                        Actualizar Contraseña
+                    </button>
+                </form>
+                <div id="pass-msg" class="mt-2 text-xs text-center hidden font-medium p-2 rounded-lg"></div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="text-center p-4 text-[11px] text-slate-400">
+        Junta de Saneamiento JSYBYPE © 2026 • Paraguay
+    </footer>
+
+    <!-- SCRIPT DE LÓGICA -->
+    <script type="module">
+        function obtenerEmailInterno(cedula) {
+            return `ci_${cedula.trim()}@juntasaneamiento.local`;
+        }
+
+        window.manejarLoginCliente = async function(event) {
+            event.preventDefault();
+            const cedula = document.getElementById('input-cedula').value.trim();
+            const password = document.getElementById('input-password').value.trim();
+            const errorDiv = document.getElementById('login-error');
+            const btn = document.getElementById('btn-ingresar');
+
+            errorDiv.classList.add('hidden');
+            btn.textContent = 'Verificando cuenta...';
+            btn.disabled = true;
+
+            try {
+                const emailFicticio = obtenerEmailInterno(cedula);
+                const supabase = window.supabaseClient;
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: emailFicticio,
+                    password: password
+                });
+
+                if (error) throw new Error("Cédula o contraseña incorrecta. Verifique sus datos.");
+
+                await cargarDatosPortalCliente(cedula);
+
+            } catch (err) {
+                errorDiv.textContent = err.message;
+                errorDiv.classList.remove('hidden');
+                btn.textContent = 'Consultar Estado de Cuenta';
+                btn.disabled = false;
+            }
+        }
+
+        async function cargarDatosPortalCliente(cedula) {
+            const supabase = window.supabaseClient;
+
+            try {
+                const { data: persona, error: errPersona } = await supabase
+                    .from('personas')
+                    .select('id, nombre, apellido, telefono')
+                    .eq('cedula_ruc', cedula)
+                    .single();
+
+                if (errPersona || !persona) throw new Error("No se encontró el registro de identidad para esta cédula.");
+
+                const { data: cliente, error: errCliente } = await supabase
+                    .from('clientes')
+                    .select('*')
+                    .eq('persona_id', persona.id)
+                    .single();
+
+                if (errCliente || !cliente) throw new Error("Esta cédula no cuenta con un contrato de servicio de agua activo.");
+
+                document.getElementById('panel-nombre-cliente').textContent = `${persona.nombre} ${persona.apellido}`;
+                document.getElementById('panel-nro-cuenta').textContent = cliente.nro_cuenta;
+                document.getElementById('panel-saldo-favor').textContent = `Gs. ${Number(cliente.saldo_favor || 0).toLocaleString('es-PY')}`;
+                
+                document.getElementById('lbl-nombre-usuario').textContent = persona.nombre;
+                document.getElementById('user-info').classList.remove('hidden');
+
+                const nroWhatsAppJunta = "595981000000"; // Reemplaza con el número real de la administración
+                const mensajeWa = encodeURIComponent(`Hola, soy ${persona.nombre} ${persona.apellido} con cuenta N° ${cliente.nro_cuenta}. Adjunto mi comprobante de pago.`);
+                document.getElementById('btn-whatsapp').href = `https://wa.me/${nroWhatsAppJunta}?text=${mensajeWa}`;
+
+                document.getElementById('seccion-login').classList.add('hidden');
+                document.getElementById('seccion-panel').classList.remove('hidden');
+
+                await cargarFacturasCliente(cliente.id);
+
+            } catch (err) {
+                alert("Error de acceso: " + err.message);
+                window.cerrarSesion();
+            }
+        }
+
+        async function cargarFacturasCliente(clienteId) {
+            const supabase = window.supabaseClient;
+            const contenedor = document.getElementById('lista-facturas');
+            const contadorEl = document.getElementById('contador-deuda');
+            
+            const { data: facturas, error } = await supabase
+                .from('facturas')
+                .select('*')
+                .eq('cliente_id', clienteId)
+                .order('mes', { ascending: false });
+
+            if (error) {
+                contenedor.innerHTML = `<p class="text-xs text-red-500 text-center py-4">Error al consultar facturas.</p>`;
+                return;
+            }
+
+            if (!facturas || facturas.length === 0) {
+                contadorEl.textContent = "0 pendientes";
+                contenedor.innerHTML = `
+                    <div class="text-center py-6 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                        <p class="text-sm font-bold text-emerald-700">¡Estás al día! 🎉</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">No registras facturas pendientes de pago.</p>
+                    </div>`;
+                return;
+            }
+
+            const pendientesCount = facturas.filter(f => f.estado !== 'pagado').length;
+            contadorEl.textContent = `${pendientesCount} pendientes`;
+
+            contenedor.innerHTML = facturas.map(f => {
+                let badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                if (f.estado === 'pagado') badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                if (f.estado === 'parcial') badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+
+                return `
+                    <div class="border border-slate-200 rounded-xl p-3.5 flex justify-between items-center bg-slate-50/60">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-800">Mes: ${f.mes}</span>
+                                <span class="px-2 py-0.5 text-[10px] font-bold border rounded-full uppercase ${badgeColor}">${f.estado}</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">Monto original: Gs. ${Number(f.monto).toLocaleString('es-PY')}</p>
+                            <p class="text-xs font-bold text-slate-700">Saldo pendiente: <span class="text-blue-600">Gs. ${Number(f.saldo_pendiente).toLocaleString('es-PY')}</span></p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.cambiarContraseñaCliente = async function(event) {
+            event.preventDefault();
+            const nuevaPass = document.getElementById('nueva-pass').value;
+            const confirmaPass = document.getElementById('confirma-pass').value;
+            const msgEl = document.getElementById('pass-msg');
+
+            msgEl.classList.add('hidden');
+
+            if (nuevaPass !== confirmaPass) {
+                msgEl.textContent = "❌ Las contraseñas no coinciden.";
+                msgEl.className = "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600";
+                msgEl.classList.remove('hidden');
+                return;
+            }
+
+            if (nuevaPass.length < 6) {
+                msgEl.textContent = "❌ La contraseña debe tener al menos 6 caracteres.";
+                msgEl.className = "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600";
+                msgEl.classList.remove('hidden');
+                return;
+            }
+
+            const supabase = window.supabaseClient;
+            const { error } = await supabase.auth.updateUser({ password: nuevaPass });
+
+            if (error) {
+                msgEl.textContent = "❌ Error al actualizar: " + error.message;
+                msgEl.className = "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600";
+            } else {
+                msgEl.textContent = "✅ ¡Contraseña actualizada con éxito!";
+                msgEl.className = "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-emerald-50 text-emerald-700";
+                document.getElementById('form-cambiar-pass').reset();
+            }
+            msgEl.classList.remove('hidden');
+        }
+
+        window.cerrarSesion = async function() {
+            const supabase = window.supabaseClient;
+            await supabase.auth.signOut();
+            location.reload();
+        }
+    </script>
+</body>
+</html>
