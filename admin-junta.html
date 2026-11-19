@@ -11,58 +11,122 @@
   .card{background:white;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
   .big{font-size:28px;font-weight:800}
   .green{color:#16a34a}.red{color:#dc2626}.orange{color:#ea580c}
-  input[type="text"]{width:100%;padding:14px;border-radius:12px;border:2px solid #0f172a;font-size:17px;box-sizing:border-box;outline:none}
-  input[type="text"]:focus{border-color:#16a34a}
+  input{width:100%;padding:14px;border-radius:12px;border:2px solid #0f172a;font-size:17px;box-sizing:border-box;outline:none;margin-bottom:10px}
   .chip{display:inline-block;background:#e2e8f0;padding:6px 12px;border-radius:20px;font-size:13px;margin:4px 4px 0 0;cursor:pointer}
   .chip.active{background:#0f172a;color:white}
   table{width:100%;border-collapse:collapse}
   th,td{padding:12px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:top}
   th{background:#0f172a;color:white}
-  #debug{background:#111;color:#0f0;padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap;word-break:break-all}
+  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#0f172a;color:white;font-size:17px;font-weight:700;cursor:pointer}
+  .btn-out{background:#dc2626;padding:10px 16px;width:auto;font-size:14px}
+  .hidden{display:none}
 </style>
 </head>
 <body>
 <h2>Junta JSYBYPE - SuperAdmin</h2>
 
-<div class="card">Balance en Caja<div class="big green" id="balance">Cargando...</div></div>
-<div class="card">Deuda Total Socios<div class="big red" id="deuda">Cargando...</div></div>
-<div class="card">Socios Activos<div class="big" id="socios">...</div></div>
-<div class="card">Facturas Pendientes<div class="big orange" id="pendientes">...</div></div>
-
-<div class="card">
-  <h3 style="margin:0 0 10px">Saldo por Cliente</h3>
-  <label style="font-weight:700">🔎 Buscar socio por nombre, CI o Nro de cuenta:</label>
-  <input type="text" id="buscador" placeholder="Ej: Juan, 6033725, 002..." oninput="render()" autocomplete="off">
-  <div>
-    <span class="chip active" id="chipTodos" onclick="limpiarBusqueda()">👥 Todos</span>
-    <span class="chip" onclick="filtrarSoloDeudores()">🔴 Solo con deuda</span>
-    <span class="chip" onclick="filtrarSinDeuda()">🟢 Sin deuda</span>
-  </div>
-  <p id="resumenFiltro" style="color:#475569;font-size:14px"></p>
-  <div style="overflow-x:auto">
-  <table>
-    <thead><tr><th>Socio</th><th style="text-align:center">Facturas</th><th style="text-align:right">Saldo</th></tr></thead>
-    <tbody id="tabla"></tbody>
-  </table>
-  </div>
+<div id="loginBox" class="card hidden">
+  <h3 style="margin:0 0 10px">Acceso Admin</h3>
+  <p style="color:#475569;font-size:14px;margin:0 0 12px">Solo Admin Guido puede ver este panel.</p>
+  <input type="email" id="email" placeholder="Email de Admin">
+  <input type="password" id="pass" placeholder="Contrasena">
+  <button class="btn" onclick="hacerLogin()">Entrar</button>
+  <p id="loginError" style="color:#dc2626;font-size:14px"></p>
 </div>
 
-<div class="card"><h3 style="margin:0 0 10px">DEBUG</h3><div id="debug">Esperando...</div></div>
+<div id="noPermiso" class="card hidden">
+  <h3>No tenes permiso</h3>
+  <p>Entraste como <b id="emailLogueado"></b>, pero este panel es solo para Admin.</p>
+  <button class="btn btn-out" onclick="hacerLogout()">Cerrar sesion</button>
+</div>
 
+<div id="panel" class="hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <span style="font-size:14px;color:#475569">Logueado como: <b id="emailAdmin"></b></span>
+    <button class="btn btn-out" onclick="hacerLogout()">Salir</button>
+  </div>
+  <div class="card">Balance en Caja<div class="big green" id="balance">Cargando...</div></div>
+  <div class="card">Deuda Total Socios<div class="big red" id="deuda">Cargando...</div></div>
+  <div class="card">Socios Activos<div class="big" id="socios">...</div></div>
+  <div class="card">Facturas Pendientes<div class="big orange" id="pendientes">...</div></div>
+  <div class="card">
+    <h3 style="margin:0 0 10px">Saldo por Cliente</h3>
+    <label style="font-weight:700">Buscar socio por nombre, CI o Nro de cuenta:</label>
+    <input type="text" id="buscador" placeholder="Ej: Juan, 6033725, 002..." oninput="render()" autocomplete="off">
+    <div>
+      <span class="chip active" id="chipTodos" onclick="limpiarBusqueda()">Todos</span>
+      <span class="chip" onclick="filtrarSoloDeudores()">Solo con deuda</span>
+      <span class="chip" onclick="filtrarSinDeuda()">Sin deuda</span>
+    </div>
+    <p id="resumenFiltro" style="color:#475569;font-size:14px"></p>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Socio</th><th style="text-align:center">Facturas</th><th style="text-align:right">Saldo</th></tr></thead>
+      <tbody id="tabla"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <h3>Registrar Pago</h3>
+  <label>Socio</label>
+  <select id="sel-cliente" onchange="cargarFacturasPendientes()" style="width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc"></select>
+  <label>Factura Pendiente</label>
+  <select id="sel-factura" style="width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc"></select>
+  <label>Monto Gs.</label>
+  <input type="number" id="inp-monto" placeholder="Ej: 20000" style="width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc">
+  <label>Metodo</label>
+  <select id="sel-metodo" style="width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc">
+    <option value="efectivo">Efectivo</option>
+    <option value="transferencia">Transferencia</option>
+    <option value="giro">Giro</option>
+  </select>
+  <button onclick="registrarPago()" style="width:100%;padding:12px;background:#16a34a;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px">Guardar Pago</button>
+  <div id="msg-pago" style="font-size:13px;margin-top:8px"></div>
+</div>
 <script>
-const sb = window.supabase.createClient(
-  'https://zbwpsemyeejebpfkaepz.supabase.co',
-  'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE'
-);
+var sb = window.supabase.createClient('https://zbwpsemyeejebpfkaepz.supabase.co','sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE');
+var ADMIN_EMAIL = 'guidorafa92@gmail.com';
+var clientesGlobal = [];
+var facturasGlobal = [];
+var filtroRapido = 'todos';
 
-
-let clientesGlobal = [];
-let facturasGlobal = [];
-let filtroRapido = 'todos'; // todos | deudores | sinDeuda
-
+async function verificarSesion(){
+  var res = await sb.auth.getSession();
+  var session = res.data.session;
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('noPermiso').classList.add('hidden');
+  if(!session){
+    document.getElementById('loginBox').classList.remove('hidden');
+    return;
+  }
+  var email = (session.user.email || '').toLowerCase();
+  if(email !== ADMIN_EMAIL.toLowerCase()){
+    document.getElementById('emailLogueado').textContent = email;
+    document.getElementById('noPermiso').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('emailAdmin').textContent = email;
+  document.getElementById('panel').classList.remove('hidden');
+  cargar();
+}
+async function hacerLogin(){
+  var email = document.getElementById('email').value.trim();
+  var password = document.getElementById('pass').value;
+  var errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  var r = await sb.auth.signInWithPassword({ email: email, password: password });
+  if(r.error){ errEl.textContent = 'Error: ' + r.error.message; return; }
+  verificarSesion();
+}
+async function hacerLogout(){
+  await sb.auth.signOut();
+  location.reload();
+}
 function getNombre(c){
   if(c.personas && c.personas.nombre){
-    const ape = c.personas.apellido ? ' ' + c.personas.apellido : '';
+    var ape = c.personas.apellido ? ' ' + c.personas.apellido : '';
     return c.personas.nombre + ape + (c.nro_cuenta ? ' - Cta ' + c.nro_cuenta : '');
   }
   if(c.nro_cuenta) return 'Cuenta ' + c.nro_cuenta;
@@ -74,89 +138,104 @@ function getSubtitulo(c){
   return 'ID: ' + String(c.id).slice(0,8);
 }
 function getSaldoCliente(c){
-  const mis = facturasGlobal.filter(f=> String(f.cliente_id)===String(c.id) && f.estado!=='pagado');
-  return { cant: mis.length, saldo: mis.reduce((s,f)=>s+(f.saldo_pendiente||0),0) };
+  var mis = facturasGlobal.filter(function(f){ return String(f.cliente_id)===String(c.id) && f.estado!=='pagado'; });
+  var s = 0;
+  mis.forEach(function(f){ s += (f.saldo_pendiente||0); });
+  return { cant: mis.length, saldo: s };
 }
-
 function limpiarBusqueda(){
   document.getElementById('buscador').value = '';
   filtroRapido = 'todos';
   actualizarChips();
   render();
 }
-function filtrarSoloDeudores(){
-  filtroRapido = 'deudores';
-  actualizarChips();
-  render();
-}
-function filtrarSinDeuda(){
-  filtroRapido = 'sinDeuda';
-  actualizarChips();
-  render();
-}
-function actualizarChips(){
-  document.getElementById('chipTodos').className = 'chip' + (filtroRapido==='todos' ? ' active' : '');
-}
+function filtrarSoloDeudores(){ filtroRapido = 'deudores'; actualizarChips(); render(); }
+function filtrarSinDeuda(){ filtroRapido = 'sinDeuda'; actualizarChips(); render(); }
+function actualizarChips(){ document.getElementById('chipTodos').className = 'chip' + (filtroRapido==='todos' ? ' active' : ''); }
 
 async function cargar(){
-  const rClientes = await sb.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono)');
-  const rFacturas = await sb.from('facturas').select('*');
-  const rPagos = await sb.from('pagos').select('monto_pagado');
-  const rGastos = await sb.from('gastos').select('monto');
-
+  var rClientes = await sb.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono)');
+  var rFacturas = await sb.from('facturas').select('*');
+  var rPagos = await sb.from('pagos').select('monto_pagado');
+  var rGastos = await sb.from('gastos').select('monto');
   clientesGlobal = rClientes.data || [];
-  facturasGlobal = rFacturas.data || [];
-
-  document.getElementById('debug').textContent =
-    'clientes: ' + clientesGlobal.length + ' | facturas: ' + facturasGlobal.length + ' | error: ' + (rClientes.error ? rClientes.error.message : 'sin error');
-
-  let cobrado = (rPagos.data||[]).reduce((s,p)=>s+(p.monto_pagado||0),0);
-  let gastado = (rGastos.data||[]).reduce((s,g)=>s+(g.monto||0),0);
-  let deuda = facturasGlobal.filter(f=>f.estado!=='pagado').reduce((s,f)=>s+(f.saldo_pendiente||0),0);
-
+  facturasGlobal = rFacturas.data || [];cargarClientesParaPago();
+  var cobrado = 0; (rPagos.data||[]).forEach(function(p){ cobrado += (p.monto_pagado||0); });
+  var gastado = 0; (rGastos.data||[]).forEach(function(g){ gastado += (g.monto||0); });
+  var deuda = 0; facturasGlobal.forEach(function(f){ if(f.estado!=='pagado') deuda += (f.saldo_pendiente||0); });
   document.getElementById('balance').textContent = (cobrado-gastado).toLocaleString('es-PY') + ' Gs';
   document.getElementById('deuda').textContent = deuda.toLocaleString('es-PY') + ' Gs';
-  document.getElementById('socios').textContent = clientesGlobal.filter(c=>c.activo!==false).length;
-  document.getElementById('pendientes').textContent = facturasGlobal.filter(f=>f.estado!=='pagado').length;
+  document.getElementById('socios').textContent = clientesGlobal.filter(function(c){ return c.activo!==false; }).length;
+  document.getElementById('pendientes').textContent = facturasGlobal.filter(function(f){ return f.estado!=='pagado'; }).length;
   render();
 }
-
-function render(){
-  const texto = (document.getElementById('buscador').value || '').toLowerCase().trim();
-  const tbody = document.getElementById('tabla');
-  tbody.innerHTML = '';
-
-  let lista = clientesGlobal.filter(c=>{
-    // Filtro por texto: nombre, apellido, CI, cuenta, telefono
-    if(texto){
-      const hay = [
-        getNombre(c),
-        c.personas?.nombre || '',
-        c.personas?.apellido || '',
-        c.personas?.cedula_ruc || '',
-        c.nro_cuenta || '',
-        c.personas?.telefono || ''
-      ].join(' ').toLowerCase();
-      if(!hay.includes(texto)) return false;
+async function cargarClientesParaPago(){
+  var sel = document.getElementById('sel-cliente');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">-- Elegi socio --</option>';
+  (clientesGlobal || []).forEach(function(c){
+    var nom = c.personas ? c.personas.nombre + ' ' + (c.personas.apellido || '') : 'Sin nombre';
+    sel.innerHTML += '<option value="' + c.id + '">' + nom + ' - Cuenta ' + c.nro_cuenta + '</option>';
+  });
+}
+async function cargarFacturasPendientes(){
+  var clienteId = document.getElementById('sel-cliente').value;
+  var sel = document.getElementById('sel-factura');
+  sel.innerHTML = '<option value="">-- Elegi factura --</option>';
+  if(!clienteId) return;
+  (facturasGlobal || []).forEach(function(f){
+    if(f.cliente_id === clienteId && f.estado !== 'pagado'){
+      sel.innerHTML += '<option value="' + f.id + '">Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</option>';
     }
-    // Filtro rapido
+  });
+}
+async function registrarPago(){
+  var clienteId = document.getElementById('sel-cliente').value;
+  var facturaId = document.getElementById('sel-factura').value;
+  var monto = Number(document.getElementById('inp-monto').value);
+  var metodo = document.getElementById('sel-metodo').value;
+  var msg = document.getElementById('msg-pago');
+  if(!clienteId || !facturaId || !monto || monto <= 0){ msg.textContent = 'Completa socio, factura y monto.'; msg.style.color = 'red'; return; }
+  var rf = await sb.from('facturas').select('saldo_pendiente').eq('id', facturaId).single();
+  if(rf.error || !rf.data){ msg.textContent = 'No se pudo leer la factura.'; msg.style.color = 'red'; return; }
+  var saldoActual = Number(rf.data.saldo_pendiente);
+  if(monto > saldoActual){ msg.textContent = 'El monto es mayor a la deuda Gs. ' + saldoActual.toLocaleString('es-PY'); msg.style.color = 'red'; return; }
+  var r1 = await sb.from('pagos').insert([{ cliente_id: clienteId, factura_id: facturaId, monto_pagado: monto, metodo: metodo }]);
+  if(r1.error){ msg.textContent = 'Error al guardar pago: ' + r1.error.message; msg.style.color = 'red'; return; }
+  var nuevoSaldo = saldoActual - monto;
+  var nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
+  var r2 = await sb.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
+  if(r2.error){ msg.textContent = 'Pago guardado pero no se actualizo factura: ' + r2.error.message; msg.style.color = 'red'; return; }
+  msg.textContent = 'Pago guardado! Nuevo saldo: Gs. ' + nuevoSaldo.toLocaleString('es-PY');
+  msg.style.color = 'green';
+  document.getElementById('inp-monto').value = '';
+  cargar();
+}
+function render(){
+  var texto = (document.getElementById('buscador').value || '').toLowerCase().trim();
+  var tbody = document.getElementById('tabla');
+  tbody.innerHTML = '';
+  var lista = clientesGlobal.filter(function(c){
+    if(texto){
+      var p = c.personas || {};
+      var hay = (getNombre(c) + ' ' + (p.nombre||'') + ' ' + (p.apellido||'') + ' ' + (p.cedula_ruc||'') + ' ' + (c.nro_cuenta||'') + ' ' + (p.telefono||'')).toLowerCase();
+      if(hay.indexOf(texto)===-1) return false;
+    }
     if(filtroRapido==='deudores' && getSaldoCliente(c).saldo <= 0) return false;
     if(filtroRapido==='sinDeuda' && getSaldoCliente(c).saldo > 0) return false;
     return true;
   });
-
-  let total=0, cant=0;
-  lista.forEach(c=>{
-    const {cant:mc, saldo} = getSaldoCliente(c);
-    total+=saldo; cant+=mc;
-    tbody.innerHTML += `<tr><td><b>${getNombre(c)}</b><br><small style="color:#64748b">${getSubtitulo(c)}</small></td><td style="text-align:center">${mc}</td><td style="font-weight:800;color:${saldo>0?'#dc2626':'#16a34a'};text-align:right">${saldo.toLocaleString('es-PY')} Gs</td></tr>`;
+  var total=0, cant=0;
+  lista.forEach(function(c){
+    var r = getSaldoCliente(c);
+    total+=r.saldo; cant+=r.cant;
+    var color = r.saldo>0 ? '#dc2626' : '#16a34a';
+    tbody.innerHTML += '<tr><td><b>' + getNombre(c) + '</b><br><small style="color:#64748b">' + getSubtitulo(c) + '</small></td><td style="text-align:center">' + r.cant + '</td><td style="font-weight:800;color:' + color + ';text-align:right">' + r.saldo.toLocaleString('es-PY') + ' Gs</td></tr>';
   });
-
-  if(lista.length===0) tbody.innerHTML = '<tr><td colspan="3">No se encontró ningún socio con ese dato. Probá con otro nombre o CI.</td></tr>';
-  document.getElementById('resumenFiltro').textContent =
-    (texto ? `Buscando: "${texto}" - ` : '') + `Mostrando ${lista.length} socios - Deuda filtrada: ${total.toLocaleString('es-PY')} Gs - Facturas: ${cant}`;
+  if(lista.length===0) tbody.innerHTML = '<tr><td colspan="3">No se encontro ningun socio con ese dato.</td></tr>';
+  document.getElementById('resumenFiltro').textContent = (texto ? 'Buscando: ' + texto + ' - ' : '') + 'Mostrando ' + lista.length + ' socios - Deuda filtrada: ' + total.toLocaleString('es-PY') + ' Gs - Facturas: ' + cant;
 }
-cargar();
+verificarSesion();
 </script>
 </body>
 </html>
