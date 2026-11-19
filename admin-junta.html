@@ -21,14 +21,14 @@
   .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#0f172a;color:white;font-size:17px;font-weight:700;cursor:pointer}
   .btn-out{background:#dc2626;padding:10px 16px;width:auto;font-size:14px}
   .hidden{display:none}
-    /* Tabla Gastos que entra en pantalla */
+  /* Tabla Gastos que entra en pantalla */
   .tabla-gastos{ table-layout:fixed; font-size:13px; }
   .tabla-gastos th, .tabla-gastos td{ padding:8px 6px; word-wrap:break-word; overflow-wrap:break-word; }
   .tabla-gastos th:nth-child(1), .tabla-gastos td:nth-child(1){ width:68px; }
   .tabla-gastos th:nth-child(3), .tabla-gastos td:nth-child(3){ width:92px; }
   .tabla-gastos td:nth-child(3){ font-size:13px; }
   .tabla-gastos td:nth-child(1){ white-space:nowrap; font-size:12px; }
-  .btn-borrar{ background:#fee2e2; color:#dc2626; border:none; padding:8px 6px; border-radius:8px; font-size:18px; cursor:pointer; width:100%; }
+  .btn-borrar{ background:#fee2e2; color:#dc2626; border:none; padding:8px 6px; border-radius:8px; font-size:16px; cursor:pointer; width:100%; }
 </style>
 </head>
 <body>
@@ -114,19 +114,20 @@
     <input type="text" id="inp-proveedor-gasto" placeholder="Ej: Ferretería San Pedro" style="border:1px solid #ccc;border-radius:8px;padding:10px">
     <label>Nota (opcional)</label>
     <input type="text" id="inp-nota-gasto" placeholder="Ej: Factura N° 123" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <button onclick="registrarGasto()" style="width:100%;padding:12px;background:#dc2626;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px">Guardar Gasto</button>
+    <button id="btn-guardar-gasto" onclick="registrarGasto()" style="width:100%;padding:12px;background:#dc2626;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px;cursor:pointer">Guardar Gasto</button>
+    <button id="btn-cancelar-gasto" type="button" onclick="cancelarEdicionGasto()" style="display:none;width:100%;padding:10px;background:#64748b;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px;cursor:pointer">Cancelar Edición</button>
     <div id="msg-gasto" style="font-size:13px;margin-top:8px"></div>
   </div>
 
-   <div class="card">
+  <div class="card">
     <h3 style="margin:0 0 10px">Últimos Gastos</h3>
     <p id="totalGastos" style="color:#475569;font-size:13px;margin:0 0 10px"></p>
-        <table class="tabla-gastos">
-      <thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Monto</th><th style="width:38px"></th></tr></thead>
+    <table class="tabla-gastos">
+      <thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Monto</th><th style="width:38px">Editar</th><th style="width:38px"></th></tr></thead>
       <tbody id="tabla-gastos"></tbody>
     </table>
-    
-  </div>   
+  </div>
+</div>
 
 <script>
 var sb = window.supabase.createClient('https://zbwpsemyeejebpfkaepz.supabase.co','sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE');
@@ -134,6 +135,7 @@ var ADMIN_EMAIL = 'guidorafa92@gmail.com';
 var clientesGlobal = [];
 var facturasGlobal = [];
 var gastosGlobal = [];
+var gastoEditandoId = null;
 var filtroRapido = 'todos';
 
 async function verificarSesion(){
@@ -212,13 +214,13 @@ async function cargar(){
   var gastadoTotal = 0; (rGastosTotal.data||[]).forEach(function(g){ gastadoTotal += (g.monto||0); });
   var deuda = 0; facturasGlobal.forEach(function(f){ if(f.estado!=='pagado') deuda += (f.saldo_pendiente||0); });
   var balanceFinal = cobrado - gastadoTotal;
-var elBalance = document.getElementById('balance');
-elBalance.textContent = balanceFinal.toLocaleString('es-PY') + ' Gs';
-if (balanceFinal < 0) {
-  elBalance.style.color = '#dc2626';
-} else {
-  elBalance.style.color = '#16a34a';
-}
+  var elBalance = document.getElementById('balance');
+  elBalance.textContent = balanceFinal.toLocaleString('es-PY') + ' Gs';
+  if (balanceFinal < 0) {
+    elBalance.style.color = '#dc2626';
+  } else {
+    elBalance.style.color = '#16a34a';
+  }
   document.getElementById('deuda').textContent = deuda.toLocaleString('es-PY') + ' Gs';
   document.getElementById('socios').textContent = clientesGlobal.filter(function(c){ return c.activo!==false; }).length;
   document.getElementById('pendientes').textContent = facturasGlobal.filter(function(f){ return f.estado!=='pagado'; }).length;
@@ -267,6 +269,50 @@ async function registrarPago(){
   document.getElementById('inp-monto').value = '';
   cargar();
 }
+function editarGasto(id){
+  var g = gastosGlobal.find(function(item){ return String(item.id) === String(id); });
+  if(!g) return;
+
+  gastoEditandoId = g.id;
+  document.getElementById('inp-concepto-gasto').value = g.descripcion || '';
+  document.getElementById('sel-categoria-gasto').value = g.categoria || 'otros';
+  document.getElementById('inp-monto-gasto').value = g.monto || '';
+  document.getElementById('inp-fecha-gasto').value = g.fecha ? String(g.fecha).slice(0, 10) : '';
+  document.getElementById('inp-proveedor-gasto').value = g.proveedor_beneficiario || '';
+  document.getElementById('inp-nota-gasto').value = g.nota || '';
+
+  var btnGuardar = document.getElementById('btn-guardar-gasto');
+  btnGuardar.textContent = 'Actualizar Gasto';
+  btnGuardar.style.background = '#2563eb';
+  document.getElementById('btn-cancelar-gasto').style.display = 'block';
+
+  var msg = document.getElementById('msg-gasto');
+  if(msg){
+    msg.textContent = 'Editando gasto seleccionado. Modificá los datos y tocá Actualizar Gasto.';
+    msg.style.color = '#2563eb';
+  }
+
+  document.getElementById('inp-concepto-gasto').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function cancelarEdicionGasto(){
+  gastoEditandoId = null;
+  document.getElementById('inp-concepto-gasto').value = '';
+  document.getElementById('sel-categoria-gasto').value = 'mantenimiento';
+  document.getElementById('inp-monto-gasto').value = '';
+  document.getElementById('inp-fecha-gasto').value = '';
+  document.getElementById('inp-proveedor-gasto').value = '';
+  document.getElementById('inp-nota-gasto').value = '';
+
+  var btnGuardar = document.getElementById('btn-guardar-gasto');
+  btnGuardar.textContent = 'Guardar Gasto';
+  btnGuardar.style.background = '#dc2626';
+  document.getElementById('btn-cancelar-gasto').style.display = 'none';
+
+  var msg = document.getElementById('msg-gasto');
+  if(msg){
+    msg.textContent = '';
+  }
+}
 async function registrarGasto(){
   var descripcion = document.getElementById('inp-concepto-gasto').value.trim();
   var monto = Number(document.getElementById('inp-monto-gasto').value);
@@ -275,29 +321,52 @@ async function registrarGasto(){
   var proveedor = document.getElementById('inp-proveedor-gasto').value.trim();
   var nota = document.getElementById('inp-nota-gasto').value.trim();
   var msg = document.getElementById('msg-gasto');
-  if(!descripcion){ msg.textContent = 'Escribí la descripción del gasto'; msg.style.color = 'red'; return; }
-  if(!monto || monto <= 0){ msg.textContent = 'El monto tiene que ser mayor a 0'; msg.style.color = 'red'; return; }
+
+  if(!descripcion){ if(msg){ msg.textContent = 'Escribí la descripción del gasto'; msg.style.color = 'red'; } return; }
+  if(!monto || monto <= 0){ if(msg){ msg.textContent = 'El monto tiene que ser mayor a 0'; msg.style.color = 'red'; } return; }
   if(!fecha){ fecha = new Date().toISOString().slice(0,10); }
   if(!categoria){ categoria = 'otros'; }
 
+  var datosGasto = {
+    descripcion: descripcion,
+    monto: monto,
+    categoria: categoria,
+    fecha: fecha,
+    proveedor_beneficiario: proveedor || null,
+    nota: nota || null
+  };
+
   // VALIDAR FONDO EN CAJA - AVISA PERO DEJA PASAR
   var rPagos = await sb.from('pagos').select('monto_pagado');
-  var rGastosTot = await sb.from('gastos').select('monto');
+  var rGastosTot = await sb.from('gastos').select('id, monto');
   var cobrado = 0; (rPagos.data||[]).forEach(function(p){ cobrado += (p.monto_pagado||0); });
-  var gastado = 0; (rGastosTot.data||[]).forEach(function(g){ gastado += (g.monto||0); });
-  var balanceActual = cobrado - gastado;
+  var gastadoSinActual = 0;
+  (rGastosTot.data||[]).forEach(function(g){
+    if(!gastoEditandoId || String(g.id) !== String(gastoEditandoId)){
+      gastadoSinActual += (g.monto||0);
+    }
+  });
+  var balanceDisponible = cobrado - gastadoSinActual;
 
-  if(monto > balanceActual){
-    var falta = monto - balanceActual;
-    var nuevoBalance = balanceActual - monto;
-    var seguir = confirm('⚠️ OJO - No tenés fondos suficientes.\n\nBalance actual: Gs. ' + balanceActual.toLocaleString('es-PY') + '\nQuerés gastar: Gs. ' + monto.toLocaleString('es-PY') + '\nTe van a faltar: Gs. ' + falta.toLocaleString('es-PY') + '\nVas a quedar en: Gs. ' + nuevoBalance.toLocaleString('es-PY') + ' (en rojo)\n\n¿Seguro querés guardar igual?');
-    if(!seguir){ msg.textContent = 'Gasto cancelado. Te faltan Gs. ' + falta.toLocaleString('es-PY'); msg.style.color = 'red'; return; }
+  if(monto > balanceDisponible){
+    var falta = monto - balanceDisponible;
+    var nuevoBalance = balanceDisponible - monto;
+    var seguir = confirm('⚠️ OJO - No tenés fondos suficientes.\n\nBalance disponible: Gs. ' + balanceDisponible.toLocaleString('es-PY') + '\nMonto del gasto: Gs. ' + monto.toLocaleString('es-PY') + '\nTe van a faltar: Gs. ' + falta.toLocaleString('es-PY') + '\nVas a quedar en: Gs. ' + nuevoBalance.toLocaleString('es-PY') + ' (en rojo)\n\n¿Seguro querés guardar igual?');
+    if(!seguir){ if(msg){ msg.textContent = 'Operación cancelada. Te faltan Gs. ' + falta.toLocaleString('es-PY'); msg.style.color = 'red'; } return; }
   }
 
-  var r = await sb.from('gastos').insert([{ descripcion: descripcion, monto: monto, categoria: categoria, fecha: fecha, proveedor_beneficiario: proveedor || null, nota: nota || null }]);
-  if(r.error){ msg.textContent = 'Error al guardar gasto: ' + r.error.message; msg.style.color = 'red'; return; }
-  msg.textContent = 'Gasto guardado! Se descontó del Balance: Gs. ' + monto.toLocaleString('es-PY');
-  msg.style.color = 'green';
+  if(gastoEditandoId){
+    var rUpd = await sb.from('gastos').update(datosGasto).eq('id', gastoEditandoId);
+    if(rUpd.error){ if(msg){ msg.textContent = 'Error al actualizar gasto: ' + rUpd.error.message; msg.style.color = 'red'; } return; }
+    cancelarEdicionGasto();
+    if(msg){ msg.textContent = 'Gasto actualizado! Balance recalculado.'; msg.style.color = 'green'; }
+    cargar();
+    return;
+  }
+
+  var r = await sb.from('gastos').insert([datosGasto]);
+  if(r.error){ if(msg){ msg.textContent = 'Error al guardar gasto: ' + r.error.message; msg.style.color = 'red'; } return; }
+  if(msg){ msg.textContent = 'Gasto guardado! Se descontó del Balance: Gs. ' + monto.toLocaleString('es-PY'); msg.style.color = 'green'; }
   document.getElementById('inp-concepto-gasto').value = '';
   document.getElementById('inp-monto-gasto').value = '';
   document.getElementById('inp-proveedor-gasto').value = '';
@@ -307,6 +376,9 @@ async function registrarGasto(){
 async function borrarGasto(id, descripcion, monto) {
   var seguro = confirm('¿Borrar este gasto?\n\n' + descripcion + '\nMonto: Gs. ' + Number(monto).toLocaleString('es-PY') + '\n\nAl borrarlo, el dinero vuelve a tu Balance.');
   if (!seguro) return;
+  if(gastoEditandoId && String(gastoEditandoId) === String(id)){
+    cancelarEdicionGasto();
+  }
   var r = await sb.from('gastos').delete().eq('id', id);
   if (r.error) { alert('No se pudo borrar: ' + r.error.message); return; }
   cargar();
@@ -320,14 +392,14 @@ function renderGastos(){
     total += (g.monto || 0);
     var f = g.fecha || (g.created_at ? String(g.created_at).slice(0,10) : '');
     var fechaTxt = '-';
-if (f) {
-  var partes = String(f).slice(0, 10).split('-');
-  fechaTxt = partes[2] + '/' + partes[1] + '/' + partes[0].slice(2);
-}
+    if (f) {
+      var partes = String(f).slice(0, 10).split('-');
+      fechaTxt = partes[2] + '/' + partes[1] + '/' + partes[0].slice(2);
+    }
     var catTxt = g.categoria ? ' - ' + g.categoria : '';
-    tbody.innerHTML += '<tr><td>' + fechaTxt + '</td><td><b>' + (g.descripcion || '-') + '</b><br><small style="color:#64748b;font-size:11px">' + catTxt + (g.proveedor_beneficiario ? ' | ' + g.proveedor_beneficiario : '') + (g.nota ? ' | ' + g.nota : '') + '</small></td><td style="font-weight:800;color:#dc2626;text-align:right">' + Number(g.monto||0).toLocaleString('es-PY') + '</td><td><button class="btn-borrar" onclick="borrarGasto(\'' + g.id + '\', \'' + (g.descripcion||'').replace(/'/g,'') + '\', ' + (g.monto||0) + ')">🗑️</button></td></tr>';
+    tbody.innerHTML += '<tr><td>' + fechaTxt + '</td><td><b>' + (g.descripcion || '-') + '</b><br><small style="color:#64748b;font-size:11px">' + catTxt + (g.proveedor_beneficiario ? ' | ' + g.proveedor_beneficiario : '') + (g.nota ? ' | ' + g.nota : '') + '</small></td><td style="font-weight:800;color:#dc2626;text-align:right">' + Number(g.monto||0).toLocaleString('es-PY') + '</td><td><button class="btn-borrar" style="background:#dbeafe;color:#1d4ed8" onclick="editarGasto(\'' + g.id + '\')">✏️</button></td><td><button class="btn-borrar" onclick="borrarGasto(\'' + g.id + '\', \'' + (g.descripcion||'').replace(/'/g,'') + '\', ' + (g.monto||0) + ')">🗑️</button></td></tr>';
   });
-  if((gastosGlobal||[]).length===0) tbody.innerHTML = '<tr><td colspan="4">Todavía no hay gastos cargados.</td></tr>';
+  if((gastosGlobal||[]).length===0) tbody.innerHTML = '<tr><td colspan="5">Todavía no hay gastos cargados.</td></tr>';
   document.getElementById('totalGastos').textContent = 'Mostrando últimos ' + (gastosGlobal||[]).length + ' gastos - Total en lista: ' + total.toLocaleString('es-PY') + ' Gs';
 }
 function render(){
