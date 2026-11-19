@@ -10,40 +10,114 @@
   .card{background:white;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
   .big{font-size:28px;font-weight:800}
   .green{color:#16a34a}.red{color:#dc2626}.orange{color:#ea580c}
+  select{width:100%;padding:12px;border-radius:10px;border:1px solid #cbd5e1;font-size:16px;background:white}
+  table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden}
+  th,td{padding:12px;text-align:left;border-bottom:1px solid #f1f5f9}
+  th{background:#0f172a;color:white}
+  .badge{padding:4px 8px;border-radius:20px;font-size:12px;font-weight:700}
+  .debe{background:#fee2e2;color:#dc2626}
+  .aldia{background:#dcfce7;color:#16a34a}
+  #error{color:red;font-size:13px}
 </style>
 </head>
 <body>
 <h2>Junta JSYBYPE - SuperAdmin</h2>
+<div id="error"></div>
+
 <div class="card">Balance en Caja<div class="big green" id="balance">Cargando...</div></div>
 <div class="card">Deuda Total Socios<div class="big red" id="deuda">Cargando...</div></div>
 <div class="card">Socios Activos<div class="big" id="socios">...</div></div>
 <div class="card">Facturas Pendientes<div class="big orange" id="pendientes">...</div></div>
 
+<div class="card">
+  <h3 style="margin:0 0 10px">Saldo por Cliente</h3>
+  <label>Filtrar por socio:</label>
+  <select id="filtroCliente" onchange="render()">
+    <option value="todos">👥 TODOS LOS SOCIOS</option>
+  </select>
+  <p id="resumenFiltro" style="color:#475569;font-size:14px"></p>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>Socio</th><th>Facturas</th><th>Saldo</th><th>Estado</th></tr></thead>
+    <tbody id="tabla"></tbody>
+  </table>
+  </div>
+</div>
+
 <script>
-const supabase = window.supabase.createClient(
-  'TU_URL_SUPABASE',
-  'TU_ANON_KEY'
+const sb = window.supabase.createClient(
+  'https://zbwpsemyeejebpfkaepz.supabase.co',
+  'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE'
 );
 
-async function cargar(){
-  const {data: pagos} = await supabase.from('pagos').select('monto_pagado');
-  const {data: gastos} = await supabase.from('gastos').select('monto');
-  const {data: facturas} = await supabase.from('facturas').select('saldo_pendiente, estado');
-  const {data: clientes} = await supabase.from('clientes').select('id').eq('activo', true);
+let clientesGlobal = [];
+let facturasGlobal = [];
 
-  let cobrado = pagos?.reduce((s,p)=>s+(p.monto_pagado||0),0) || 0;
-  let gastado = gastos?.reduce((s,g)=>s+(g.monto||0),0) || 0;
-  let deuda = facturas?.filter(f=>f.estado!=='pagado').reduce((s,f)=>s+(f.saldo_pendiente||0),0) || 0;
+async function cargar(){
+  const {data: pagos} = await sb.from('pagos').select('monto_pagado');
+  const {data: gastos} = await sb.from('gastos').select('monto');
+  const {data: facturas, error: e3} = await sb.from('facturas').select('*');
+  const {data: clientes, error: e4} = await sb.from('clientes').select('*');
+
+  if(e3) document.getElementById('error').textContent += 'Facturas: '+e3.message+'\n';
+  if(e4) document.getElementById('error').textContent += 'Clientes: '+e4.message+'\n';
+
+  clientesGlobal = clientes || [];
+  facturasGlobal = facturas || [];
+
+  let cobrado = (pagos||[]).reduce((s,p)=>s+(p.monto_pagado||0),0);
+  let gastado = (gastos||[]).reduce((s,g)=>s+(g.monto||0),0);
+  let deuda = facturasGlobal.filter(f=>f.estado!=='pagado').reduce((s,f)=>s+(f.saldo_pendiente||0),0);
 
   document.getElementById('balance').textContent = (cobrado-gastado).toLocaleString('es-PY') + ' Gs';
   document.getElementById('deuda').textContent = deuda.toLocaleString('es-PY') + ' Gs';
-  document.getElementById('socios').textContent = clientes?.length || 0;
-  document.getElementById('pendientes').textContent = facturas?.filter(f=>f.estado!=='pagado').length || 0;
+  document.getElementById('socios').textContent = clientesGlobal.filter(c=>c.activo!==false).length;
+  document.getElementById('pendientes').textContent = facturasGlobal.filter(f=>f.estado!=='pagado').length;
+
+  // Llenar el filtro
+  const sel = document.getElementById('filtroCliente');
+  sel.innerHTML = '<option value="todos">👥 TODOS LOS SOCIOS</option>';
+  clientesGlobal.forEach(c=>{
+    const nombre = c.nombre || c.nombre_completo || c.email || ('Socio '+c.id);
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = nombre;
+    sel.appendChild(opt);
+  });
+  render();
+}
+
+function render(){
+  const filtro = document.getElementById('filtroCliente').value;
+  const tbody = document.getElementById('tabla');
+  tbody.innerHTML = '';
+
+  let lista = clientesGlobal;
+  if(filtro !== 'todos'){
+    lista = clientesGlobal.filter(c=> String(c.id) === String(filtro));
+  }
+
+  let totalFiltrado = 0;
+  let cantFact = 0;
+
+  lista.forEach(c=>{
+    const misFact = facturasGlobal.filter(f=> String(f.cliente_id) === String(c.id) && f.estado!=='pagado');
+    const saldo = misFact.reduce((s,f)=>s+(f.saldo_pendiente||0),0);
+    totalFiltrado += saldo;
+    cantFact += misFact.length;
+    const nombre = c.nombre || c.nombre_completo || c.email || ('Socio '+c.id);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><b>${nombre}</b></td><td>${misFact.length}</td><td style="font-weight:800;color:${saldo>0?'#dc2626':'#16a34a'}">${saldo.toLocaleString('es-PY')} Gs</td><td><span class="badge ${saldo>0?'debe':'aldia'}">${saldo>0?'DEBE':'AL DÍA'}</span></td>`;
+    tbody.appendChild(tr);
+  });
+
+  if(lista.length===0) tbody.innerHTML = '<tr><td colspan="4">Sin socios</td></tr>';
+
+  document.getElementById('resumenFiltro').textContent = filtro==='todos'
+    ? `Mostrando ${lista.length} socios - Deuda filtrada: ${totalFiltrado.toLocaleString('es-PY')} Gs - Facturas: ${cantFact}`
+    : `Mostrando 1 socio - Deuda: ${totalFiltrado.toLocaleString('es-PY')} Gs - Facturas pendientes: ${cantFact}`;
 }
 cargar();
-// Tiempo real
-supabase.channel('junta').on('postgres_changes',{event:'*',schema:'public',table:'pagos'},cargar).subscribe();
-supabase.channel('junta2').on('postgres_changes',{event:'*',schema:'public',table:'facturas'},cargar).subscribe();
 </script>
 </body>
 </html>
