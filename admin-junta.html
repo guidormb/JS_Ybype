@@ -439,8 +439,7 @@ function render(){
   document.getElementById('resumenFiltro').textContent = (texto ? 'Buscando: ' + texto + ' - ' : '') + 'Mostrando ' + lista.length + ' socios - Deuda filtrada: ' + total.toLocaleString('es-PY') + ' Gs - Facturas: ' + cant;
 }
 verificarSesion();
-// === GENERADOR MENSUAL ===
-// === GENERADOR MENSUAL v2 - con diagnóstico ===
+//GENERADOR DE CUOTAS DEL MES
 async function generarCuotasMensuales() {
   const periodo = document.getElementById('periodoCuota').value;
   const monto = parseInt(document.getElementById('montoCuota').value) || 20000;
@@ -454,27 +453,52 @@ async function generarCuotasMensuales() {
   btn.disabled = true;
   
   try {
-    // PASO 1: Probar socios
-    msg.textContent = 'Paso 1: buscando socios...';
+    // 1. Solo los activos - ahora sí sabemos que existe la columna
     const { data: socios, error: e1 } = await supabase
       .from('clientes')
-      .select('*')
-      .limit(5);
+      .select('id')
+      .eq('activo', true);
+    if (e1) throw new Error('Clientes: ' + e1.message);
     
-    if (e1) throw new Error('Error en clientes: ' + e1.message);
-    if (!socios || socios.length === 0) throw new Error('No encontró socios en clientes. ¿La tabla está vacía?');
+    // 2. Los que ya tienen factura en ese MES (no periodo)
+    const { data: ya, error: e2 } = await supabase
+      .from('facturas')
+      .select('cliente_id')
+      .eq('mes', periodo);
+    if (e2) throw new Error('Facturas: ' + e2.message);
     
-    // Mostramos qué columnas tiene realmente
-    console.log('Columnas de clientes:', Object.keys(socios[0]));
-    console.log('Ejemplo socio:', socios[0]);
+    const yaIds = new Set((ya || []).map(f => f.cliente_id));
+    const nuevos = socios.filter(s => !yaIds.has(s.id));
     
-    msg.textContent = `Encontré ${socios.length} socios (prueba). Revisá la consola.`;
+    if (nuevos.length === 0) {
+      msg.textContent = `Ya están todos generados para ${periodo}`;
+      btn.disabled = false;
+      return;
+    }
+    
+    const paraInsertar = nuevos.map(s => ({
+      cliente_id: s.id,
+      mes: periodo,
+      monto: monto,
+      saldo_pendiente: monto,
+      estado: 'pendiente',
+      lectura_anterior: 0,
+      lectura_actual: 0,
+      consumo_m3: 0
+    }));
+    
+    const { error: e3 } = await supabase.from('facturas').insert(paraInsertar);
+    if (e3) throw new Error('Insert: ' + e3.message);
+    
+    msg.textContent = `¡Listo! Se generaron ${nuevos.length} cuotas de ${periodo}.`;
+    if (window.cargarDatos) cargarDatos();
     
   } catch (err) {
     msg.textContent = 'ERROR: ' + err.message;
-    console.error(err);
   }
   btn.disabled = false;
+}
+document.getElementById('btnGenerarCuotas').addEventListener('click', generarCuotasMensuales);
 }
 </script>
 </body>
