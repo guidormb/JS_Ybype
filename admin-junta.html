@@ -59,6 +59,16 @@
   <div class="card">Balance en Caja<div class="big green" id="balance">Cargando...</div></div>
   <div class="card">Deuda Total Socios<div class="big red" id="deuda">Cargando...</div></div>
   <div class="card">Socios Activos<div class="big" id="socios">...</div></div>
+  <div class="card" style="border:2px solid #1e90ff; background:#f0f8ff">
+  <h3>🧾 Generar Cuotas Mensuales</h3>
+  <p style="font-size:13px">Crea la factura del mes a todos los socios activos. No duplica si ya existe.</p>
+  <div style="display:flex; gap:8px; flex-wrap:wrap">
+    <input type="month" id="periodoCuota" style="flex:1; min-width:140px">
+    <input type="number" id="montoCuota" value="25000" style="width:110px">
+    <button id="btnGenerarCuotas" class="btn-primary" style="flex:1; min-width:140px">Generar Cuotas</button>
+  </div>
+  <p id="msgCuotas" style="font-size:13px; margin-top:8px"></p>
+</div>
   <div class="card">Facturas Pendientes<div class="big orange" id="pendientes">...</div></div>
   <div class="card">
     <h3 style="margin:0 0 10px">Saldo por Cliente</h3>
@@ -353,7 +363,7 @@ async function registrarGasto(){
   if(monto > balanceDisponible){
     var falta = monto - balanceDisponible;
     var nuevoBalance = balanceDisponible - monto;
-    var seguir = confirm('⚠️ OJO - No tenés fondos suficientes.\n\nBalance disponible: Gs. ' + balanceDisponible.toLocaleString('es-PY') + '\nMonto del gasto: Gs. ' + monto.toLocaleString('es-PY') + '\nTe van a faltar: Gs. ' + falta.toLocaleString('es-PY') + '\nVas a quedar en: Gs. ' + nuevoBalance.toLocaleString('es-PY') + ' (en rojo)\n\n¿Seguro querés guardar igual?');
+    var seguir = confirm('⚠️ Atención! No tenés fondos suficientes.\n\nBalance disponible: Gs. ' + balanceDisponible.toLocaleString('es-PY') + '\nMonto del gasto: Gs. ' + monto.toLocaleString('es-PY') + '\nTe van a faltar: Gs. ' + falta.toLocaleString('es-PY') + '\nVas a quedar en: Gs. ' + nuevoBalance.toLocaleString('es-PY') + ' (en rojo)\n\n¿Seguro querés guardar igual?');
     if(!seguir){ if(msg){ msg.textContent = 'Operación cancelada. Te faltan Gs. ' + falta.toLocaleString('es-PY'); msg.style.color = 'red'; } return; }
   }
 
@@ -429,6 +439,64 @@ function render(){
   document.getElementById('resumenFiltro').textContent = (texto ? 'Buscando: ' + texto + ' - ' : '') + 'Mostrando ' + lista.length + ' socios - Deuda filtrada: ' + total.toLocaleString('es-PY') + ' Gs - Facturas: ' + cant;
 }
 verificarSesion();
+// === GENERADOR MENSUAL ===
+async function generarCuotasMensuales(){
+  const periodo = document.getElementById('periodoCuota').value; // 2026-11
+  const monto = parseInt(document.getElementById('montoCuota').value) || 25000;
+  const msg = document.getElementById('msgCuotas');
+
+  if(!periodo){ msg.textContent = 'Elegí el mes primero'; return; }
+  if(!confirm(`¿Generar cuota de ${monto.toLocaleString()} Gs para ${periodo} a todos los activos?`)) return;
+
+  msg.textContent = 'Generando...';
+  const btn = document.getElementById('btnGenerarCuotas');
+  btn.disabled = true;
+
+  // 1. Traer socios activos
+  const { data: socios, error: e1 } = await supabase
+    .from('clientes')
+    .select('id, persona_id, personas(nombre)')
+    .eq('activo', true);
+
+  if(e1){ msg.textContent = 'Error: ' + e1.message; btn.disabled = false; return; }
+
+  // 2. Ver cuáles ya tienen factura ese mes
+  const { data: yaExisten } = await supabase
+    .from('facturas')
+    .select('cliente_id')
+    .eq('periodo', periodo);
+
+  const idsYa = new Set((yaExisten || []).map(f => f.cliente_id));
+
+  // 3. Filtrar solo los que faltan
+  const nuevos = socios.filter(s => !idsYa.has(s.id)).map(s => ({
+    cliente_id: s.id,
+    periodo: periodo,
+    monto: monto,
+    estado: 'pendiente',
+    fecha_emision: new Date().toISOString().slice(0,10)
+  }));
+
+  if(nuevos.length === 0){
+    msg.textContent = `Ya están todos generados para ${periodo} (${socios.length} socios). Nada para hacer.`;
+    btn.disabled = false;
+    return;
+  }
+
+  // 4. Insertar
+  const { error: e2 } = await supabase.from('facturas').insert(nuevos);
+  if(e2){ msg.textContent = 'Error al guardar: ' + e2.message; }
+  else { msg.textContent = `¡Listo! Se generaron ${nuevos.length} cuotas para ${periodo}. ${idsYa.size} ya existían y no se duplicaron.`; }
+
+  btn.disabled = false;
+  // Si tenés una función que recarga la lista, llamala acá
+  // cargarFacturas();
+}
+
+document.getElementById('btnGenerarCuotas')?.addEventListener('click', generarCuotasMensuales);
+
+// Poner el mes actual por defecto
+document.getElementById('periodoCuota').value = new Date().toISOString().slice(0,7);
 </script>
 </body>
 </html>
