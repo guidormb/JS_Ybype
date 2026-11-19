@@ -10,6 +10,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 var SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+window.dispatchEvent(new Event('supabaseReady'));
 </script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans">
@@ -23,12 +24,14 @@ window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 <button onclick="cerrarSesion()" class="mt-1 bg-blue-700 px-2.5 py-1 rounded text-[11px]">Salir</button>
 </div>
 </header>
+
 <main class="p-4 max-w-md mx-auto w-full flex-grow">
 <section id="seccion-auth" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-4">
 <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl mb-6">
 <button type="button" id="tab-login" onclick="cambiarTab('login')" class="py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm">Iniciar Sesion</button>
 <button type="button" id="tab-activar" onclick="cambiarTab('activar')" class="py-2 text-xs font-bold rounded-lg text-slate-500">Crear mi Clave</button>
 </div>
+
 <div id="box-login">
 <div class="text-center mb-5">
 <h2 class="text-lg font-extrabold text-slate-800">Bienvenido</h2>
@@ -46,6 +49,7 @@ window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 <button type="submit" id="btn-login" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm">Consultar Estado de Cuenta</button>
 </form>
 </div>
+
 <div id="box-activar" class="hidden">
 <div class="text-center mb-5">
 <h2 class="text-lg font-extrabold text-slate-800">Primera vez aqui</h2>
@@ -67,8 +71,10 @@ window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 <button type="submit" id="btn-activar" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm">Activar Cuenta e Ingresar</button>
 </form>
 </div>
+
 <div id="auth-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
 </section>
+
 <section id="seccion-panel" class="hidden space-y-4 mt-2">
 <div class="bg-gradient-to-br from-blue-700 to-blue-800 text-white p-5 rounded-2xl shadow-md">
 <p class="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Titular de la Cuenta</p>
@@ -84,6 +90,7 @@ window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 </div>
 </div>
 </div>
+
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
 <div class="flex justify-between items-center mb-3 border-b pb-2">
 <h4 class="font-bold text-xs text-slate-700 uppercase">Facturas y Deudas</h4>
@@ -91,10 +98,12 @@ window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 </div>
 <div id="lista-facturas" class="space-y-3"></div>
 </div>
+
 <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
 <p class="text-xs text-emerald-800 font-semibold mb-2">Ya realizaste tu pago o transferencia?</p>
 <a id="btn-whatsapp" href="#" target="_blank" class="inline-block bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl">Enviar comprobante por WhatsApp</a>
 </div>
+
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
 <h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Cambiar Contrasena</h4>
 <form id="form-cambiar-pass" onsubmit="cambiarContrasenaCliente(event)" class="space-y-3">
@@ -106,15 +115,35 @@ window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 </div>
 </section>
 </main>
+
 <footer class="text-center p-4 text-[11px] text-slate-400">Junta de Saneamiento JSYBYPE 2026 - Paraguay</footer>
+
 <script type="module">
-function obtenerEmailInterno(cedula){ return 'ci_' + cedula.trim() + '@juntasaneamiento.local'; }
+function obtenerEmailInterno(cedula){
+  return 'ci_' + cedula.trim() + '@juntasaneamiento.local';
+}
+
+function extraerCedulaDesdeEmail(email){
+  if(!email) return null;
+  var match = email.match(/^ci_(.+)@juntasaneamiento\.local$/i);
+  return match ? match[1] : null;
+}
+
 function mostrarMensajeAuth(texto, esError){
   var msgEl = document.getElementById('auth-msg');
   msgEl.textContent = texto;
-  msgEl.className = esError ? "mt-4 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600" : "mt-4 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700";
+  msgEl.className = esError
+    ? "mt-4 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600"
+    : "mt-4 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700";
   msgEl.classList.remove('hidden');
 }
+
+function setBotonEstado(btn, texto, deshabilitado){
+  if(!btn) return;
+  btn.textContent = texto;
+  btn.disabled = deshabilitado;
+}
+
 window.cambiarTab = function(tab){
   document.getElementById('auth-msg').classList.add('hidden');
   var tabLogin = document.getElementById('tab-login');
@@ -129,102 +158,187 @@ window.cambiarTab = function(tab){
   } else {
     tabActivar.className = "py-2 text-xs font-bold rounded-lg bg-white text-emerald-600 shadow-sm";
     tabLogin.className = "py-2 text-xs font-bold rounded-lg text-slate-500";
+    boxActivar.className = "";
     boxActivar.classList.remove('hidden');
     boxLogin.classList.add('hidden');
   }
+};
+
+async function validarSocioPorCedula(cedula){
+  var supabase = window.supabaseClient;
+  var rp = await supabase
+    .from('personas')
+    .select('id, nombre, apellido, cedula_ruc')
+    .eq('cedula_ruc', cedula)
+    .maybeSingle();
+
+  if(rp.error || !rp.data){
+    throw new Error('Esta cedula no figura en el padron de socios. Contacta con la administracion.');
+  }
+
+  var rc = await supabase
+    .from('clientes')
+    .select('*')
+    .eq('persona_id', rp.data.id)
+    .maybeSingle();
+
+  if(rc.error || !rc.data){
+    throw new Error('Tu cedula esta registrada, pero no tenes cuenta de agua asignada.');
+  }
+
+  return { persona: rp.data, cliente: rc.data };
 }
+
 window.manejarActivacionCuenta = async function(event){
   event.preventDefault();
   var cedula = document.getElementById('reg-cedula').value.trim();
   var password = document.getElementById('reg-password').value;
   var passwordConf = document.getElementById('reg-password-conf').value;
   var btn = document.getElementById('btn-activar');
-  if(password !== passwordConf){ mostrarMensajeAuth('Las contrasenas no coinciden.', true); return; }
-  if(password.length < 6){ mostrarMensajeAuth('La contrasena debe tener al menos 6 caracteres.', true); return; }
-  btn.textContent = 'Creando cuenta...';
-  btn.disabled = true;
+  var textoOriginal = 'Activar Cuenta e Ingresar';
+
+  document.getElementById('auth-msg').classList.add('hidden');
+
+  if(!cedula){
+    mostrarMensajeAuth('Ingresa tu numero de cedula.', true);
+    setBotonEstado(btn, textoOriginal, false);
+    return;
+  }
+  if(password !== passwordConf){
+    mostrarMensajeAuth('Las contrasenas no coinciden.', true);
+    setBotonEstado(btn, textoOriginal, false);
+    return;
+  }
+  if(password.length < 6){
+    mostrarMensajeAuth('La contrasena debe tener al menos 6 caracteres.', true);
+    setBotonEstado(btn, textoOriginal, false);
+    return;
+  }
+
+  setBotonEstado(btn, 'Creando cuenta...', true);
+
   try{
     var supabase = window.supabaseClient;
+    await validarSocioPorCedula(cedula);
+
     var emailFicticio = obtenerEmailInterno(cedula);
-    var r = await supabase.auth.signUp({ email: emailFicticio, password: password, options: { data: { cedula: cedula, rol: 'cliente' } } });
+    var r = await supabase.auth.signUp({
+      email: emailFicticio,
+      password: password,
+      options: { data: { cedula: cedula, rol: 'cliente' } }
+    });
+
     if(r.error){
-      if(r.error.message.indexOf('already registered') !== -1){ throw new Error('Esta cedula ya tiene una contrasena creada. Anda a Iniciar Sesion.'); }
+      if(r.error.message.indexOf('already registered') !== -1){
+        throw new Error('Esta cedula ya tiene una contrasena creada. Anda a Iniciar Sesion.');
+      }
       throw r.error;
     }
+
+    if(!r.data.session){
+      var loginTrasRegistro = await supabase.auth.signInWithPassword({
+        email: emailFicticio,
+        password: password
+      });
+      if(loginTrasRegistro.error){
+        throw new Error('Clave creada. Si Supabase requiere confirmar correo, desactiva Email Confirmations en Authentication > Providers > Email.');
+      }
+    }
+
     await cargarDatosPortalCliente(cedula);
+    setBotonEstado(btn, textoOriginal, false);
   } catch(err){
     mostrarMensajeAuth(err.message, true);
-    btn.textContent = 'Activar Cuenta e Ingresar';
-    btn.disabled = false;
+    setBotonEstado(btn, textoOriginal, false);
   }
-}
+};
+
 window.manejarLoginCliente = async function(event){
   event.preventDefault();
   var cedula = document.getElementById('login-cedula').value.trim();
   var password = document.getElementById('login-password').value;
   var btn = document.getElementById('btn-login');
+  var textoOriginal = 'Consultar Estado de Cuenta';
+
   document.getElementById('auth-msg').classList.add('hidden');
-  btn.textContent = 'Verificando...';
-  btn.disabled = true;
+  setBotonEstado(btn, 'Verificando...', true);
+
   try{
+    if(!cedula || !password){
+      throw new Error('Completa tu cedula y contrasena.');
+    }
     var emailFicticio = obtenerEmailInterno(cedula);
     var supabase = window.supabaseClient;
-    var r = await supabase.auth.signInWithPassword({ email: emailFicticio, password: password });
-    if(r.error) throw new Error('Cedula o contrasena incorrecta. Si es tu primera vez, usa Crear mi Clave.');
+    var r = await supabase.auth.signInWithPassword({
+      email: emailFicticio,
+      password: password
+    });
+
+    if(r.error){
+      throw new Error('Cedula o contrasena incorrecta. Si es tu primera vez, usa Crear mi Clave.');
+    }
+
     await cargarDatosPortalCliente(cedula);
+    setBotonEstado(btn, textoOriginal, false);
   } catch(err){
     mostrarMensajeAuth(err.message, true);
-    btn.textContent = 'Consultar Estado de Cuenta';
-    btn.disabled = false;
+    setBotonEstado(btn, textoOriginal, false);
   }
-}
+};
+
 async function cargarDatosPortalCliente(cedula){
   var supabase = window.supabaseClient;
   var u = await supabase.auth.getUser();
   var user = u.data.user;
   var emailEsperado = obtenerEmailInterno(cedula);
+
   if(!user || user.email !== emailEsperado){
     await supabase.auth.signOut();
     throw new Error('Sesion no valida para esta cedula.');
   }
-  var rp = await supabase.from('personas').select('id, nombre, apellido').eq('cedula_ruc', cedula).maybeSingle();
-  if(rp.error || !rp.data){
-    await supabase.auth.signOut();
-    throw new Error('Esta cedula no figura en el padron de socios. Contacta con la administracion.');
-  }
-  var persona = rp.data;
-  var rc = await supabase.from('clientes').select('*').eq('persona_id', persona.id).maybeSingle();
-  if(!rc.data){
-    await supabase.auth.signOut();
-    throw new Error('Tu cedula esta registrada, pero no tenes cuenta de agua asignada.');
-  }
-  var cliente = rc.data;
+
+  var datosSocio = await validarSocioPorCedula(cedula);
+  var persona = datosSocio.persona;
+  var cliente = datosSocio.cliente;
+
   document.getElementById('panel-nombre-cliente').textContent = persona.nombre + ' ' + (persona.apellido || '');
   document.getElementById('panel-nro-cuenta').textContent = cliente.nro_cuenta;
   document.getElementById('panel-saldo-favor').textContent = 'Gs. ' + Number(cliente.saldo_favor || 0).toLocaleString('es-PY');
   document.getElementById('lbl-nombre-usuario').textContent = persona.nombre;
   document.getElementById('user-info').classList.remove('hidden');
+
   var nroWhatsAppJunta = '595981355516';
   var mensajeWa = encodeURIComponent('Hola, soy ' + persona.nombre + ' ' + (persona.apellido || '') + ' (Cuenta N ' + cliente.nro_cuenta + '). Envio mi comprobante de pago.');
   document.getElementById('btn-whatsapp').href = 'https://wa.me/' + nroWhatsAppJunta + '?text=' + mensajeWa;
+
   document.getElementById('seccion-auth').classList.add('hidden');
   document.getElementById('seccion-panel').classList.remove('hidden');
+
   await cargarFacturasCliente(cliente.id);
 }
+
 async function cargarFacturasCliente(clienteId){
   var supabase = window.supabaseClient;
   var contenedor = document.getElementById('lista-facturas');
   var contadorEl = document.getElementById('contador-deuda');
-  var r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).order('mes', { ascending: false });
+
+  var r = await supabase
+    .from('facturas')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .order('id', { ascending: false });
+
   var facturas = r.data || [];
   if(r.error || facturas.length === 0){
     contadorEl.textContent = '0 pendientes';
     contenedor.innerHTML = '<div class="text-center py-6 bg-emerald-50/50 rounded-xl"><p class="text-sm font-bold text-emerald-700">Estas al dia!</p></div>';
     return;
   }
+
   var pendientesCount = 0;
   facturas.forEach(function(f){ if(f.estado !== 'pagado') pendientesCount++; });
   contadorEl.textContent = pendientesCount + ' pendientes';
+
   var html = '';
   facturas.forEach(function(f){
     var badge = f.estado === 'pagado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
@@ -232,24 +346,56 @@ async function cargarFacturasCliente(clienteId){
   });
   contenedor.innerHTML = html;
 }
+
 window.cambiarContrasenaCliente = async function(event){
   event.preventDefault();
   var nuevaPass = document.getElementById('nueva-pass').value;
   var confirmaPass = document.getElementById('confirma-pass').value;
   var msgEl = document.getElementById('pass-msg');
+
   if(nuevaPass !== confirmaPass || nuevaPass.length < 6){
     msgEl.textContent = 'Verifica que coincidan y tengan minimo 6 caracteres.';
     msgEl.className = "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600";
     msgEl.classList.remove('hidden');
     return;
   }
+
   var r = await window.supabaseClient.auth.updateUser({ password: nuevaPass });
   msgEl.textContent = r.error ? r.error.message : 'Contrasena actualizada!';
-  msgEl.className = r.error ? "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600" : "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-emerald-50 text-emerald-700";
+  msgEl.className = r.error
+    ? "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600"
+    : "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-emerald-50 text-emerald-700";
   msgEl.classList.remove('hidden');
   if(!r.error) document.getElementById('form-cambiar-pass').reset();
+};
+
+window.cerrarSesion = async function(){
+  await window.supabaseClient.auth.signOut();
+  location.reload();
+};
+
+async function restaurarSesionSiExiste(){
+  var supabase = window.supabaseClient;
+  if(!supabase) return;
+  var res = await supabase.auth.getSession();
+  var session = res.data.session;
+  if(!session || !session.user || !session.user.email) return;
+
+  var cedula = extraerCedulaDesdeEmail(session.user.email);
+  if(!cedula) return;
+
+  try{
+    await cargarDatosPortalCliente(cedula);
+  } catch(e){
+    await supabase.auth.signOut();
+  }
 }
-window.cerrarSesion = async function(){ await window.supabaseClient.auth.signOut(); location.reload(); }
+
+if(window.supabaseClient){
+  restaurarSesionSiExiste();
+} else {
+  window.addEventListener('supabaseReady', restaurarSesionSiExiste, { once: true });
+}
 </script>
 </body>
 </html>
