@@ -29,11 +29,11 @@ botones.forEach((btn) => {
 });
 
 function aplicarMenuPorRol(session) {
-  const email = session && session.user && session.user.email
-    ? session.user.email.toLowerCase()
-    : '';
+  const email = session && session.user && session.user.email ?
+    session.user.email.toLowerCase() :
+    '';
   const esAdmin = email === ADMIN_EMAIL.toLowerCase();
-
+  
   if (esAdmin) {
     labelAdmin.classList.remove('hidden');
     btnCaja.classList.remove('hidden');
@@ -44,10 +44,10 @@ function aplicarMenuPorRol(session) {
     btnCaja.classList.add('hidden');
     btnPadron.classList.add('hidden');
     btnAccesoAdmin.classList.remove('hidden');
-
+    
     // Si estaba parado en Caja o Padrón y cerró sesión, volver a Portal Socio
     const rutaActual = visor.getAttribute('src') || '';
-    if (rutaActual.includes('padron.html')) {
+    if (rutaActual.includes('padron') || rutaActual.includes('admin-junta.html')) {
       const btnSocio = document.querySelector('.nav-btn[data-src="./portal-cliente.html"]');
       if (btnSocio) navegarA(btnSocio);
     }
@@ -57,7 +57,7 @@ function aplicarMenuPorRol(session) {
 async function inicializarMenu() {
   const { data } = await sbMenu.auth.getSession();
   aplicarMenuPorRol(data.session);
-
+  
   // Escucha cambios de login/logout ocurridos dentro de los iframes
   sbMenu.auth.onAuthStateChange((_event, session) => {
     aplicarMenuPorRol(session);
