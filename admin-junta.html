@@ -6,18 +6,17 @@
 <title>SuperAdmin - Junta JSYBYPE</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  body{font-family:system-ui;background:#f1f5f9;padding:16px}
+  body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}
+  h2{margin:0 0 14px}
   .card{background:white;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
   .big{font-size:28px;font-weight:800}
   .green{color:#16a34a}.red{color:#dc2626}.orange{color:#ea580c}
   select{width:100%;padding:12px;border-radius:10px;border:1px solid #cbd5e1;font-size:16px;background:white}
-  table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden}
-  th,td{padding:12px;text-align:left;border-bottom:1px solid #f1f5f9}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:12px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:top}
   th{background:#0f172a;color:white}
-  .badge{padding:4px 8px;border-radius:20px;font-size:12px;font-weight:700}
-  .debe{background:#fee2e2;color:#dc2626}
-  .aldia{background:#dcfce7;color:#16a34a}
-  #error{color:red;font-size:13px}
+  #debug{background:#111;color:#0f0;padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap;word-break:break-all}
+  #error{color:red;font-size:13px;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -38,11 +37,13 @@
   <p id="resumenFiltro" style="color:#475569;font-size:14px"></p>
   <div style="overflow-x:auto">
   <table>
-    <thead><tr><th>Socio</th><th>Facturas</th><th>Saldo</th><th>Estado</th></tr></thead>
+    <thead><tr><th>Socio</th><th style="text-align:center">Facturas</th><th style="text-align:right">Saldo</th></tr></thead>
     <tbody id="tabla"></tbody>
   </table>
   </div>
 </div>
+
+<div class="card"><h3 style="margin:0 0 10px">DEBUG - Qué devuelve Supabase</h3><div id="debug">Esperando...</div></div>
 
 <script>
 const sb = window.supabase.createClient(
@@ -53,20 +54,45 @@ const sb = window.supabase.createClient(
 let clientesGlobal = [];
 let facturasGlobal = [];
 
+// Nombre real: viene de personas(nombre, apellido) + nro_cuenta de clientes
+function getNombre(c){
+  if(c.personas && c.personas.nombre){
+    const ape = c.personas.apellido ? ' ' + c.personas.apellido : '';
+    return c.personas.nombre + ape + (c.nro_cuenta ? ' - Cta ' + c.nro_cuenta : '');
+  }
+  if(c.personas && c.personas.cedula_ruc){
+    return 'CI ' + c.personas.cedula_ruc + (c.nro_cuenta ? ' - Cta ' + c.nro_cuenta : '');
+  }
+  if(c.nro_cuenta) return 'Cuenta ' + c.nro_cuenta;
+  return 'Socio ' + String(c.id).slice(0,8);
+}
+
+function getSubtitulo(c){
+  if(c.personas && c.personas.cedula_ruc) return 'CI: ' + c.personas.cedula_ruc + ' | Cta: ' + (c.nro_cuenta || '-');
+  if(c.nro_cuenta) return 'Cta: ' + c.nro_cuenta;
+  return 'ID: ' + String(c.id).slice(0,8);
+}
+
 async function cargar(){
-  const {data: pagos} = await sb.from('pagos').select('monto_pagado');
-  const {data: gastos} = await sb.from('gastos').select('monto');
-  const {data: facturas, error: e3} = await sb.from('facturas').select('*');
-  const {data: clientes, error: e4} = await sb.from('clientes').select('*');
+  // Clientes + Personas juntas (misma forma que usa tu Padrón)
+  const rClientes = await sb.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono)');
+  const rFacturas = await sb.from('facturas').select('*');
+  const rPagos = await sb.from('pagos').select('monto_pagado');
+  const rGastos = await sb.from('gastos').select('monto');
 
-  if(e3) document.getElementById('error').textContent += 'Facturas: '+e3.message+'\n';
-  if(e4) document.getElementById('error').textContent += 'Clientes: '+e4.message+'\n';
+  clientesGlobal = rClientes.data || [];
+  facturasGlobal = rFacturas.data || [];
 
-  clientesGlobal = clientes || [];
-  facturasGlobal = facturas || [];
+  if(rClientes.error) document.getElementById('error').textContent += 'Clientes: ' + rClientes.error.message + '\n';
+  if(rFacturas.error) document.getElementById('error').textContent += 'Facturas: ' + rFacturas.error.message + '\n';
 
-  let cobrado = (pagos||[]).reduce((s,p)=>s+(p.monto_pagado||0),0);
-  let gastado = (gastos||[]).reduce((s,g)=>s+(g.monto||0),0);
+  document.getElementById('debug').textContent =
+    'clientes: ' + clientesGlobal.length + ' | facturas: ' + facturasGlobal.length + '\n' +
+    'clientes error: ' + (rClientes.error ? rClientes.error.message : 'sin error') + '\n' +
+    'ejemplo cliente: ' + JSON.stringify(clientesGlobal[0] || null);
+
+  let cobrado = (rPagos.data||[]).reduce((s,p)=>s+(p.monto_pagado||0),0);
+  let gastado = (rGastos.data||[]).reduce((s,g)=>s+(g.monto||0),0);
   let deuda = facturasGlobal.filter(f=>f.estado!=='pagado').reduce((s,f)=>s+(f.saldo_pendiente||0),0);
 
   document.getElementById('balance').textContent = (cobrado-gastado).toLocaleString('es-PY') + ' Gs';
@@ -74,14 +100,13 @@ async function cargar(){
   document.getElementById('socios').textContent = clientesGlobal.filter(c=>c.activo!==false).length;
   document.getElementById('pendientes').textContent = facturasGlobal.filter(f=>f.estado!=='pagado').length;
 
-  // Llenar el filtro
+  // Llenar filtro
   const sel = document.getElementById('filtroCliente');
   sel.innerHTML = '<option value="todos">👥 TODOS LOS SOCIOS</option>';
   clientesGlobal.forEach(c=>{
-    const nombre = c.nombre || c.nombre_completo || c.email || ('Socio '+c.id);
     const opt = document.createElement('option');
     opt.value = c.id;
-    opt.textContent = nombre;
+    opt.textContent = getNombre(c);
     sel.appendChild(opt);
   });
   render();
@@ -105,18 +130,19 @@ function render(){
     const saldo = misFact.reduce((s,f)=>s+(f.saldo_pendiente||0),0);
     totalFiltrado += saldo;
     cantFact += misFact.length;
-    const nombre = c.nombre || c.nombre_completo || c.email || ('Socio '+c.id);
+
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><b>${nombre}</b></td><td>${misFact.length}</td><td style="font-weight:800;color:${saldo>0?'#dc2626':'#16a34a'}">${saldo.toLocaleString('es-PY')} Gs</td><td><span class="badge ${saldo>0?'debe':'aldia'}">${saldo>0?'DEBE':'AL DÍA'}</span></td>`;
+    tr.innerHTML = `<td><b>${getNombre(c)}</b><br><small style="color:#64748b">${getSubtitulo(c)}</small></td><td style="text-align:center">${misFact.length}</td><td style="font-weight:800;color:${saldo>0?'#dc2626':'#16a34a'};text-align:right">${saldo.toLocaleString('es-PY')} Gs</td>`;
     tbody.appendChild(tr);
   });
 
-  if(lista.length===0) tbody.innerHTML = '<tr><td colspan="4">Sin socios</td></tr>';
+  if(lista.length===0) tbody.innerHTML = '<tr><td colspan="3">Sin socios</td></tr>';
 
   document.getElementById('resumenFiltro').textContent = filtro==='todos'
     ? `Mostrando ${lista.length} socios - Deuda filtrada: ${totalFiltrado.toLocaleString('es-PY')} Gs - Facturas: ${cantFact}`
     : `Mostrando 1 socio - Deuda: ${totalFiltrado.toLocaleString('es-PY')} Gs - Facturas pendientes: ${cantFact}`;
 }
+
 cargar();
 </script>
 </body>
