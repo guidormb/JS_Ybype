@@ -46,6 +46,7 @@
 <p style="color:#64748b;margin:6px 0 16px">Junta de Saneamiento - Tarifa fija 25.000 Gs</p>
 <input id="buscarCedula" type="text" placeholder="C.I. a editar Ej: 5656565" inputmode="numeric">
 <div class="topbar">
+  <button onclick="volverAlMenu()" style="background:#0f172a">🏠 Menú</button>
   <button onclick="buscarParaEditar()">✏️ Editar</button>
   <button onclick="cancelar()" style="background:#f59e0b">❌ Cancelar</button>
   <button onclick="cerrarSesion()" style="background:#dc3545">🚪 Salir</button>
@@ -126,12 +127,19 @@ async function verificarSesionPadron(){
   cargarListaPadron();
 }
 
-function irACaja(){
-  if(window.parent && window.parent !== window){
+function irACaja() {
+  if (window.parent && window.parent !== window) {
     const btnCaja = window.parent.document.querySelector('.nav-btn[data-src*="admin-junta.html"]');
-    if(btnCaja){ btnCaja.click(); return; }
+    if (btnCaja) { btnCaja.click(); return; }
   }
   window.location.href = 'admin-junta.html';
+}
+
+function volverAlMenu() {
+  if (window.parent && window.parent !== window) {
+    try { window.parent.location.href = 'index.html'; return; } catch (e) {}
+  }
+  window.location.href = 'index.html';
 }
 
 async function cerrarSesion(){
@@ -144,11 +152,11 @@ async function actualizarContador(){
   document.getElementById('contador').textContent = 'Socios cargados: ' + (count||0) + ' / 150';
 }
 
-// NUEVO: LISTA + BUSQUEDA
+// CORREGIDO: AHORA SÍ PEDIMOS personas(id, ...)
 async function cargarListaPadron(){
   const cont = document.getElementById('listaPadron');
   cont.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px">Cargando lista...</p>';
-  const { data, error } = await db.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono, direccion)').order('nro_cuenta', { ascending: true });
+  const { data, error } = await db.from('clientes').select('*, personas(id, nombre, apellido, cedula_ruc, telefono, direccion)').order('nro_cuenta', { ascending: true });
   if(error){
     cont.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar lista: ' + error.message + '</p>';
     return;
@@ -197,7 +205,8 @@ function cargarSocioDesdeLista(clienteId){
   document.getElementById('direccion').value = p.direccion || '';
   document.getElementById('cuenta').value = c.nro_cuenta || '';
   document.getElementById('medidor').value = c.numero_medidor || '';
-  editandoPersonaId = p.id || null;
+  // CORREGIDO: respaldo con c.persona_id por si p.id viene vacío
+  editandoPersonaId = p.id || c.persona_id || null;
   editandoClienteId = c.id;
   document.getElementById('modoEditar').style.display = 'block';
   document.getElementById('buscarCedula').value = p.cedula_ruc || '';
@@ -272,7 +281,15 @@ async function guardar(){
   
   if(editandoPersonaId){
     const {error: e1} = await db.from('personas').update({nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null}).eq('id', editandoPersonaId);
-    if(e1){ errEl.textContent = 'Error al actualizar: ' + e1.message; errEl.style.display='block'; return; }
+    if(e1){
+      // Si la cédula ya es de OTRO socio, avisar lindo
+      if(e1.message && e1.message.indexOf('personas_cedula_ruc_key') !== -1){
+        errEl.textContent = '⚠️ Esa cédula ' + cedula + ' ya existe en otro socio. Revisá que no esté duplicado.';
+      } else {
+        errEl.textContent = 'Error al actualizar: ' + e1.message;
+      }
+      errEl.style.display='block'; return;
+    }
 
     if(editandoClienteId){
       await db.from('clientes').update({nro_cuenta: cuenta, numero_medidor: medidor}).eq('id', editandoClienteId);
