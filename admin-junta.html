@@ -4,576 +4,462 @@
   <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2563eb">
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SuperAdmin - Junta JSYBYPE</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caja y Cobros - Junta JSYBYPE</title>
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-  body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}
-  h2{margin:0 0 14px}
-  .card{background:white;padding:16px;border-radius:12px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
-  .big{font-size:28px;font-weight:800}
-  .green{color:#16a34a}.red{color:#dc2626}.orange{color:#ea580c}
-  input{width:100%;padding:14px;border-radius:12px;border:2px solid #0f172a;font-size:17px;box-sizing:border-box;outline:none;margin-bottom:10px}
-  select{width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc;font-size:16px;box-sizing:border-box}
-  .chip{display:inline-block;background:#e2e8f0;padding:6px 12px;border-radius:20px;font-size:13px;margin:4px 4px 0 0;cursor:pointer}
-  .chip.active{background:#0f172a;color:white}
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:12px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:top}
-  th{background:#0f172a;color:white}
-  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#0f172a;color:white;font-size:17px;font-weight:700;cursor:pointer}
-  .btn-out{background:#dc2626;padding:10px 16px;width:auto;font-size:14px}
   .hidden{display:none}
-  .tabla-gastos{ table-layout:auto; font-size:13px; width:100%; }
-  .tabla-gastos th, .tabla-gastos td{ padding:8px 5px; word-break:normal; overflow-wrap:break-word; white-space:normal; }
-  .tabla-gastos th:nth-child(1), .tabla-gastos td:nth-child(1){ width:62px; }
-  .tabla-gastos th:nth-child(2), .tabla-gastos td:nth-child(2){ width:auto; }
-  .tabla-gastos th:nth-child(3), .tabla-gastos td:nth-child(3){ width:82px; }
-  .tabla-gastos th:nth-child(4), .tabla-gastos td:nth-child(4){ width:36px; }
-  .tabla-gastos th:nth-child(5), .tabla-gastos td:nth-child(5){ width:36px; }
-  .tabla-gastos td:nth-child(1){ white-space:nowrap; font-size:12px; }
-  .tabla-gastos td:nth-child(2){ line-height:1.3; }
-@media (max-width: 768px){
-  body{ flex-direction:column !important; }
-  .sidebar, aside, nav{
-    width:100% !important;
-    display:flex !important;
-    flex-direction:row !important;
-    overflow-x:auto !important;
-    padding:8px !important;
-    position:relative !important;
-  }
-  main, .contenido, .content{
-    width:100% !important;
-    margin:0 !important;
-    padding:12px !important;
-  }
-  input, select, button{ font-size:16px !important; }
-  table{ font-size:14px !important; }
-  h2, h3{ font-size:18px !important; }
-}
+  .tab-btn{padding:8px 10px;border-radius:9999px;font-size:12px;font-weight:700}
+  .tab-btn.activo{background:#2563eb;color:white}
+  .tab-btn.no-activo{background:#e2e8f0;color:#475569}
 </style>
 </head>
-<body>
-<h2>Junta JSYBYPE - SuperAdmin</h2>
-
-<div id="loginBox" class="card hidden">
-  <h3 style="margin:0 0 10px">Acceso Admin</h3>
-  <p style="color:#475569;font-size:14px;margin:0 0 12px">Solo Admin Guido puede ver este panel.</p>
-  <input type="email" id="email" placeholder="Email de Admin">
-  <input type="password" id="pass" placeholder="Contrasena">
-  <button class="btn" onclick="hacerLogin()">Entrar</button>
-  <p id="loginError" style="color:#dc2626;font-size:14px"></p>
-</div>
-
-<div id="noPermiso" class="card hidden">
-  <h3>No tenes permiso</h3>
-  <p>Entraste como <b id="emailLogueado"></b>, pero este panel es solo para Admin.</p>
-  <button class="btn btn-out" onclick="hacerLogout()">Cerrar sesion</button>
-</div>
-
-<div id="panel" class="hidden">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <span style="font-size:14px;color:#475569">Logueado como: <b id="emailAdmin"></b></span>
-    <button class="btn btn-out" onclick="hacerLogout()">Salir</button>
-  </div>
-  <div class="card">Balance en Caja<div class="big green" id="balance">Cargando...</div></div>
-  <div class="card">Deuda Total Socios<div class="big red" id="deuda">Cargando...</div></div>
-  <div class="card">Socios Activos<div class="big" id="socios">...</div></div>
-  <div class="card" style="border:2px solid #1e90ff; background:#f0f8ff">
-  <h3>🧾 Generar Cuotas Mensuales</h3>
-  <p style="font-size:13px">Crea la factura del mes a todos los socios activos. No duplica si ya existe.</p>
-  <div style="display:flex; gap:8px; flex-wrap:wrap">
-    <input type="month" id="periodoCuota" style="flex:1; min-width:140px">
-    <input type="number" id="montoCuota" value="25000" style="width:110px">
-    <button id="btnGenerarCuotas" class="btn-primary" style="flex:1; min-width:140px">Generar Cuotas</button>
-  </div>
-  <p id="msgCuotas" style="font-size:13px; margin-top:8px"></p>
-</div>
-  <div class="card">Facturas Pendientes<div class="big orange" id="pendientes">...</div></div>
-  <div class="card">
-    <h3 style="margin:0 0 10px">Saldo por Cliente</h3>
-    <label style="font-weight:700">Buscar socio por nombre, CI o Nro de cuenta:</label>
-    <input type="text" id="buscador" placeholder="Ej: Juan, 6033725, 002..." oninput="render()" autocomplete="off">
+<body class="bg-slate-100 min-h-screen font-sans">
+<header class="bg-slate-900 text-white p-4 shadow-md">
+  <div class="flex justify-between items-center max-w-md mx-auto">
     <div>
-      <span class="chip active" id="chipTodos" onclick="limpiarBusqueda()">Todos</span>
-      <span class="chip" onclick="filtrarSoloDeudores()">Solo con deuda</span>
-      <span class="chip" onclick="filtrarSinDeuda()">Sin deuda</span>
+      <h1 class="font-bold text-base">Junta de Saneamiento</h1>
+      <p class="text-[11px] text-slate-400">Caja y Cobros - Admin</p>
     </div>
-    <p id="resumenFiltro" style="color:#475569;font-size:14px"></p>
-    <div style="overflow-x:auto">
-    <table>
-      <thead><tr><th>Socio</th><th style="text-align:center">Facturas</th><th style="text-align:right">Saldo</th></tr></thead>
-      <tbody id="tabla"></tbody>
-    </table>
+    <div class="flex gap-2">
+      <button onclick="abrirModalNuevoSocio()" class="bg-blue-600 px-3 py-2 rounded-lg text-xs font-bold">+ Nuevo Socio</button>
+      <button onclick="cerrarSesion()" class="bg-red-600 px-3 py-2 rounded-lg text-xs font-bold">Salir</button>
+    </div>
+  </div>
+</header>
+
+<main class="p-4 max-w-md mx-auto w-full space-y-4 pb-24">
+<div id="box-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+  <div class="text-center mb-5">
+    <h2 class="text-xl font-extrabold text-slate-800">Acceso Administrador</h2>
+    <p class="text-xs text-slate-500 mt-1">Solo personal autorizado.</p>
+  </div>
+  <form onsubmit="manejarLoginAdmin(event)" class="space-y-4">
+    <div>
+      <label class="block text-xs font-bold text-slate-600 mb-1">Correo Admin</label>
+      <input type="email" id="login-email-admin" required placeholder="admin@junta.com" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
+    </div>
+    <div>
+      <label class="block text-xs font-bold text-slate-600 mb-1">Contrasena</label>
+      <input type="password" id="login-pass-admin" required placeholder="********" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
+    </div>
+    <button type="submit" id="btn-login-admin" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm">Ingresar</button>
+  </form>
+  <div id="login-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+</div>
+
+<div id="box-contenido" class="hidden space-y-4">
+  <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-md">
+    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
+    <h3 id="balance-total" class="text-2xl font-extrabold mt-1">Gs. 0</h3>
+    <div class="grid grid-cols-2 gap-3 mt-4 text-xs">
+      <div class="bg-slate-800 p-3 rounded-xl"><span class="text-emerald-300 block text-[10px] font-bold">TOTAL COBRADO</span><span id="total-cobrado" class="font-bold text-sm">Gs. 0</span></div>
+      <div class="bg-slate-800 p-3 rounded-xl"><span class="text-red-300 block text-[10px] font-bold">TOTAL GASTADO</span><span id="total-gastado" class="font-bold text-sm">Gs. 0</span></div>
     </div>
   </div>
 
-  <div class="card">
-    <h3>Registrar Pago</h3>
-    <label>Socio</label>
-    <select id="sel-cliente" onchange="cargarFacturasPendientes()"></select>
-        <label>Facturas Pendientes - Tildá las que paga</label>
-    <div id="lista-facturas-pago" style="border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:10px;max-height:180px;overflow-y:auto;background:#f8fafc">
-      <span style="color:#64748b;font-size:13px">Elegí primero el socio</span>
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1">
+    <button id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
+    <button id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
+    <button id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
+  </div>
+
+  <section id="seccion-cobrar" class="space-y-4">
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Pago</h4>
+      <form onsubmit="registrarPago(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Buscar Socio por nombre o cedula</label>
+          <input type="text" id="filtro-socio-cobro" placeholder="Ej: Juan, Benitez, 5656565..." autocomplete="off" oninput="filtrarSociosCobro()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50">
+          <p class="text-[11px] text-slate-400 mt-1">Escribí y la lista de abajo se filtra sola. Tocá ✕ para ver todos de nuevo.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Socio / Cliente</label>
+          <select id="sel-cliente" onchange="cargarFacturasSocioSeleccionado()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+            <option value="">-- Selecciona Socio --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Factura a pagar</label>
+          <select id="sel-factura" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+            <option value="">-- Primero elige Socio --</option>
+          </select>
+          <p id="info-saldo-favor" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg mt-2"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Monto a Pagar (Gs.)</label>
+          <input type="text" id="inp-monto" required placeholder="Ej: 25.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Metodo de Pago</label>
+          <select id="sel-metodo" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+        <button type="submit" id="btn-pagar" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Pago</button>
+      </form>
+      <div id="pago-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
     </div>
-    <div id="total-a-cobrar" style="font-weight:800;font-size:16px;margin-bottom:10px"></div>
-    <label>Monto Gs. (total que te paga)</label>
-    <input type="text" inputmode="numeric" id="inp-monto" placeholder="Ej: 10.000.000" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <label>Metodo</label>
-    <select id="sel-metodo">
-      <option value="efectivo">Efectivo</option>
-      <option value="transferencia">Transferencia</option>
-      <option value="giro">Giro</option>
-    </select>
-    <button onclick="registrarPago()" style="width:100%;padding:12px;background:#16a34a;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px">Guardar Pago</button>
-    <div id="msg-pago" style="font-size:13px;margin-top:8px"></div>
-  </div>
 
-  <div class="card">
-    <h3>Registrar Gasto</h3>
-    <label>Descripción</label>
-    <input type="text" id="inp-concepto-gasto" placeholder="Ej: Compra de caños, Pago de luz" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <label>Categoría</label>
-    <select id="sel-categoria-gasto">
-      <option value="mantenimiento">Mantenimiento</option>
-      <option value="luz">Luz / Energía</option>
-      <option value="reparacion">Reparación</option>
-      <option value="materiales">Materiales / Caños</option>
-      <option value="otros">Otros</option>
-    </select>
-    <label>Monto Gs.</label>
-    <input type="text" inputmode="numeric" id="inp-monto-gasto" placeholder="Ej: 10.000.000" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <label>Fecha del gasto</label>
-    <input type="date" id="inp-fecha-gasto" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <label>Proveedor / Beneficiario (opcional)</label>
-    <input type="text" id="inp-proveedor-gasto" placeholder="Ej: Ferretería San Pedro" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <label>Nota (opcional)</label>
-   <input type="text" inputmode="numeric" id="inp-nota-gasto" maxlength="15" placeholder="001-001-0012345" style="border:1px solid #ccc;border-radius:8px;padding:10px">
-    <button id="btn-guardar-gasto" onclick="registrarGasto()" style="width:100%;padding:12px;background:#dc2626;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px;cursor:pointer">Guardar Gasto</button>
-    <button id="btn-cancelar-gasto" type="button" onclick="cancelarEdicionGasto()" style="display:none;width:100%;padding:10px;background:#64748b;color:white;border:none;border-radius:10px;font-weight:bold;margin-top:8px;cursor:pointer">Cancelar Edición</button>
-    <div id="msg-gasto" style="font-size:13px;margin-top:8px"></div>
-  </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <div class="flex justify-between items-center mb-3 border-b pb-2">
+        <h4 class="font-bold text-xs text-slate-700 uppercase">Ultimos Pagos</h4>
+        <button onclick="cargarPagosRecientes()" class="text-[11px] bg-slate-100 px-2 py-1 rounded-full font-bold">Actualizar</button>
+      </div>
+      <div id="lista-pagos" class="space-y-3"></div>
+    </div>
+  </section>
 
-  <div class="card">
-    <h3 style="margin:0 0 10px">Últimos Gastos</h3>
-    <p id="totalGastos" style="color:#475569;font-size:13px;margin:0 0 10px"></p>
-    <table class="tabla-gastos">
-      <thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Monto</th><th style="width:38px">Editar</th><th style="width:38px"></th></tr></thead>
-      <tbody id="tabla-gastos"></tbody>
-    </table>
+  <section id="seccion-gastos" class="hidden space-y-4">
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Gasto</h4>
+      <form onsubmit="registrarGasto(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Concepto del Gasto</label>
+          <input type="text" id="gasto-concepto" required placeholder="Ej: Reparacion de cano" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Categoria</label>
+          <select id="gasto-categoria" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+            <option value="mantenimiento">Mantenimiento</option>
+            <option value="luz">Luz / ANDE</option>
+            <option value="reparacion">Reparacion</option>
+            <option value="materiales">Materiales</option>
+            <option value="otros">Otros</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Monto del Gasto (Gs.)</label>
+          <input type="text" id="gasto-monto" required placeholder="Ej: 150.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Nro. de Factura / Comprobante (opcional)</label>
+          <input type="text" id="gasto-factura" placeholder="Ej: 001-001-0012345" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+        </div>
+        <button type="submit" id="btn-gasto" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Gasto</button>
+      </form>
+      <div id="gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+      <h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Ultimos Gastos</h4>
+      <div id="lista-gastos" class="space-y-3"></div>
+    </div>
+  </section>
+
+  <section id="seccion-cuotas" class="hidden space-y-4">
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <h4 class="font-bold text-sm text-slate-800 mb-4">Generar Cuotas Mensuales</h4>
+      <form onsubmit="generarCuotasMasivas(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Mes a Generar (YYYY-MM)</label>
+          <input type="month" id="inp-mes-cuota" required class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Monto de Cuota (Gs.)</label>
+          <input type="text" id="inp-monto-cuota" value="25.000" required inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
+        </div>
+        <button type="submit" id="btn-generar-cuotas" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm">Generar Cuotas a Todos</button>
+      </form>
+      <div id="cuotas-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+    </div>
+  </section>
+</div>
+</main>
+
+<div id="modal-nuevo-socio" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h4 class="font-bold text-sm">Nuevo Socio Rapido</h4>
+      <button onclick="cerrarModalNuevoSocio()" class="text-slate-400 text-xl leading-none">x</button>
+    </div>
+    <form onsubmit="guardarNuevoSocioRapido(event)" class="space-y-3">
+      <input type="text" id="ns-nombre" required placeholder="Nombre *" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
+      <input type="text" id="ns-apellido" required placeholder="Apellido *" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
+      <input type="text" id="ns-cedula" required placeholder="Cedula *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
+      <input type="text" id="ns-telefono" required placeholder="Telefono / WhatsApp *" inputmode="tel" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
+      <input type="text" id="ns-direccion" placeholder="Direccion / Compania" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
+      <input type="text" id="ns-cuenta" required placeholder="Nro. Cuenta *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
+      <button type="submit" id="btn-ns-guardar" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Socio</button>
+    </form>
+    <div id="ns-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
   </div>
 </div>
 
-<script>
-var sb = window.supabase.createClient('https://zbwpsemyeejebpfkaepz.supabase.co','sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE');
-var ADMIN_EMAIL = 'guidorafa92@gmail.com';
-var clientesGlobal = [];
-var facturasGlobal = [];
-var gastosGlobal = [];
-var gastoEditandoId = null;
-var filtroRapido = 'todos';
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+window.supabaseClient = supabase;
 
-async function verificarSesion(){
-  var res = await sb.auth.getSession();
-  var session = res.data.session;
-  document.getElementById('loginBox').classList.add('hidden');
-  document.getElementById('panel').classList.add('hidden');
-  document.getElementById('noPermiso').classList.add('hidden');
-  if(!session){
-    document.getElementById('loginBox').classList.remove('hidden');
-    return;
-  }
-  var email = (session.user.email || '').toLowerCase();
-  if(email !== ADMIN_EMAIL.toLowerCase()){
-    document.getElementById('emailLogueado').textContent = email;
-    document.getElementById('noPermiso').classList.remove('hidden');
-    return;
-  }
-  document.getElementById('emailAdmin').textContent = email;
-  document.getElementById('panel').classList.remove('hidden');
-  cargar();
+function formatearGuaraniesInput(inputEl){
+  if(!inputEl) return;
+  let v = inputEl.value.replace(/\D/g, '');
+  if(!v){ inputEl.value = ''; return; }
+  inputEl.value = Number(v).toLocaleString('es-PY');
 }
-async function hacerLogin(){
-  var email = document.getElementById('email').value.trim();
-  var password = document.getElementById('pass').value;
-  var errEl = document.getElementById('loginError');
-  errEl.textContent = '';
-  var r = await sb.auth.signInWithPassword({ email: email, password: password });
-  if(r.error){ errEl.textContent = 'Error: ' + r.error.message; return; }
-  verificarSesion();
+function limpiarGuaraniesInput(valor){
+  if(!valor) return 0;
+  return Number(String(valor).replace(/\./g, '').replace(/,/g, '').trim()) || 0;
 }
-async function hacerLogout(){
-  await sb.auth.signOut();
+function mostrarMensajeAdmin(id, texto, esError){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = texto;
+  el.className = esError ? "mt-3 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600" : "mt-3 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700";
+  el.classList.remove('hidden');
+}
+window.cambiarPestanaAdmin = function(pestana){
+  ['cobrar','gastos','cuotas'].forEach(function(t){
+    document.getElementById('seccion-' + t).classList.toggle('hidden', t !== pestana);
+    const btn = document.getElementById('tab-btn-' + t);
+    btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
+  });
+};
+window.abrirModalNuevoSocio = function(){
+  document.getElementById('modal-nuevo-socio').classList.remove('hidden');
+};
+window.cerrarModalNuevoSocio = function(){
+  document.getElementById('modal-nuevo-socio').classList.add('hidden');
+  document.getElementById('ns-msg').classList.add('hidden');
+};
+window.manejarLoginAdmin = async function(event){
+  event.preventDefault();
+  const email = document.getElementById('login-email-admin').value.trim();
+  const pass = document.getElementById('login-pass-admin').value;
+  const btn = document.getElementById('btn-login-admin');
+  btn.textContent = 'Verificando...'; btn.disabled = true;
+  const r = await supabase.auth.signInWithPassword({ email, password: pass });
+  if(r.error){
+    mostrarMensajeAdmin('login-msg', 'Correo o contrasena incorrecta.', true);
+    btn.textContent = 'Ingresar'; btn.disabled = false; return;
+  }
+  await verificarSesionAdmin();
+};
+window.cerrarSesion = async function(){
+  await supabase.auth.signOut();
   location.reload();
-}
-function getNombre(c){
-  if(c.personas && c.personas.nombre){
-    var ape = c.personas.apellido ? ' ' + c.personas.apellido : '';
-    return c.personas.nombre + ape + (c.nro_cuenta ? ' - Cta ' + c.nro_cuenta : '');
-  }
-  if(c.nro_cuenta) return 'Cuenta ' + c.nro_cuenta;
-  return 'Socio ' + String(c.id).slice(0,8);
-}
-function getSubtitulo(c){
-  if(c.personas && c.personas.cedula_ruc) return 'CI: ' + c.personas.cedula_ruc + ' | Cta: ' + (c.nro_cuenta || '-');
-  if(c.nro_cuenta) return 'Cta: ' + c.nro_cuenta;
-  return 'ID: ' + String(c.id).slice(0,8);
-}
-function getSaldoCliente(c){
-  var mis = facturasGlobal.filter(function(f){ return String(f.cliente_id)===String(c.id) && f.estado!=='pagado'; });
-  var s = 0;
-  mis.forEach(function(f){ s += (f.saldo_pendiente||0); });
-  return { cant: mis.length, saldo: s };
-}
-function limpiarBusqueda(){
-  document.getElementById('buscador').value = '';
-  filtroRapido = 'todos';
-  actualizarChips();
-  render();
-}
-function filtrarSoloDeudores(){ filtroRapido = 'deudores'; actualizarChips(); render(); }
-function filtrarSinDeuda(){ filtroRapido = 'sinDeuda'; actualizarChips(); render(); }
-function actualizarChips(){ document.getElementById('chipTodos').className = 'chip' + (filtroRapido==='todos' ? ' active' : ''); }
-
-async function cargar(){
-  var rClientes = await sb.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono)');
-  var rFacturas = await sb.from('facturas').select('*').order('mes', { ascending: false });
-  var rPagos = await sb.from('pagos').select('monto_pagado');
-  var rGastos = await sb.from('gastos').select('*').order('fecha', { ascending: false }).limit(20);
-  var rGastosTotal = await sb.from('gastos').select('monto');
-  clientesGlobal = rClientes.data || [];
-  facturasGlobal = rFacturas.data || [];
-  gastosGlobal = rGastos.data || [];
-  cargarClientesParaPago();
-  var cobrado = 0; (rPagos.data||[]).forEach(function(p){ cobrado += (p.monto_pagado||0); });
-  var gastadoTotal = 0; (rGastosTotal.data||[]).forEach(function(g){ gastadoTotal += (g.monto||0); });
-  var deuda = 0; facturasGlobal.forEach(function(f){ if(f.estado!=='pagado') deuda += (f.saldo_pendiente||0); });
-  var balanceFinal = cobrado - gastadoTotal;
-  var elBalance = document.getElementById('balance');
-  elBalance.textContent = balanceFinal.toLocaleString('es-PY') + ' Gs';
-  if (balanceFinal < 0) {
-    elBalance.style.color = '#dc2626';
-  } else {
-    elBalance.style.color = '#16a34a';
-  }
-  document.getElementById('deuda').textContent = deuda.toLocaleString('es-PY') + ' Gs';
-  document.getElementById('socios').textContent = clientesGlobal.filter(function(c){ return c.activo!==false; }).length;
-  document.getElementById('pendientes').textContent = facturasGlobal.filter(function(f){ return f.estado!=='pagado'; }).length;
-  render();
-  renderGastos();
-}
-async function cargarClientesParaPago(){
-  var sel = document.getElementById('sel-cliente');
-  if(!sel) return;
-  sel.innerHTML = '<option value="">-- Elegi socio --</option>';
-  (clientesGlobal || []).forEach(function(c){
-    var nom = c.personas ? c.personas.nombre + ' ' + (c.personas.apellido || '') : 'Sin nombre';
-    sel.innerHTML += '<option value="' + c.id + '">' + nom + ' - Cuenta ' + c.nro_cuenta + '</option>';
-  });
-}
-async function cargarFacturasPendientes(){
-  var clienteId = document.getElementById('sel-cliente').value;
-  var cont = document.getElementById('lista-facturas-pago');
-  var totalEl = document.getElementById('total-a-cobrar');
-  cont.innerHTML = '';
-  totalEl.textContent = '';
-  document.getElementById('inp-monto').value = '';
-  if(!clienteId){
-    cont.innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
+};
+async function verificarSesionAdmin(){
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if(!session){
+    document.getElementById('box-login').classList.remove('hidden');
+    document.getElementById('box-contenido').classList.add('hidden');
     return;
   }
-  var listaOrdenada = (facturasGlobal || []).slice().sort(function(a,b){
-    return String(b.mes).localeCompare(String(a.mes));
+  document.getElementById('box-login').classList.add('hidden');
+  document.getElementById('box-contenido').classList.remove('hidden');
+  await cargarDatosAdmin();
+}
+async function cargarDatosAdmin(){
+  await Promise.all([cargarSocios(), cargarPagosRecientes(), cargarGastosRecientes(), cargarBalance()]);
+}
+let listaSociosCobro = [];
+async function cargarSocios(){
+  const r = await supabase.from('clientes').select('id, nro_cuenta, saldo_favor, personas(nombre, apellido, cedula_ruc)').order('nro_cuenta', { ascending: true });
+  const sel = document.getElementById('sel-cliente');
+  sel.innerHTML = '<option value="">-- Selecciona Socio --</option>';
+  listaSociosCobro = r.data || [];
+  listaSociosCobro.forEach(function(c){
+    const p = c.personas || {};
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = 'Cta ' + c.nro_cuenta + ' - ' + (p.nombre||'') + ' ' + (p.apellido||'') + ' - CI ' + (p.cedula_ruc||'');
+    opt.dataset.busqueda = ((p.nombre||'') + ' ' + (p.apellido||'') + ' ' + (p.cedula_ruc||'') + ' ' + (c.nro_cuenta||'')).toLowerCase();
+    sel.appendChild(opt);
   });
-  var pendientes = listaOrdenada.filter(function(f){
-    return String(f.cliente_id) === String(clienteId) && f.estado !== 'pagado';
+}
+// NUEVO: FILTRAR POR NOMBRE O CEDULA
+window.filtrarSociosCobro = function(){
+  const texto = (document.getElementById('filtro-socio-cobro').value || '').toLowerCase().trim();
+  const sel = document.getElementById('sel-cliente');
+  let visibles = 0;
+  Array.from(sel.options).forEach(function(opt){
+    if(!opt.value){ opt.hidden = false; return; }
+    const coincide = !texto || (opt.dataset.busqueda || '').indexOf(texto) !== -1;
+    opt.hidden = !coincide;
+    if(coincide) visibles++;
   });
-  if(pendientes.length === 0){
-    cont.innerHTML = '<span style="color:#16a34a">Este socio no tiene deuda. ¡Al día!</span>';
-    return;
-  }
-  pendientes.forEach(function(f){
-    cont.innerHTML += '<label style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;cursor:pointer">'
-      + '<input type="checkbox" class="chk-factura" value="' + f.id + '" data-saldo="' + f.saldo_pendiente + '" data-mes="' + f.mes + '" onchange="actualizarTotalPago()" style="width:20px;height:20px">'
-      + '<span>Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</span></label>';
-  });
-}
-
-function actualizarTotalPago(){
-  var checks = document.querySelectorAll('.chk-factura:checked');
-  var total = 0;
-  checks.forEach(function(c){ total += Number(c.getAttribute('data-saldo')) || 0; });
-  document.getElementById('total-a-cobrar').textContent = checks.length > 0 ? 'Total a cobrar: Gs. ' + total.toLocaleString('es-PY') + ' (' + checks.length + ' facturas)' : '';
-  if(checks.length > 0) document.getElementById('inp-monto').value = total.toLocaleString('es-PY');
-}
-
-async function registrarPago(){
-  var clienteId = document.getElementById('sel-cliente').value;
-  var checks = document.querySelectorAll('.chk-factura:checked');
-  var montoTotal = parseInt(document.getElementById('inp-monto').value.replace(/\./g, '')) || 0;
-  var metodo = document.getElementById('sel-metodo').value;
-  var msg = document.getElementById('msg-pago');
-  if(!clienteId || checks.length === 0 || !montoTotal || montoTotal <= 0){
-    msg.textContent = 'Elegí socio, tildá al menos 1 factura y poné el monto.';
-    msg.style.color = 'red'; return;
-  }
-  if(checks.length === 1){
-    var facturaId = checks[0].value;
-    var saldoActual = Number(checks[0].getAttribute('data-saldo'));
-    if(montoTotal > saldoActual){ msg.textContent = 'El monto es mayor a la deuda Gs. ' + saldoActual.toLocaleString('es-PY'); msg.style.color = 'red'; return; }
-    var r1 = await sb.from('pagos').insert([{ cliente_id: clienteId, factura_id: facturaId, monto_pagado: montoTotal, metodo: metodo }]);
-    if(r1.error){ msg.textContent = 'Error: ' + r1.error.message; msg.style.color = 'red'; return; }
-    var nuevoSaldo = saldoActual - montoTotal;
-    var nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
-    await sb.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
-    msg.textContent = 'Pago guardado! Nuevo saldo: Gs. ' + nuevoSaldo.toLocaleString('es-PY');
-    msg.style.color = 'green';
-    document.getElementById('inp-monto').value = '';
-    document.getElementById('sel-cliente').value = '';
-    document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
-    document.getElementById('total-a-cobrar').textContent = '';
-    cargar(); return;
-  }
-  var lista = Array.from(checks).map(function(c){
-    return { id: c.value, mes: c.getAttribute('data-mes'), saldo: Number(c.getAttribute('data-saldo')) };
-  }).sort(function(a,b){ return String(a.mes).localeCompare(String(b.mes)); });
-  var restante = montoTotal;
-  for(var i = 0; i < lista.length; i++){
-    if(restante <= 0) break;
-    var aPagar = Math.min(lista[i].saldo, restante);
-    var rPago = await sb.from('pagos').insert([{ cliente_id: clienteId, factura_id: lista[i].id, monto_pagado: aPagar, metodo: metodo }]);
-    if(rPago.error){ msg.textContent = 'Error en ' + lista[i].mes + ': ' + rPago.error.message; msg.style.color = 'red'; return; }
-    var nSaldo = lista[i].saldo - aPagar;
-    var nEstado = nSaldo === 0 ? 'pagado' : 'pendiente';
-    await sb.from('facturas').update({ saldo_pendiente: nSaldo, estado: nEstado }).eq('id', lista[i].id);
-    restante -= aPagar;
-  }
-    msg.textContent = '¡Cobro múltiple guardado! Se pagaron ' + lista.length + ' facturas por Gs. ' + montoTotal.toLocaleString('es-PY');
-  msg.style.color = 'green';
-  document.getElementById('inp-monto').value = '';
-  document.getElementById('sel-cliente').value = '';
-  document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
-  document.getElementById('total-a-cobrar').textContent = '';
-  cargar();
-}
-function editarGasto(id){
-  var g = gastosGlobal.find(function(item){ return String(item.id) === String(id); });
-  if(!g) return;
-  gastoEditandoId = g.id;
-  document.getElementById('inp-concepto-gasto').value = g.descripcion || '';
-  document.getElementById('sel-categoria-gasto').value = g.categoria || 'otros';
-  document.getElementById('inp-monto-gasto').value = g.monto ? Number(g.monto).toLocaleString('es-PY') : '';
-  document.getElementById('inp-fecha-gasto').value = g.fecha ? String(g.fecha).slice(0, 10) : '';
-  document.getElementById('inp-proveedor-gasto').value = g.proveedor_beneficiario || '';
-  document.getElementById('inp-nota-gasto').value = g.nota || '';
-  var btnGuardar = document.getElementById('btn-guardar-gasto');
-  btnGuardar.textContent = 'Actualizar Gasto';
-  btnGuardar.style.background = '#2563eb';
-  document.getElementById('btn-cancelar-gasto').style.display = 'block';
-  var msg = document.getElementById('msg-gasto');
-  if(msg){
-    msg.textContent = 'Editando gasto seleccionado. Modificá los datos y tocá Actualizar Gasto.';
-    msg.style.color = '#2563eb';
-  }
-  document.getElementById('inp-concepto-gasto').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-function cancelarEdicionGasto(){
-  gastoEditandoId = null;
-  document.getElementById('inp-concepto-gasto').value = '';
-  document.getElementById('sel-categoria-gasto').value = 'mantenimiento';
-  document.getElementById('inp-monto-gasto').value = '';
-  document.getElementById('inp-fecha-gasto').value = '';
-  document.getElementById('inp-proveedor-gasto').value = '';
-  document.getElementById('inp-nota-gasto').value = '';
-  var btnGuardar = document.getElementById('btn-guardar-gasto');
-  btnGuardar.textContent = 'Guardar Gasto';
-  btnGuardar.style.background = '#dc2626';
-  document.getElementById('btn-cancelar-gasto').style.display = 'none';
-  var msg = document.getElementById('msg-gasto');
-  if(msg){ msg.textContent = ''; }
-}
-async function registrarGasto(){
-  var descripcion = document.getElementById('inp-concepto-gasto').value.trim();
- var monto = parseInt(document.getElementById('inp-monto-gasto').value.replace(/\./g, '')) || 0;
-  var categoria = document.getElementById('sel-categoria-gasto').value;
-  var fecha = document.getElementById('inp-fecha-gasto').value;
-  var proveedor = document.getElementById('inp-proveedor-gasto').value.trim();
-  var nota = document.getElementById('inp-nota-gasto').value.trim();
-  var msg = document.getElementById('msg-gasto');
-  if(!descripcion){ if(msg){ msg.textContent = 'Escribí la descripción del gasto'; msg.style.color = 'red'; } return; }
-  if(!monto || monto <= 0){ if(msg){ msg.textContent = 'El monto tiene que ser mayor a 0'; msg.style.color = 'red'; } return; }
-  if(!fecha){ fecha = new Date().toISOString().slice(0,10); }
-  if(!categoria){ categoria = 'otros'; }
-  var datosGasto = {
-    descripcion: descripcion,
-    monto: monto,
-    categoria: categoria,
-    fecha: fecha,
-    proveedor_beneficiario: proveedor || null,
-    nota: nota || null
-  };
-  var rPagos = await sb.from('pagos').select('monto_pagado');
-  var rGastosTot = await sb.from('gastos').select('id, monto');
-  var cobrado = 0; (rPagos.data||[]).forEach(function(p){ cobrado += (p.monto_pagado||0); });
-  var gastadoSinActual = 0;
-  (rGastosTot.data||[]).forEach(function(g){
-    if(!gastoEditandoId || String(g.id) !== String(gastoEditandoId)){
-      gastadoSinActual += (g.monto||0);
-    }
-  });
-  var balanceDisponible = cobrado - gastadoSinActual;
-  if(monto > balanceDisponible){
-    var falta = monto - balanceDisponible;
-    var nuevoBalance = balanceDisponible - monto;
-    var seguir = confirm('⚠️ Atención! No tenés fondos suficientes.\n\nBalance disponible: Gs. ' + balanceDisponible.toLocaleString('es-PY') + '\nMonto del gasto: Gs. ' + monto.toLocaleString('es-PY') + '\nTe van a faltar: Gs. ' + falta.toLocaleString('es-PY') + '\nVas a quedar en: Gs. ' + nuevoBalance.toLocaleString('es-PY') + ' (en rojo)\n\n¿Seguro querés guardar igual?');
-    if(!seguir){ if(msg){ msg.textContent = 'Operación cancelada. Te faltan Gs. ' + falta.toLocaleString('es-PY'); msg.style.color = 'red'; } return; }
-  }
-  if(gastoEditandoId){
-    var rUpd = await sb.from('gastos').update(datosGasto).eq('id', gastoEditandoId);
-    if(rUpd.error){ if(msg){ msg.textContent = 'Error al actualizar gasto: ' + rUpd.error.message; msg.style.color = 'red'; } return; }
-    cancelarEdicionGasto();
-    if(msg){ msg.textContent = 'Gasto actualizado! Balance recalculado.'; msg.style.color = 'green'; }
-    cargar();
-    return;
-  }
-    var r = await sb.from('gastos').insert([datosGasto]);
-  if(r.error){ if(msg){ msg.textContent = 'Error al guardar gasto: ' + r.error.message; msg.style.color = 'red'; } return; }
-  if(msg){ msg.textContent = 'Gasto guardado! Se descontó del Balance: Gs. ' + monto.toLocaleString('es-PY'); msg.style.color = 'green'; }
-  document.getElementById('inp-concepto-gasto').value = '';
-  document.getElementById('inp-monto-gasto').value = '';
-  document.getElementById('inp-fecha-gasto').value = '';
-  document.getElementById('inp-proveedor-gasto').value = '';
-  document.getElementById('inp-nota-gasto').value = '';
-  cargar();
-}
-async function borrarGasto(id, descripcion, monto) {
-  var seguro = confirm('¿Borrar este gasto?\n\n' + descripcion + '\nMonto: Gs. ' + Number(monto).toLocaleString('es-PY') + '\n\nAl borrarlo, el dinero vuelve a tu Balance.');
-  if (!seguro) return;
-  if(gastoEditandoId && String(gastoEditandoId) === String(id)){
-    cancelarEdicionGasto();
-  }
-  var r = await sb.from('gastos').delete().eq('id', id);
-  if (r.error) { alert('No se pudo borrar: ' + r.error.message); return; }
-  cargar();
-}
-function renderGastos(){
-  var tbody = document.getElementById('tabla-gastos');
-  if(!tbody) return;
-  tbody.innerHTML = '';
-  var total = 0;
-  (gastosGlobal || []).forEach(function(g){
-    total += (g.monto || 0);
-    var f = g.fecha || (g.created_at ? String(g.created_at).slice(0,10) : '');
-    var fechaTxt = '-';
-    if (f) {
-      var partes = String(f).slice(0, 10).split('-');
-      fechaTxt = partes[2] + '/' + partes[1] + '/' + partes[0].slice(2);
-    }
-    var catTxt = g.categoria ? ' - ' + g.categoria : '';
-    tbody.innerHTML += '<tr><td>' + fechaTxt + '</td><td><b>' + (g.descripcion || '-') + '</b><br><small style="color:#64748b;font-size:11px">' + catTxt + (g.proveedor_beneficiario ? ' | ' + g.proveedor_beneficiario : '') + (g.nota ? ' | ' + g.nota : '') + '</small></td><td style="font-weight:800;color:#dc2626;text-align:right">' + Number(g.monto||0).toLocaleString('es-PY') + '</td><td><button class="btn-borrar" style="background:#dbeafe;color:#1d4ed8" onclick="editarGasto(\'' + g.id + '\')">✏️</button></td><td><button class="btn-borrar" onclick="borrarGasto(\'' + g.id + '\', \'' + (g.descripcion||'').replace(/'/g,'') + '\', ' + (g.monto||0) + ')">🗑️</button></td></tr>';
-  });
-  if((gastosGlobal||[]).length===0) tbody.innerHTML = '<tr><td colspan="5">Todavía no hay gastos cargados.</td></tr>';
-  document.getElementById('totalGastos').textContent = 'Mostrando últimos ' + (gastosGlobal||[]).length + ' gastos - Total en lista: ' + total.toLocaleString('es-PY') + ' Gs';
-}
-function render(){
-  var texto = (document.getElementById('buscador').value || '').toLowerCase().trim();
-  var tbody = document.getElementById('tabla');
-  tbody.innerHTML = '';
-  var lista = clientesGlobal.filter(function(c){
-    if(texto){
-      var p = c.personas || {};
-      var hay = (getNombre(c) + ' ' + (p.nombre||'') + ' ' + (p.apellido||'') + ' ' + (p.cedula_ruc||'') + ' ' + (c.nro_cuenta||'') + ' ' + (p.telefono||'')).toLowerCase();
-      if(hay.indexOf(texto)===-1) return false;
-    }
-    if(filtroRapido==='deudores' && getSaldoCliente(c).saldo <= 0) return false;
-    if(filtroRapido==='sinDeuda' && getSaldoCliente(c).saldo > 0) return false;
-    return true;
-  });
-  var total=0, cant=0;
-  lista.forEach(function(c){
-    var r = getSaldoCliente(c);
-    total+=r.saldo; cant+=r.cant;
-    var color = r.saldo>0 ? '#dc2626' : '#16a34a';
-    tbody.innerHTML += '<tr><td><b>' + getNombre(c) + '</b><br><small style="color:#64748b">' + getSubtitulo(c) + '</small></td><td style="text-align:center">' + r.cant + '</td><td style="font-weight:800;color:' + color + ';text-align:right">' + r.saldo.toLocaleString('es-PY') + ' Gs</td></tr>';
-  });
-  if(lista.length===0) tbody.innerHTML = '<tr><td colspan="3">No se encontro ningun socio con ese dato.</td></tr>';
-  document.getElementById('resumenFiltro').textContent = (texto ? 'Buscando: ' + texto + ' - ' : '') + 'Mostrando ' + lista.length + ' socios - Deuda filtrada: ' + total.toLocaleString('es-PY') + ' Gs - Facturas: ' + cant;
-}
-verificarSesion();
-async function generarCuotasMensuales() {
-  const periodo = document.getElementById('periodoCuota').value;
-  const monto = parseInt(document.getElementById('montoCuota').value) || 20000;
-  const msg = document.getElementById('msgCuotas');
-  const btn = document.getElementById('btnGenerarCuotas');
-  if (!periodo) { msg.textContent = 'Elegí el mes primero'; return; }
-  if (!confirm(`¿Generar cuota de ${monto.toLocaleString()} Gs para ${periodo}?`)) return;
-  msg.textContent = 'Generando...';
-  btn.disabled = true;
-  try {
-    const { data: socios, error: e1 } = await sb.from('clientes').select('id').eq('activo', true);
-    if (e1) throw new Error('Clientes: ' + e1.message);
-    const { data: ya, error: e2 } = await sb.from('facturas').select('cliente_id').eq('mes', periodo);
-    if (e2) throw new Error('Facturas: ' + e2.message);
-    const yaIds = new Set((ya || []).map(f => f.cliente_id));
-    const nuevos = socios.filter(s => !yaIds.has(s.id));
-    if (nuevos.length === 0) {
-      msg.textContent = `Ya están todos generados para ${periodo}`;
-      btn.disabled = false;
-      return;
-    }
-    const paraInsertar = nuevos.map(s => ({
-      cliente_id: s.id,
-      mes: periodo,
-      monto: monto,
-      saldo_pendiente: monto,
-      estado: 'pendiente',
-      lectura_anterior: 0,
-      lectura_actual: 0,
-      consumo_m3: 0
-    }));
-    const { error: e3 } = await sb.from('facturas').insert(paraInsertar);
-    if (e3) throw new Error('Insert: ' + e3.message);
-    msg.textContent = `¡Listo! Se generaron ${nuevos.length} cuotas de ${periodo}.`;
-    if (window.cargarDatos) cargarDatos();
-  } catch (err) {
-    msg.textContent = 'ERROR: ' + err.message;
-  }
-  btn.disabled = false;
-}
-document.getElementById('btnGenerarCuotas').addEventListener('click', generarCuotasMensuales);
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js');
+  // Si queda 1 solo, seleccionarlo solo
+  if(texto && visibles === 1){
+    Array.from(sel.options).forEach(function(opt){
+      if(opt.value && !opt.hidden){ sel.value = opt.value; cargarFacturasSocioSeleccionado(); }
     });
-}
-// FORMATO 10.000.000 y 001-001-0012345
-const mPago = document.getElementById('inp-monto');
-if (mPago) {
-  mPago.addEventListener('input', () => {
-    let n = mPago.value.replace(/\D/g, '');
-    mPago.value = n ? Number(n).toLocaleString('es-PY') : '';
+  }
+};
+window.cargarFacturasSocioSeleccionado = async function(){
+  const clienteId = document.getElementById('sel-cliente').value;
+  const selFactura = document.getElementById('sel-factura');
+  const infoSaldo = document.getElementById('info-saldo-favor');
+  selFactura.innerHTML = '<option value="">-- Cargando... --</option>';
+  infoSaldo.classList.add('hidden');
+  if(!clienteId){ selFactura.innerHTML = '<option value="">-- Primero elige Socio --</option>'; return; }
+  const socio = listaSociosCobro.find(function(s){ return String(s.id) === String(clienteId); });
+  if(socio && socio.saldo_favor > 0){
+    infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + Number(socio.saldo_favor).toLocaleString('es-PY');
+    infoSaldo.classList.remove('hidden');
+  }
+  const r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).neq('estado','pagado').order('mes', { ascending: true });
+  const facturas = r.data || [];
+  if(facturas.length === 0){
+    selFactura.innerHTML = '<option value="">Sin facturas pendientes - Al dia</option>';
+    document.getElementById('inp-monto').value = '';
+    return;
+  }
+  selFactura.innerHTML = '<option value="">-- Selecciona Factura --</option>';
+  facturas.forEach(function(f){
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = 'Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY');
+    opt.dataset.saldo = f.saldo_pendiente;
+    selFactura.appendChild(opt);
   });
+  selFactura.onchange = function(){
+    const optSel = selFactura.options[selFactura.selectedIndex];
+    if(optSel && optSel.dataset.saldo){
+      document.getElementById('inp-monto').value = Number(optSel.dataset.saldo).toLocaleString('es-PY');
+    }
+  };
+};
+window.registrarPago = async function(event){
+  event.preventDefault();
+  const clienteId = document.getElementById('sel-cliente').value;
+  const facturaId = document.getElementById('sel-factura').value;
+  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto').value);
+  const metodo = document.getElementById('sel-metodo').value;
+  if(!clienteId || !facturaId || !monto || monto <= 0){
+    mostrarMensajeAdmin('pago-msg', 'Elegi socio, factura y monto valido.', true); return;
+  }
+  const btn = document.getElementById('btn-pagar');
+  btn.textContent = 'Registrando...'; btn.disabled = true;
+  try{
+    const { data: factura, error: errF } = await supabase.from('facturas').select('*').eq('id', facturaId).single();
+    if(errF || !factura) throw new Error('No se encontro la factura.');
+    const nuevoSaldo = Number(factura.saldo_pendiente) - monto;
+    let saldoFavorGenerado = 0;
+    let saldoFinalFactura = nuevoSaldo;
+    if(nuevoSaldo < 0){ saldoFavorGenerado = Math.abs(nuevoSaldo); saldoFinalFactura = 0; }
+    const nuevoEstado = saldoFinalFactura === 0 ? 'pagado' : 'pendiente';
+    const { error: errPago } = await supabase.from('pagos').insert({ cliente_id: clienteId, factura_id: facturaId, monto_pagado: monto, metodo_pago: metodo, fecha_pago: new Date().toISOString().slice(0,10) });
+    if(errPago) throw errPago;
+    const { error: errFac } = await supabase.from('facturas').update({ saldo_pendiente: saldoFinalFactura, estado: nuevoEstado }).eq('id', facturaId);
+    if(errFac) throw errFac;
+    if(saldoFavorGenerado > 0){
+      const { data: clienteActual } = await supabase.from('clientes').select('saldo_favor').eq('id', clienteId).single();
+      const saldoActual = clienteActual ? Number(clienteActual.saldo_favor || 0) : 0;
+      await supabase.from('clientes').update({ saldo_favor: saldoActual + saldoFavorGenerado }).eq('id', clienteId);
+    }
+    mostrarMensajeAdmin('pago-msg', 'Pago registrado! ' + (saldoFavorGenerado > 0 ? 'Saldo a favor generado: Gs. ' + saldoFavorGenerado.toLocaleString('es-PY') : ''), false);
+    document.getElementById('inp-monto').value = '';
+    document.getElementById('filtro-socio-cobro').value = '';
+    filtrarSociosCobro();
+    await cargarDatosAdmin();
+    await cargarFacturasSocioSeleccionado();
+  } catch(e){
+    mostrarMensajeAdmin('pago-msg', 'Error: ' + e.message, true);
+  }
+  btn.textContent = 'Registrar Pago'; btn.disabled = false;
+};
+async function cargarPagosRecientes(){
+  const cont = document.getElementById('lista-pagos');
+  const r = await supabase.from('pagos').select('*, clientes(nro_cuenta, personas(nombre, apellido))').order('created_at', { ascending: false }).limit(20);
+  const pagos = r.data || [];
+  if(pagos.length === 0){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aun.</p>'; return; }
+  cont.innerHTML = pagos.map(function(p){
+    const c = p.clientes || {}; const per = c.personas || {};
+    return '<div class="flex justify-between items-center border-b pb-2"><div><p class="text-xs font-bold">' + (per.nombre||'') + ' ' + (per.apellido||'') + ' - Cta ' + (c.nro_cuenta||'') + '</p><p class="text-[11px] text-slate-500">' + (p.fecha_pago||'') + ' - ' + (p.metodo_pago||'') + '</p></div><span class="text-xs font-bold text-emerald-600">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span></div>';
+  }).join('');
 }
-const mGasto = document.getElementById('inp-monto-gasto');
-if (mGasto) {
-  mGasto.addEventListener('input', () => {
-    let n = mGasto.value.replace(/\D/g, '');
-    mGasto.value = n ? Number(n).toLocaleString('es-PY') : '';
-  });
+window.registrarGasto = async function(event){
+  event.preventDefault();
+  const concepto = document.getElementById('gasto-concepto').value.trim();
+  const categoria = document.getElementById('gasto-categoria').value;
+  const monto = limpiarGuaraniesInput(document.getElementById('gasto-monto').value);
+  const nroFactura = document.getElementById('gasto-factura').value.trim();
+  if(!concepto || !monto || monto <= 0){ mostrarMensajeAdmin('gasto-msg', 'Completa concepto y monto valido.', true); return; }
+  const btn = document.getElementById('btn-gasto');
+  btn.textContent = 'Registrando...'; btn.disabled = true;
+  try{
+    const { error } = await supabase.from('gastos').insert({ concepto, categoria, monto, nro_factura: nroFactura || null, fecha_gasto: new Date().toISOString().slice(0,10) });
+    if(error) throw error;
+    mostrarMensajeAdmin('gasto-msg', 'Gasto registrado!', false);
+    document.getElementById('gasto-concepto').value = '';
+    document.getElementById('gasto-monto').value = '';
+    document.getElementById('gasto-factura').value = '';
+    await cargarDatosAdmin();
+  } catch(e){ mostrarMensajeAdmin('gasto-msg', 'Error: ' + e.message, true); }
+  btn.textContent = 'Registrar Gasto'; btn.disabled = false;
+};
+async function cargarGastosRecientes(){
+  const cont = document.getElementById('lista-gastos');
+  const r = await supabase.from('gastos').select('*').order('created_at', { ascending: false }).limit(20);
+  const gastos = r.data || [];
+  if(gastos.length === 0){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin gastos aun.</p>'; return; }
+  cont.innerHTML = gastos.map(function(g){
+    return '<div class="flex justify-between items-center border-b pb-2"><div><p class="text-xs font-bold">' + (g.concepto||'') + '</p><p class="text-[11px] text-slate-500">' + (g.categoria||'') + ' - ' + (g.fecha_gasto||'') + (g.nro_factura ? ' - Fact ' + g.nro_factura : '') + '</p></div><span class="text-xs font-bold text-red-600">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span></div>';
+  }).join('');
 }
-const nGasto = document.getElementById('inp-nota-gasto');
-if (nGasto) {
-  nGasto.addEventListener('input', () => {
-    let v = nGasto.value;
-    if (/[a-zA-Z]/.test(v)) return;
-    let n = v.replace(/\D/g, '').slice(0, 13);
-    if (n.length > 6) nGasto.value = n.slice(0, 3) + '-' + n.slice(3, 6) + '-' + n.slice(6);
-    else if (n.length > 3) nGasto.value = n.slice(0, 3) + '-' + n.slice(3);
-    else nGasto.value = n;
-  });
+async function cargarBalance(){
+  const [rp, rg] = await Promise.all([
+    supabase.from('pagos').select('monto_pagado'),
+    supabase.from('gastos').select('monto')
+  ]);
+  const totalCobrado = (rp.data || []).reduce(function(a,p){ return a + Number(p.monto_pagado||0); }, 0);
+  const totalGastado = (rg.data || []).reduce(function(a,g){ return a + Number(g.monto||0); }, 0);
+  document.getElementById('total-cobrado').textContent = 'Gs. ' + totalCobrado.toLocaleString('es-PY');
+  document.getElementById('total-gastado').textContent = 'Gs. ' + totalGastado.toLocaleString('es-PY');
+  document.getElementById('balance-total').textContent = 'Gs. ' + (totalCobrado - totalGastado).toLocaleString('es-PY');
 }
+window.generarCuotasMasivas = async function(event){
+  event.preventDefault();
+  const mes = document.getElementById('inp-mes-cuota').value;
+  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-cuota').value);
+  if(!mes || !monto || monto <= 0){ mostrarMensajeAdmin('cuotas-msg', 'Elegi mes y monto valido.', true); return; }
+  const btn = document.getElementById('btn-generar-cuotas');
+  btn.textContent = 'Generando...'; btn.disabled = true;
+  try{
+    const { data: clientes } = await supabase.from('clientes').select('id').eq('activo', true);
+    if(!clientes || clientes.length === 0) throw new Error('No hay socios activos.');
+    const { data: existentes } = await supabase.from('facturas').select('cliente_id').eq('mes', mes);
+    const yaTienen = new Set((existentes || []).map(function(f){ return f.cliente_id; }));
+    const nuevas = clientes.filter(function(c){ return !yaTienen.has(c.id); }).map(function(c){
+      return { cliente_id: c.id, mes: mes, monto: monto, saldo_pendiente: monto, estado: 'pendiente' };
+    });
+    if(nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
+    const { error } = await supabase.from('facturas').insert(nuevas);
+    if(error) throw error;
+    mostrarMensajeAdmin('cuotas-msg', 'Cuotas generadas: ' + nuevas.length + ' socios. Ya tenian: ' + yaTienen.size, false);
+  } catch(e){ mostrarMensajeAdmin('cuotas-msg', 'Error: ' + e.message, true); }
+  btn.textContent = 'Generar Cuotas a Todos'; btn.disabled = false;
+};
+window.guardarNuevoSocioRapido = async function(event){
+  event.preventDefault();
+  const nombre = document.getElementById('ns-nombre').value.trim();
+  const apellido = document.getElementById('ns-apellido').value.trim();
+  const cedula = document.getElementById('ns-cedula').value.trim();
+  const telefono = document.getElementById('ns-telefono').value.trim();
+  const direccion = document.getElementById('ns-direccion').value.trim();
+  const cuenta = document.getElementById('ns-cuenta').value.trim();
+  if(!nombre || !apellido || !cedula || !telefono || !cuenta){ mostrarMensajeAdmin('ns-msg', 'Faltan datos obligatorios.', true); return; }
+  const btn = document.getElementById('btn-ns-guardar');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+  try{
+    const { data: persona, error: e1 } = await supabase.from('personas').insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null }).select().single();
+    if(e1) throw e1;
+    const { error: e2 } = await supabase.from('clientes').insert({ persona_id: persona.id, nro_cuenta: cuenta, tipo_tarifa: 'fija', saldo_favor: 0, activo: true });
+    if(e2) throw e2;
+    mostrarMensajeAdmin('ns-msg', 'Socio guardado: ' + nombre + ' ' + apellido, false);
+    event.target.reset();
+    await cargarSocios();
+  } catch(e){ mostrarMensajeAdmin('ns-msg', 'Error: ' + e.message, true); }
+  btn.textContent = 'Guardar Socio'; btn.disabled = false;
+};
+document.getElementById('inp-monto').addEventListener('input', function(){ formatearGuaraniesInput(this); });
+document.getElementById('gasto-monto').addEventListener('input', function(){ formatearGuaraniesInput(this); });
+document.getElementById('inp-monto-cuota').addEventListener('input', function(){ formatearGuaraniesInput(this); });
+verificarSesionAdmin();
 </script>
 </body>
 </html>
