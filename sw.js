@@ -1,33 +1,64 @@
-const CACHE_VERSION = 'v16';
-const CACHE_NAME = `crud-cache-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v17';
+const CACHE_NAME = `jsybype-cache-${CACHE_VERSION}`;
+
 const urlsToCache = [
   './',
   './index.html',
-  './login.html',
   './portal-cliente.html',
   './admin-junta.html',
   './padron.html',
-  './auth.js',
   './main.js',
-  './storage.js',
-  './validaciones.js',
-  './style.css',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
 ];
 
-self.addEventListener('install', e => {
+self.addEventListener('install', (event) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+  );
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(n => Promise.all(n.map(x => {
-    if (x !== CACHE_NAME) return caches.delete(x);
-  }))).then(() => self.clients.claim()));
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
 
-self.addEventListener('fetch', e => {
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  // Solo interceptar peticiones GET del mismo origen
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        if (request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+        return new Response('Sin conexión', {
+          status: 503,
+          statusText: 'Service Unavailable'
+        });
+      })
+  );
 });

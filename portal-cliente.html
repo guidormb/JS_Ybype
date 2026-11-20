@@ -1,330 +1,595 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#2563eb">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portal del Cliente - Junta de Saneamiento</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-var SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
-var SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
-window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-window.dispatchEvent(new Event('supabaseReady'));
-</script>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal del Cliente - Junta de Saneamiento</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
+    window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.dispatchEvent(new Event('supabaseReady'));
+  </script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans">
-<header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
-<div>
-<h1 class="font-bold text-base">Junta de Saneamiento</h1>
-<p class="text-[10px] text-blue-200">Portal de Consulta Ciudadana</p>
-</div>
-<div id="user-info" class="hidden text-right">
-<span id="lbl-nombre-usuario" class="block text-xs font-semibold"></span>
-<button onclick="cerrarSesion()" class="mt-1 bg-blue-700 px-2.5 py-1 rounded text-[11px]">Salir</button>
-</div>
-</header>
+  <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
+    <div>
+      <h1 class="font-bold text-base">Junta de Saneamiento</h1>
+      <p class="text-[10px] text-blue-200">Portal de Consulta Ciudadana</p>
+    </div>
+    <div id="user-info" class="hidden text-right">
+      <span id="lbl-nombre-usuario" class="block text-xs font-semibold"></span>
+      <button type="button" onclick="cerrarSesion()" class="mt-1 bg-blue-700 px-2.5 py-1 rounded text-[11px]">Salir</button>
+    </div>
+  </header>
 
-<main class="p-4 max-w-md mx-auto w-full flex-grow">
-<section id="seccion-auth" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-4">
-<div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl mb-6">
-<button type="button" id="tab-login" onclick="cambiarTab('login')" class="py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm">Iniciar Sesion</button>
-<button type="button" id="tab-activar" onclick="cambiarTab('activar')" class="py-2 text-xs font-bold rounded-lg text-slate-500">Crear mi Clave</button>
-</div>
+  <main class="p-4 max-w-md mx-auto w-full flex-grow">
+    <section id="seccion-auth" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-4">
+      <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl mb-6">
+        <button type="button" id="tab-login" onclick="cambiarTab('login')" class="py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm">Iniciar Sesión</button>
+        <button type="button" id="tab-activar" onclick="cambiarTab('activar')" class="py-2 text-xs font-bold rounded-lg text-slate-500">Crear mi Clave</button>
+      </div>
 
-<div id="box-login">
-<div class="text-center mb-5">
-<h2 class="text-lg font-extrabold text-slate-800">Bienvenido</h2>
-<p class="text-xs text-slate-500 mt-1">Ingresa tu Cedula y contrasena para ver tus facturas.</p>
-</div>
-<form onsubmit="manejarLoginCliente(event)" class="space-y-4">
-<div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Numero de Cedula</label>
-<input type="text" id="login-cedula" required placeholder="Ej: 5656565" inputmode="numeric" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-</div>
-<div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Contrasena</label>
-<input type="password" id="login-password" required placeholder="********" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-</div>
-<button type="submit" id="btn-login" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm">Consultar Estado de Cuenta</button>
-</form>
-</div>
+      <div id="box-login">
+        <div class="text-center mb-5">
+          <h2 class="text-lg font-extrabold text-slate-800">Bienvenido</h2>
+          <p class="text-xs text-slate-500 mt-1">Ingresá tu cédula y contraseña para ver tus facturas.</p>
+        </div>
+        <form onsubmit="manejarLoginCliente(event)" class="space-y-4">
+          <div>
+            <label for="login-cedula" class="block text-xs font-bold text-slate-600 mb-1">Número de Cédula</label>
+            <input type="text" id="login-cedula" required placeholder="Ej: 5656565" inputmode="numeric" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
+          </div>
+          <div>
+            <label for="login-password" class="block text-xs font-bold text-slate-600 mb-1">Contraseña</label>
+            <input type="password" id="login-password" required placeholder="********" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
+          </div>
+          <button type="submit" id="btn-login" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm">Consultar Estado de Cuenta</button>
+        </form>
+      </div>
 
-<div id="box-activar" class="hidden">
-<div class="text-center mb-5">
-<h2 class="text-lg font-extrabold text-slate-800">Primera vez aqui</h2>
-<p class="text-xs text-slate-500 mt-1">Si ya estas registrado como socio, crea tu contrasena.</p>
-</div>
-<form onsubmit="manejarActivacionCuenta(event)" class="space-y-4">
-<div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Tu Numero de Cedula</label>
-<input type="text" id="reg-cedula" required placeholder="Ej: 5656565" inputmode="numeric" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-</div>
-<div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Elige una Contrasena</label>
-<input type="password" id="reg-password" required placeholder="Minimo 6 caracteres" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-</div>
-<div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Repite tu Contrasena</label>
-<input type="password" id="reg-password-conf" required placeholder="Confirmar contrasena" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-</div>
-<button type="submit" id="btn-activar" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm">Activar Cuenta e Ingresar</button>
-</form>
-</div>
+      <div id="box-activar" class="hidden">
+        <div class="text-center mb-5">
+          <h2 class="text-lg font-extrabold text-slate-800">Primera vez aquí</h2>
+          <p class="text-xs text-slate-500 mt-1">Si ya estás registrado como socio, creá tu contraseña.</p>
+        </div>
+        <form onsubmit="manejarActivacionCuenta(event)" class="space-y-4">
+          <div>
+            <label for="reg-cedula" class="block text-xs font-bold text-slate-600 mb-1">Tu Número de Cédula</label>
+            <input type="text" id="reg-cedula" required placeholder="Ej: 5656565" inputmode="numeric" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
+          </div>
+          <div>
+            <label for="reg-password" class="block text-xs font-bold text-slate-600 mb-1">Elegí una Contraseña</label>
+            <input type="password" id="reg-password" required placeholder="Mínimo 6 caracteres" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
+          </div>
+          <div>
+            <label for="reg-password-conf" class="block text-xs font-bold text-slate-600 mb-1">Repetí tu Contraseña</label>
+            <input type="password" id="reg-password-conf" required placeholder="Confirmar contraseña" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
+          </div>
+          <button type="submit" id="btn-activar" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm">Activar Cuenta e Ingresar</button>
+        </form>
+      </div>
 
-<div id="auth-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
-</section>
+      <div id="auth-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+    </section>
 
-<section id="seccion-panel" class="hidden space-y-4 mt-2">
-<div class="bg-gradient-to-br from-blue-700 to-blue-800 text-white p-5 rounded-2xl shadow-md">
-<p class="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Titular de la Cuenta</p>
-<h3 id="panel-nombre-cliente" class="text-lg font-bold mt-0.5">--</h3>
-<div class="mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs">
-<div>
-<span class="text-blue-200 block text-[10px]">N DE CUENTA</span>
-<span id="panel-nro-cuenta" class="font-bold text-sm">--</span>
-</div>
-<div class="text-right">
-<span class="text-blue-200 block text-[10px]">DEUDA TOTAL</span>
-<span id="panel-deuda-total" class="font-bold text-sm text-emerald-300">Gs. 0</span>
-</div>
-</div>
-</div>
+    <section id="seccion-panel" class="hidden space-y-4 mt-2">
+      <div class="bg-gradient-to-br from-blue-700 to-blue-800 text-white p-5 rounded-2xl shadow-md">
+        <p class="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Titular de la Cuenta</p>
+        <h3 id="panel-nombre-cliente" class="text-lg font-bold mt-0.5">--</h3>
+        <div class="mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs">
+          <div>
+            <span class="text-blue-200 block text-[10px]">N.º DE CUENTA</span>
+            <span id="panel-nro-cuenta" class="font-bold text-sm">--</span>
+          </div>
+          <div class="text-right">
+            <span class="text-blue-200 block text-[10px]">DEUDA TOTAL</span>
+            <span id="panel-deuda-total" class="font-bold text-sm text-emerald-300">Gs. 0</span>
+          </div>
+        </div>
+        <div id="box-saldo-favor-banner" class="hidden mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs">
+          <span class="text-emerald-200 font-semibold">SALDO A FAVOR DISPONIBLE</span>
+          <span id="panel-saldo-favor" class="font-extrabold text-sm text-emerald-300">Gs. 0</span>
+        </div>
+      </div>
 
-<!-- RESUMEN ROJO / VERDE -->
-<div id="box-resumen" class="p-5 rounded-2xl border text-center"></div>
+      <!-- RESUMEN ROJO / VERDE -->
+      <div id="box-resumen" class="p-5 rounded-2xl border text-center"></div>
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-<div class="flex justify-between items-center mb-3 border-b pb-2">
-<h4 class="font-bold text-xs text-slate-700 uppercase">Facturas y Deudas</h4>
-<span id="contador-deuda" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">--</span>
-</div>
-<div id="lista-facturas" class="space-y-3"></div>
-</div>
+      <div id="saldo-msg" class="hidden p-3 rounded-xl text-xs text-center font-medium"></div>
 
-<div class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
-<p class="text-xs text-emerald-800 font-semibold mb-2">Ya realizaste tu pago o transferencia?</p>
-<a id="btn-whatsapp" href="#" target="_blank" class="inline-block bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl">Enviar comprobante por WhatsApp</a>
-</div>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <div class="flex justify-between items-center mb-3 border-b pb-2">
+          <h4 class="font-bold text-xs text-slate-700 uppercase">Facturas y Deudas</h4>
+          <span id="contador-deuda" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">--</span>
+        </div>
+        <div id="lista-facturas" class="space-y-3"></div>
+      </div>
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-<h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Cambiar Contrasena</h4>
-<form id="form-cambiar-pass" onsubmit="cambiarContrasenaCliente(event)" class="space-y-3">
-<input type="password" id="nueva-pass" required placeholder="Nueva contrasena (min. 6 caracteres)" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
-<input type="password" id="confirma-pass" required placeholder="Confirmar nueva contrasena" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50">
-<button type="submit" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold text-xs">Actualizar Contrasena</button>
-</form>
-<div id="pass-msg" class="mt-2 text-xs text-center hidden font-medium p-2 rounded-lg"></div>
-</div>
-</section>
-</main>
+      <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
+        <p class="text-xs text-emerald-800 font-semibold mb-2">¿Ya realizaste tu pago o transferencia?</p>
+        <a id="btn-whatsapp" href="#" target="_blank" rel="noopener noreferrer" class="inline-block bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl">Enviar comprobante por WhatsApp</a>
+      </div>
 
-<footer class="text-center p-4 text-[11px] text-slate-400">Junta de Saneamiento JSYBYPE 2026 - Paraguay</footer>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Cambiar Contraseña</h4>
+        <form id="form-cambiar-pass" onsubmit="cambiarContrasenaCliente(event)" class="space-y-3">
+          <input type="password" id="nueva-pass" required placeholder="Nueva contraseña (mín. 6 caracteres)" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50" />
+          <input type="password" id="confirma-pass" required placeholder="Confirmar nueva contraseña" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50" />
+          <button type="submit" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold text-xs">Actualizar Contraseña</button>
+        </form>
+        <div id="pass-msg" class="mt-2 text-xs text-center hidden font-medium p-2 rounded-lg"></div>
+      </div>
+    </section>
+  </main>
 
-<script type="module">
-function obtenerEmailInterno(cedula){
-  return 'ci_' + cedula.trim() + '@juntasaneamiento.local';
-}
-function extraerCedulaDesdeEmail(email){
-  if(!email) return null;
-  var match = email.match(/^ci_(.+)@juntasaneamiento\.local$/i);
-  return match ? match[1] : null;
-}
-function mostrarMensajeAuth(texto, esError){
-  var msgEl = document.getElementById('auth-msg');
-  msgEl.textContent = texto;
-  msgEl.className = esError
-    ? "mt-4 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600"
-    : "mt-4 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700";
-  msgEl.classList.remove('hidden');
-}
-function setBotonEstado(btn, texto, deshabilitado){
-  if(!btn) return;
-  btn.textContent = texto;
-  btn.disabled = deshabilitado;
-}
-function actualizarDeudaTotal(deudaTotal){
-  var el = document.getElementById('panel-deuda-total');
-  if(!el) return;
-  if(deudaTotal > 0){
-    el.textContent = 'Gs. ' + Number(deudaTotal).toLocaleString('es-PY');
-    el.className = 'font-bold text-sm text-red-300';
-  } else {
-    el.textContent = 'Gs. 0 - ¡AL DÍA!';
-    el.className = 'font-bold text-sm text-emerald-300';
-  }
-  // RESUMEN GRANDE ROJO / VERDE
-  var box = document.getElementById('box-resumen');
-  if(!box) return;
-  if(deudaTotal > 0){
-    box.className = 'p-5 rounded-2xl border text-center bg-red-50 border-red-200';
-    box.innerHTML = '<p class="text-[11px] font-bold text-red-500 uppercase">Total de deuda</p><p class="text-2xl font-extrabold text-red-600 mt-1">Gs. ' + Number(deudaTotal).toLocaleString('es-PY') + '</p><p class="text-xs text-red-500 mt-1">Tenés facturas pendientes</p>';
-  } else {
-    box.className = 'p-5 rounded-2xl border text-center bg-emerald-50 border-emerald-200';
-    box.innerHTML = '<p class="text-2xl font-extrabold text-emerald-700">✅ Usted está al día</p><p class="text-xs text-emerald-600 mt-1">Usted está al día con los pagos. ¡Gracias!</p>';
-  }
-}
-window.cambiarTab = function(tab){
-  document.getElementById('auth-msg').classList.add('hidden');
-  var tabLogin = document.getElementById('tab-login');
-  var tabActivar = document.getElementById('tab-activar');
-  var boxLogin = document.getElementById('box-login');
-  var boxActivar = document.getElementById('box-activar');
-  if(tab === 'login'){
-    tabLogin.className = "py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm";
-    tabActivar.className = "py-2 text-xs font-bold rounded-lg text-slate-500";
-    boxLogin.classList.remove('hidden');
-    boxActivar.classList.add('hidden');
-  } else {
-    tabActivar.className = "py-2 text-xs font-bold rounded-lg bg-white text-emerald-600 shadow-sm";
-    tabLogin.className = "py-2 text-xs font-bold rounded-lg text-slate-500";
-    boxActivar.className = "";
-    boxActivar.classList.remove('hidden');
-    boxLogin.classList.add('hidden');
-  }
-};
-async function validarSocioPorCedula(cedula){
-  var supabase = window.supabaseClient;
-  var rp = await supabase.from('personas').select('id, nombre, apellido, cedula_ruc').eq('cedula_ruc', cedula).maybeSingle();
-  if(rp.error || !rp.data){ throw new Error('Esta cedula no figura en el padron de socios. Contacta con la administracion.'); }
-  var rc = await supabase.from('clientes').select('*').eq('persona_id', rp.data.id).maybeSingle();
-  if(rc.error || !rc.data){ throw new Error('Tu cedula esta registrada, pero no tenes cuenta de agua asignada.'); }
-  return { persona: rp.data, cliente: rc.data };
-}
-window.manejarActivacionCuenta = async function(event){
-  event.preventDefault();
-  var cedula = document.getElementById('reg-cedula').value.trim();
-  var password = document.getElementById('reg-password').value;
-  var passwordConf = document.getElementById('reg-password-conf').value;
-  var btn = document.getElementById('btn-activar');
-  var textoOriginal = 'Activar Cuenta e Ingresar';
-  document.getElementById('auth-msg').classList.add('hidden');
-  if(!cedula){ mostrarMensajeAuth('Ingresa tu numero de cedula.', true); setBotonEstado(btn, textoOriginal, false); return; }
-  if(password !== passwordConf){ mostrarMensajeAuth('Las contrasenas no coinciden.', true); setBotonEstado(btn, textoOriginal, false); return; }
-  if(password.length < 6){ mostrarMensajeAuth('La contrasena debe tener al menos 6 caracteres.', true); setBotonEstado(btn, textoOriginal, false); return; }
-  setBotonEstado(btn, 'Creando cuenta...', true);
-  try{
-    var supabase = window.supabaseClient;
-    await validarSocioPorCedula(cedula);
-    var emailFicticio = obtenerEmailInterno(cedula);
-    var r = await supabase.auth.signUp({ email: emailFicticio, password: password, options: { data: { cedula: cedula, rol: 'cliente' } } });
-    if(r.error){
-      if(r.error.message.indexOf('already registered') !== -1){ throw new Error('Esta cedula ya tiene una contrasena creada. Anda a Iniciar Sesion.'); }
-      throw r.error;
+  <footer class="text-center p-4 text-[11px] text-slate-400">Junta de Saneamiento JSYBYPE 2026 - Paraguay</footer>
+
+  <script type="module">
+    const WHATSAPP_JUNTA = '595981355516';
+    let socioActual = null;
+    let aplicandoSaldo = false;
+
+    function escapeHtml(valor) {
+      return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
-    if(!r.data.session){
-      var loginTrasRegistro = await supabase.auth.signInWithPassword({ email: emailFicticio, password: password });
-      if(loginTrasRegistro.error){ throw new Error('Clave creada. Si Supabase requiere confirmar correo, desactiva Email Confirmations en Authentication > Providers > Email.'); }
+
+    function obtenerEmailInterno(cedula) {
+      return 'ci_' + cedula.trim() + '@juntasaneamiento.local';
     }
-    await cargarDatosPortalCliente(cedula);
-    setBotonEstado(btn, textoOriginal, false);
-  } catch(err){ mostrarMensajeAuth(err.message, true); setBotonEstado(btn, textoOriginal, false); }
-};
-window.manejarLoginCliente = async function(event){
-  event.preventDefault();
-  var cedula = document.getElementById('login-cedula').value.trim();
-  var password = document.getElementById('login-password').value;
-  var btn = document.getElementById('btn-login');
-  var textoOriginal = 'Consultar Estado de Cuenta';
-  document.getElementById('auth-msg').classList.add('hidden');
-  setBotonEstado(btn, 'Verificando...', true);
-  try{
-    if(!cedula || !password){ throw new Error('Completa tu cedula y contrasena.'); }
-    var emailFicticio = obtenerEmailInterno(cedula);
-    var supabase = window.supabaseClient;
-    var r = await supabase.auth.signInWithPassword({ email: emailFicticio, password: password });
-    if(r.error){ throw new Error('Cedula o contrasena incorrecta. Si es tu primera vez, usa Crear mi Clave.'); }
-    await cargarDatosPortalCliente(cedula);
-    setBotonEstado(btn, textoOriginal, false);
-  } catch(err){ mostrarMensajeAuth(err.message, true); setBotonEstado(btn, textoOriginal, false); }
-};
-async function cargarDatosPortalCliente(cedula){
-  var supabase = window.supabaseClient;
-  var u = await supabase.auth.getUser();
-  var user = u.data.user;
-  var emailEsperado = obtenerEmailInterno(cedula);
-  if(!user || user.email !== emailEsperado){ await supabase.auth.signOut(); throw new Error('Sesion no valida para esta cedula.'); }
-  var datosSocio = await validarSocioPorCedula(cedula);
-  var persona = datosSocio.persona;
-  var cliente = datosSocio.cliente;
-  document.getElementById('panel-nombre-cliente').textContent = persona.nombre + ' ' + (persona.apellido || '');
-  document.getElementById('panel-nro-cuenta').textContent = cliente.nro_cuenta;
-  document.getElementById('lbl-nombre-usuario').textContent = persona.nombre;
-  document.getElementById('user-info').classList.remove('hidden');
-  var nroWhatsAppJunta = '595981355516';
-  var mensajeWa = encodeURIComponent('Hola, soy ' + persona.nombre + ' ' + (persona.apellido || '') + ' (Cuenta N ' + cliente.nro_cuenta + '). Envio mi comprobante de pago.');
-  document.getElementById('btn-whatsapp').href = 'https://wa.me/' + nroWhatsAppJunta + '?text=' + mensajeWa;
-  document.getElementById('seccion-auth').classList.add('hidden');
-  document.getElementById('seccion-panel').classList.remove('hidden');
-  await cargarFacturasCliente(cliente.id);
-}
-async function cargarFacturasCliente(clienteId){
-  var supabase = window.supabaseClient;
-  var contenedor = document.getElementById('lista-facturas');
-  var contadorEl = document.getElementById('contador-deuda');
-  var r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).order('mes', { ascending: false });
-  var facturas = r.data || [];
-  if(r.error || facturas.length === 0){
-    contadorEl.textContent = '0 pendientes';
-    actualizarDeudaTotal(0);
-    contenedor.innerHTML = '<div class="text-center py-6 bg-emerald-50/50 rounded-xl"><p class="text-sm font-bold text-emerald-700">Estas al dia!</p></div>';
-    return;
-  }
-  var pendientesCount = 0;
-  var deudaTotal = 0;
-  facturas.forEach(function(f){
-    if(f.estado !== 'pagado'){ pendientesCount++; deudaTotal += (f.saldo_pendiente || 0); }
-  });
-  contadorEl.textContent = pendientesCount + ' pendientes';
-  actualizarDeudaTotal(deudaTotal);
-  var html = '';
-  facturas.forEach(function(f){
-    var badge = f.estado === 'pagado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
-    html += '<div class="border border-slate-200 rounded-xl p-3.5 flex justify-between items-center bg-slate-50/60"><div><span class="text-xs font-bold text-slate-800">Mes: ' + f.mes + '</span><span class="ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ' + badge + '">' + f.estado + '</span><p class="text-xs text-slate-500 mt-1">Monto: Gs. ' + Number(f.monto).toLocaleString('es-PY') + '</p><p class="text-xs font-bold text-slate-700">Pendiente: <span class="text-blue-600">Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</span></p></div></div>';
-  });
-  contenedor.innerHTML = html;
-}
-window.cambiarContrasenaCliente = async function(event){
-  event.preventDefault();
-  var nuevaPass = document.getElementById('nueva-pass').value;
-  var confirmaPass = document.getElementById('confirma-pass').value;
-  var msgEl = document.getElementById('pass-msg');
-  if(nuevaPass !== confirmaPass || nuevaPass.length < 6){
-    msgEl.textContent = 'Verifica que coincidan y tengan minimo 6 caracteres.';
-    msgEl.className = "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600";
-    msgEl.classList.remove('hidden');
-    return;
-  }
-  var r = await window.supabaseClient.auth.updateUser({ password: nuevaPass });
-  msgEl.textContent = r.error ? r.error.message : 'Contrasena actualizada!';
-  msgEl.className = r.error ? "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600" : "mt-2 text-xs text-center font-medium p-2 rounded-lg bg-emerald-50 text-emerald-700";
-  msgEl.classList.remove('hidden');
-  if(!r.error) document.getElementById('form-cambiar-pass').reset();
-};
-window.cerrarSesion = async function(){
-  await window.supabaseClient.auth.signOut();
-  location.reload();
-};
-async function restaurarSesionSiExiste(){
-  var supabase = window.supabaseClient;
-  if(!supabase) return;
-  var res = await supabase.auth.getSession();
-  var session = res.data.session;
-  if(!session || !session.user || !session.user.email) return;
-  var cedula = extraerCedulaDesdeEmail(session.user.email);
-  if(!cedula) return;
-  try{ await cargarDatosPortalCliente(cedula); } catch(e){ await supabase.auth.signOut(); }
-}
-if(window.supabaseClient){ restaurarSesionSiExiste(); } else { window.addEventListener('supabaseReady', restaurarSesionSiExiste, { once: true }); }
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js');
-    });
-  }
-</script>
+
+    function extraerCedulaDesdeEmail(email) {
+      if (!email) return null;
+      const match = email.match(/^ci_(.+)@juntasaneamiento\.local$/i);
+      return match ? match[1] : null;
+    }
+
+    function mostrarMensajeAuth(texto, esError) {
+      const msgEl = document.getElementById('auth-msg');
+      msgEl.textContent = texto;
+      msgEl.className = esError
+        ? 'mt-4 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600'
+        : 'mt-4 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700';
+      msgEl.classList.remove('hidden');
+    }
+
+    function mostrarMensajeSaldo(texto, esError) {
+      const el = document.getElementById('saldo-msg');
+      if (!el) return;
+      el.textContent = texto;
+      el.className = esError
+        ? 'p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600 border border-red-200'
+        : 'p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+      el.classList.remove('hidden');
+    }
+
+    function setBotonEstado(btn, texto, deshabilitado) {
+      if (!btn) return;
+      btn.textContent = texto;
+      btn.disabled = deshabilitado;
+    }
+
+    function actualizarSaldoFavorUI(saldoFavor) {
+      const montoSaldo = Number(saldoFavor || 0);
+      const banner = document.getElementById('box-saldo-favor-banner');
+      const valorEl = document.getElementById('panel-saldo-favor');
+      if (!banner || !valorEl) return;
+
+      if (montoSaldo > 0) {
+        valorEl.textContent = 'Gs. ' + montoSaldo.toLocaleString('es-PY');
+        banner.classList.remove('hidden');
+      } else {
+        valorEl.textContent = 'Gs. 0';
+        banner.classList.add('hidden');
+      }
+    }
+
+    function actualizarDeudaTotal(deudaTotal) {
+      const el = document.getElementById('panel-deuda-total');
+      if (el) {
+        if (deudaTotal > 0) {
+          el.textContent = 'Gs. ' + Number(deudaTotal).toLocaleString('es-PY');
+          el.className = 'font-bold text-sm text-red-300';
+        } else {
+          el.textContent = 'Gs. 0 - ¡AL DÍA!';
+          el.className = 'font-bold text-sm text-emerald-300';
+        }
+      }
+
+      const box = document.getElementById('box-resumen');
+      if (!box) return;
+      if (deudaTotal > 0) {
+        box.className = 'p-5 rounded-2xl border text-center bg-red-50 border-red-200';
+        box.innerHTML =
+          '<p class="text-[11px] font-bold text-red-500 uppercase">Total de deuda</p>'
+          + '<p class="text-2xl font-extrabold text-red-600 mt-1">Gs. ' + Number(deudaTotal).toLocaleString('es-PY') + '</p>'
+          + '<p class="text-xs text-red-500 mt-1">Tenés facturas pendientes</p>';
+      } else {
+        box.className = 'p-5 rounded-2xl border text-center bg-emerald-50 border-emerald-200';
+        box.innerHTML =
+          '<p class="text-2xl font-extrabold text-emerald-700">✅ Usted está al día</p>'
+          + '<p class="text-xs text-emerald-600 mt-1">Usted está al día con los pagos. ¡Gracias!</p>';
+      }
+    }
+
+    window.cambiarTab = function (tab) {
+      document.getElementById('auth-msg').classList.add('hidden');
+      const tabLogin = document.getElementById('tab-login');
+      const tabActivar = document.getElementById('tab-activar');
+      const boxLogin = document.getElementById('box-login');
+      const boxActivar = document.getElementById('box-activar');
+
+      if (tab === 'login') {
+        tabLogin.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
+        tabActivar.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
+        boxLogin.classList.remove('hidden');
+        boxActivar.classList.add('hidden');
+      } else {
+        tabActivar.className = 'py-2 text-xs font-bold rounded-lg bg-white text-emerald-600 shadow-sm';
+        tabLogin.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
+        boxActivar.classList.remove('hidden');
+        boxLogin.classList.add('hidden');
+      }
+    };
+
+    async function validarSocioPorCedula(cedula) {
+      const supabase = window.supabaseClient;
+      const rp = await supabase
+        .from('personas')
+        .select('id, nombre, apellido, cedula_ruc')
+        .eq('cedula_ruc', cedula)
+        .limit(1);
+
+      const persona = rp.data?.[0];
+      if (rp.error || !persona) {
+        throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la administración.');
+      }
+
+      const rc = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('persona_id', persona.id)
+        .limit(1);
+
+      const cliente = rc.data?.[0];
+      if (rc.error || !cliente) {
+        throw new Error('Tu cédula está registrada, pero no tenés cuenta de agua asignada.');
+      }
+
+      return { persona, cliente };
+    }
+
+    window.manejarActivacionCuenta = async function (event) {
+      event.preventDefault();
+      const cedula = document.getElementById('reg-cedula').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const passwordConf = document.getElementById('reg-password-conf').value;
+      const btn = document.getElementById('btn-activar');
+      const textoOriginal = 'Activar Cuenta e Ingresar';
+      document.getElementById('auth-msg').classList.add('hidden');
+
+      if (!cedula) {
+        mostrarMensajeAuth('Ingresá tu número de cédula.', true);
+        setBotonEstado(btn, textoOriginal, false);
+        return;
+      }
+      if (password !== passwordConf) {
+        mostrarMensajeAuth('Las contraseñas no coinciden.', true);
+        setBotonEstado(btn, textoOriginal, false);
+        return;
+      }
+      if (password.length < 6) {
+        mostrarMensajeAuth('La contraseña debe tener al menos 6 caracteres.', true);
+        setBotonEstado(btn, textoOriginal, false);
+        return;
+      }
+
+      setBotonEstado(btn, 'Creando cuenta...', true);
+      try {
+        const supabase = window.supabaseClient;
+        await validarSocioPorCedula(cedula);
+        const emailFicticio = obtenerEmailInterno(cedula);
+        const r = await supabase.auth.signUp({
+          email: emailFicticio,
+          password,
+          options: { data: { cedula, rol: 'cliente' } }
+        });
+        if (r.error) {
+          if (r.error.message.includes('already registered')) {
+            throw new Error('Esta cédula ya tiene una contraseña creada. Andá a Iniciar Sesión.');
+          }
+          throw r.error;
+        }
+        if (!r.data.session) {
+          const loginTrasRegistro = await supabase.auth.signInWithPassword({ email: emailFicticio, password });
+          if (loginTrasRegistro.error) {
+            throw new Error('Clave creada. Si Supabase requiere confirmar correo, desactivá Email Confirmations en Authentication > Providers > Email.');
+          }
+        }
+        await cargarDatosPortalCliente(cedula);
+        setBotonEstado(btn, textoOriginal, false);
+      } catch (err) {
+        mostrarMensajeAuth(err.message, true);
+        setBotonEstado(btn, textoOriginal, false);
+      }
+    };
+
+    window.manejarLoginCliente = async function (event) {
+      event.preventDefault();
+      const cedula = document.getElementById('login-cedula').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('btn-login');
+      const textoOriginal = 'Consultar Estado de Cuenta';
+      document.getElementById('auth-msg').classList.add('hidden');
+      setBotonEstado(btn, 'Verificando...', true);
+
+      try {
+        if (!cedula || !password) {
+          throw new Error('Completá tu cédula y contraseña.');
+        }
+        const emailFicticio = obtenerEmailInterno(cedula);
+        const supabase = window.supabaseClient;
+        const r = await supabase.auth.signInWithPassword({ email: emailFicticio, password });
+        if (r.error) {
+          throw new Error('Cédula o contraseña incorrecta. Si es tu primera vez, usá Crear mi Clave.');
+        }
+        await cargarDatosPortalCliente(cedula);
+        setBotonEstado(btn, textoOriginal, false);
+      } catch (err) {
+        mostrarMensajeAuth(err.message, true);
+        setBotonEstado(btn, textoOriginal, false);
+      }
+    };
+
+    async function cargarDatosPortalCliente(cedula) {
+      const supabase = window.supabaseClient;
+      const u = await supabase.auth.getUser();
+      const user = u.data.user;
+      const emailEsperado = obtenerEmailInterno(cedula);
+      if (!user || user.email !== emailEsperado) {
+        await supabase.auth.signOut();
+        throw new Error('Sesión no válida para esta cédula.');
+      }
+
+      const datosSocio = await validarSocioPorCedula(cedula);
+      socioActual = datosSocio;
+      const { persona, cliente } = datosSocio;
+      const nombreCompleto = `${persona.nombre} ${persona.apellido || ''}`.trim();
+
+      document.getElementById('panel-nombre-cliente').textContent = nombreCompleto;
+      document.getElementById('panel-nro-cuenta').textContent = cliente.nro_cuenta;
+      document.getElementById('lbl-nombre-usuario').textContent = persona.nombre;
+      document.getElementById('user-info').classList.remove('hidden');
+      actualizarSaldoFavorUI(cliente.saldo_favor);
+
+      const mensajeWa = encodeURIComponent(`Hola, soy ${nombreCompleto} (Cuenta N.º ${cliente.nro_cuenta}). Envío mi comprobante de pago.`);
+      document.getElementById('btn-whatsapp').href = `https://wa.me/${WHATSAPP_JUNTA}?text=${mensajeWa}`;
+
+      document.getElementById('seccion-auth').classList.add('hidden');
+      document.getElementById('seccion-panel').classList.remove('hidden');
+      await cargarFacturasCliente(cliente.id);
+    }
+
+    window.pagarFacturaConSaldoFavor = async function (facturaId) {
+      if (!socioActual?.cliente || aplicandoSaldo) return;
+      aplicandoSaldo = true;
+
+      const supabase = window.supabaseClient;
+      const clienteId = socioActual.cliente.id;
+
+      try {
+        const { data: clienteFresca, error: errLeerCli } = await supabase
+          .from('clientes')
+          .select('id, saldo_favor')
+          .eq('id', clienteId)
+          .limit(1);
+        if (errLeerCli) throw errLeerCli;
+        const saldoDisponible = Number(clienteFresca?.[0]?.saldo_favor || 0);
+
+        const { data: facturaFresca, error: errLeerFac } = await supabase
+          .from('facturas')
+          .select('*')
+          .eq('id', facturaId)
+          .limit(1);
+        if (errLeerFac) throw errLeerFac;
+        const factura = facturaFresca?.[0];
+
+        if (!factura || factura.estado === 'pagado') {
+          mostrarMensajeSaldo('Esta factura ya no está pendiente.', true);
+          await cargarFacturasCliente(clienteId);
+          aplicandoSaldo = false;
+          return;
+        }
+
+        const saldoFactura = Number(factura.saldo_pendiente || 0);
+        if (saldoDisponible <= 0 || saldoFactura <= 0) {
+          mostrarMensajeSaldo('No tenés saldo a favor suficiente para aplicar.', true);
+          aplicandoSaldo = false;
+          return;
+        }
+
+        const aAplicar = Math.min(saldoDisponible, saldoFactura);
+        const nuevoSaldoFactura = saldoFactura - aAplicar;
+        const nuevoEstadoFactura = nuevoSaldoFactura === 0 ? 'pagado' : 'pendiente';
+        const nuevoSaldoFavor = saldoDisponible - aAplicar;
+
+        const { data: pagoInsertado, error: errPago } = await supabase
+          .from('pagos')
+          .insert({
+            cliente_id: clienteId,
+            factura_id: factura.id,
+            monto_pagado: aAplicar,
+            metodo: 'efectivo',
+            concepto: nuevoSaldoFactura === 0
+              ? 'Pago con saldo a favor - Factura ' + factura.mes
+              : 'Amortizada con saldo a favor - Factura ' + factura.mes + ' (queda Gs. ' + nuevoSaldoFactura.toLocaleString('es-PY') + ')'
+          })
+          .select();
+        if (errPago) throw errPago;
+        if (!pagoInsertado || pagoInsertado.length === 0) {
+          throw new Error('Supabase no permitió registrar el pago (revisá políticas RLS de pagos).');
+        }
+
+        const { data: facActualizada, error: errFac } = await supabase
+          .from('facturas')
+          .update({ saldo_pendiente: nuevoSaldoFactura, estado: nuevoEstadoFactura })
+          .eq('id', factura.id)
+          .select();
+        if (errFac) throw errFac;
+        if (!facActualizada || facActualizada.length === 0) {
+          throw new Error('Supabase no permitió actualizar la factura (revisá políticas RLS de facturas).');
+        }
+
+        const { data: cliActualizada, error: errCli } = await supabase
+          .from('clientes')
+          .update({ saldo_favor: nuevoSaldoFavor })
+          .eq('id', clienteId)
+          .select();
+        if (errCli) throw errCli;
+        if (!cliActualizada || cliActualizada.length === 0) {
+          throw new Error('Supabase no permitió descontar el saldo a favor (revisá políticas RLS de clientes).');
+        }
+
+        socioActual.cliente.saldo_favor = nuevoSaldoFavor;
+        actualizarSaldoFavorUI(nuevoSaldoFavor);
+        mostrarMensajeSaldo(
+          '¡Aplicaste Gs. ' + aAplicar.toLocaleString('es-PY') + ' de tu saldo a favor a la factura ' + factura.mes + '!',
+          false
+        );
+        await cargarFacturasCliente(clienteId);
+      } catch (err) {
+        mostrarMensajeSaldo('No se pudo aplicar el saldo: ' + err.message, true);
+      } finally {
+        aplicandoSaldo = false;
+      }
+    };
+
+    async function cargarFacturasCliente(clienteId) {
+      const supabase = window.supabaseClient;
+      const contenedor = document.getElementById('lista-facturas');
+      const contadorEl = document.getElementById('contador-deuda');
+
+      const { data: cliFresca } = await supabase
+        .from('clientes')
+        .select('saldo_favor')
+        .eq('id', clienteId)
+        .limit(1);
+      if (cliFresca?.[0] && socioActual?.cliente) {
+        socioActual.cliente.saldo_favor = Number(cliFresca[0].saldo_favor || 0);
+        actualizarSaldoFavorUI(socioActual.cliente.saldo_favor);
+      }
+
+      const saldoFavorActual = Number(socioActual?.cliente?.saldo_favor || 0);
+
+      const r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).order('mes', { ascending: false });
+      const facturas = r.data || [];
+
+      if (r.error || facturas.length === 0) {
+        contadorEl.textContent = '0 pendientes';
+        actualizarDeudaTotal(0);
+        contenedor.innerHTML = '<div class="text-center py-6 bg-emerald-50/50 rounded-xl"><p class="text-sm font-bold text-emerald-700">¡Estás al día!</p></div>';
+        return;
+      }
+
+      let pendientesCount = 0;
+      let deudaTotal = 0;
+      facturas.forEach((f) => {
+        if (f.estado !== 'pagado') {
+          pendientesCount++;
+          deudaTotal += Number(f.saldo_pendiente || 0);
+        }
+      });
+
+      contadorEl.textContent = pendientesCount + ' pendientes';
+      actualizarDeudaTotal(deudaTotal);
+
+      contenedor.innerHTML = facturas.map((f) => {
+        const esPendiente = f.estado !== 'pagado' && Number(f.saldo_pendiente || 0) > 0;
+        const badge = f.estado === 'pagado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
+        const puedeUsarSaldo = esPendiente && saldoFavorActual > 0;
+        const montoSugerido = Math.min(saldoFavorActual, Number(f.saldo_pendiente || 0));
+
+        const botonSaldoHtml = puedeUsarSaldo
+          ? '<button type="button" onclick="pagarFacturaConSaldoFavor(\'' + escapeHtml(f.id) + '\')" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">Pagar con saldo (Gs. ' + Number(montoSugerido).toLocaleString('es-PY') + ')</button>'
+          : '';
+
+        return (
+          '<div class="border border-slate-200 rounded-xl p-3.5 flex justify-between items-center gap-2 bg-slate-50/60">'
+          + '<div>'
+          + '<span class="text-xs font-bold text-slate-800">Mes: ' + escapeHtml(f.mes) + '</span>'
+          + '<span class="ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ' + badge + '">' + escapeHtml(f.estado) + '</span>'
+          + '<p class="text-xs text-slate-500 mt-1">Monto: Gs. ' + Number(f.monto).toLocaleString('es-PY') + '</p>'
+          + '<p class="text-xs font-bold text-slate-700">Pendiente: <span class="text-blue-600">Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</span></p>'
+          + '</div>'
+          + '<div class="text-right">' + botonSaldoHtml + '</div>'
+          + '</div>'
+        );
+      }).join('');
+    }
+
+    window.cambiarContrasenaCliente = async function (event) {
+      event.preventDefault();
+      const nuevaPass = document.getElementById('nueva-pass').value;
+      const confirmaPass = document.getElementById('confirma-pass').value;
+      const msgEl = document.getElementById('pass-msg');
+
+      if (nuevaPass !== confirmaPass || nuevaPass.length < 6) {
+        msgEl.textContent = 'Verificá que coincidan y tengan mínimo 6 caracteres.';
+        msgEl.className = 'mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600';
+        msgEl.classList.remove('hidden');
+        return;
+      }
+
+      const r = await window.supabaseClient.auth.updateUser({ password: nuevaPass });
+      msgEl.textContent = r.error ? r.error.message : '¡Contraseña actualizada!';
+      msgEl.className = r.error
+        ? 'mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600'
+        : 'mt-2 text-xs text-center font-medium p-2 rounded-lg bg-emerald-50 text-emerald-700';
+      msgEl.classList.remove('hidden');
+      if (!r.error) document.getElementById('form-cambiar-pass').reset();
+    };
+
+    window.cerrarSesion = async function () {
+      await window.supabaseClient.auth.signOut();
+      location.reload();
+    };
+
+    async function restaurarSesionSiExiste() {
+      const supabase = window.supabaseClient;
+      if (!supabase) return;
+      const res = await supabase.auth.getSession();
+      const session = res.data.session;
+      if (!session || !session.user || !session.user.email) return;
+      const cedula = extraerCedulaDesdeEmail(session.user.email);
+      if (!cedula) return;
+      try {
+        await cargarDatosPortalCliente(cedula);
+      } catch (_e) {
+        await supabase.auth.signOut();
+      }
+    }
+
+    if (window.supabaseClient) {
+      restaurarSesionSiExiste();
+    } else {
+      window.addEventListener('supabaseReady', restaurarSesionSiExiste, { once: true });
+    }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
+  </script>
 </body>
 </html>

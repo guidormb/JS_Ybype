@@ -1,587 +1,1031 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#2563eb">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caja y Cobros - Junta JSYBYPE</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  .hidden{display:none}
-  .tab-btn{padding:8px 10px;border-radius:9999px;font-size:12px;font-weight:700}
-  .tab-btn.activo{background:#2563eb;color:white}
-  .tab-btn.no-activo{background:#e2e8f0;color:#475569}
-</style>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caja y Cobros - Junta JSYBYPE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hidden { display: none; }
+    .tab-btn { padding: 8px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+    .tab-btn.activo { background: #2563eb; color: white; }
+    .tab-btn.no-activo { background: #e2e8f0; color: #475569; }
+  </style>
 </head>
 <body class="bg-slate-100 min-h-screen font-sans">
-<header class="bg-slate-900 text-white p-4 shadow-md">
-  <div class="flex justify-between items-center max-w-md mx-auto">
-    <div>
-      <h1 class="font-bold text-base">Junta de Saneamiento</h1>
-      <p class="text-[11px] text-slate-400">Caja y Cobros - Admin</p>
-    </div>
-    <div id="header-acciones" class="flex gap-2 flex-wrap justify-end hidden">
-      <button onclick="abrirPadron()" class="bg-amber-500 px-3 py-2 rounded-lg text-xs font-bold">📋 Padrón</button>
-      <button onclick="abrirModalNuevoSocio()" class="bg-blue-600 px-3 py-2 rounded-lg text-xs font-bold">+ Nuevo Socio</button>
-      <button onclick="cerrarSesion()" class="bg-red-600 px-3 py-2 rounded-lg text-xs font-bold">Salir</button>
-    </div>
-  </div>
-</header>
-
-<main class="p-4 max-w-md mx-auto w-full space-y-4 pb-24">
-<div id="box-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-  <div class="text-center mb-5">
-    <h2 class="text-xl font-extrabold text-slate-800">Acceso Administrador</h2>
-    <p class="text-xs text-slate-500 mt-1">Solo personal autorizado.</p>
-  </div>
-  <form onsubmit="manejarLoginAdmin(event)" class="space-y-4">
-    <div>
-      <label class="block text-xs font-bold text-slate-600 mb-1">Correo Admin</label>
-      <input type="email" id="login-email-admin" required placeholder="admin@junta.com" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-    </div>
-    <div>
-      <label class="block text-xs font-bold text-slate-600 mb-1">Contrasena</label>
-      <input type="password" id="login-pass-admin" required placeholder="********" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50">
-    </div>
-    <button type="submit" id="btn-login-admin" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm">Ingresar</button>
-  </form>
-  <div id="login-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
-</div>
-
-<div id="box-contenido" class="hidden space-y-4">
-  <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-md">
-    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
-    <h3 id="balance-total" class="text-2xl font-extrabold mt-1">Gs. 0</h3>
-    <div class="grid grid-cols-2 gap-3 mt-4 text-xs">
-      <div class="bg-slate-800 p-3 rounded-xl"><span class="text-emerald-300 block text-[10px] font-bold">TOTAL COBRADO</span><span id="total-cobrado" class="font-bold text-sm">Gs. 0</span></div>
-      <div class="bg-slate-800 p-3 rounded-xl"><span class="text-red-300 block text-[10px] font-bold">TOTAL GASTADO</span><span id="total-gastado" class="font-bold text-sm">Gs. 0</span></div>
-    </div>
-  </div>
-
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1">
-    <button id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
-    <button id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
-    <button id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
-  </div>
-
-  <section id="seccion-cobrar" class="space-y-4">
-    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-      <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Pago</h4>
-      <form onsubmit="registrarPago(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Buscar Socio por nombre o cedula</label>
-          <input type="text" id="filtro-socio-cobro" placeholder="Ej: Juan, Benitez, 5656565..." autocomplete="off" oninput="filtrarSociosCobro()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50">
-          <p class="text-[11px] text-slate-400 mt-1">Escribí y la lista de abajo se filtra sola.</p>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Socio / Cliente</label>
-          <select id="sel-cliente" onchange="cargarFacturasSocioSeleccionado()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
-            <option value="">-- Selecciona Socio --</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Facturas a pagar (podés marcar varias)</label>
-          <div id="lista-facturas-cobro" class="space-y-2 max-h-[240px] overflow-y-auto border border-slate-300 rounded-xl p-2 bg-slate-50">
-            <p class="text-xs text-slate-500 text-center py-2">-- Primero elige Socio --</p>
-          </div>
-          <p id="info-saldo-favor" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg mt-2"></p>
-          <p class="text-[11px] text-slate-400 mt-1">Marcá las que quiere pagar. Si el monto es menor, se hace pago parcial de la más vieja primero.</p>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Monto a Pagar (Gs.) - Total que entrega el socio</label>
-          <input type="text" id="inp-monto" required placeholder="Ej: 37.500" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Metodo de Pago</label>
-          <select id="sel-metodo" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-          </select>
-        </div>
-        <button type="submit" id="btn-pagar" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Pago</button>
-      </form>
-      <div id="pago-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
-    </div>
-
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-      <div class="flex justify-between items-center mb-3 border-b pb-2">
-        <h4 class="font-bold text-xs text-slate-700 uppercase">Ultimos Pagos</h4>
-        <button onclick="cargarPagosRecientes()" class="text-[11px] bg-slate-100 px-2 py-1 rounded-full font-bold">Actualizar</button>
+  <header class="bg-slate-900 text-white p-4 shadow-md">
+    <div class="flex justify-between items-center max-w-md mx-auto">
+      <div>
+        <h1 class="font-bold text-base">Junta de Saneamiento</h1>
+        <p class="text-[11px] text-slate-400">Caja y Cobros - Admin</p>
       </div>
-      <div id="lista-pagos" class="space-y-3"></div>
+      <div id="header-acciones" class="flex gap-2 flex-wrap justify-end hidden">
+        <button type="button" onclick="abrirPadron()" class="bg-amber-500 px-3 py-2 rounded-lg text-xs font-bold">📋 Padrón</button>
+        <button type="button" onclick="abrirModalNuevoSocio()" class="bg-blue-600 px-3 py-2 rounded-lg text-xs font-bold">+ Nuevo Socio</button>
+        <button type="button" onclick="cerrarSesion()" class="bg-red-600 px-3 py-2 rounded-lg text-xs font-bold">Salir</button>
+      </div>
     </div>
-  </section>
+  </header>
 
-  <section id="seccion-gastos" class="hidden space-y-4">
-    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-      <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Gasto</h4>
-      <form onsubmit="registrarGasto(event)" class="space-y-3">
+  <main class="p-4 max-w-md mx-auto w-full space-y-4 pb-24">
+    <div id="box-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div class="text-center mb-5">
+        <h2 class="text-xl font-extrabold text-slate-800">Acceso Administrador</h2>
+        <p class="text-xs text-slate-500 mt-1">Solo personal autorizado.</p>
+      </div>
+      <form onsubmit="manejarLoginAdmin(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Concepto del Gasto</label>
-          <input type="text" id="gasto-concepto" required placeholder="Ej: Electricista, Reparacion de cano" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+          <label for="login-email-admin" class="block text-xs font-bold text-slate-600 mb-1">Correo Admin</label>
+          <input type="email" id="login-email-admin" required placeholder="admin@junta.com" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Categoria</label>
-          <select id="gasto-categoria" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+          <label for="login-pass-admin" class="block text-xs font-bold text-slate-600 mb-1">Contraseña</label>
+          <input type="password" id="login-pass-admin" required placeholder="********" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50" />
+        </div>
+        <button type="submit" id="btn-login-admin" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm">Ingresar</button>
+      </form>
+      <div id="login-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+    </div>
+
+    <div id="box-contenido" class="hidden space-y-4">
+      <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-md">
+        <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
+        <h3 id="balance-total" class="text-2xl font-extrabold mt-1">Gs. 0</h3>
+        <div class="grid grid-cols-2 gap-3 mt-4 text-xs">
+          <div class="bg-slate-800 p-3 rounded-xl">
+            <span class="text-emerald-300 block text-[10px] font-bold">TOTAL COBRADO (FACTURAS)</span>
+            <span id="total-cobrado" class="font-bold text-sm">Gs. 0</span>
+          </div>
+          <div class="bg-slate-800 p-3 rounded-xl">
+            <span class="text-red-300 block text-[10px] font-bold">TOTAL GASTADO</span>
+            <span id="total-gastado" class="font-bold text-sm">Gs. 0</span>
+          </div>
+          <div class="bg-slate-800 p-3 rounded-xl">
+            <span class="text-sky-300 block text-[10px] font-bold">ANTICIPOS / SALDO A FAVOR</span>
+            <span id="total-anticipos" class="font-bold text-sm">Gs. 0</span>
+          </div>
+          <div class="bg-slate-800 p-3 rounded-xl">
+            <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
+            <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1">
+        <button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
+        <button type="button" id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
+        <button type="button" id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
+      </div>
+
+      <section id="seccion-cobrar" class="space-y-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Pago</h4>
+          <form onsubmit="registrarPago(event)" class="space-y-3">
+            <div>
+              <label for="filtro-socio-cobro" class="block text-xs font-bold text-slate-600 mb-1">Buscar Socio por nombre o cédula</label>
+              <input type="text" id="filtro-socio-cobro" placeholder="Ej: Juan, Benítez, 5656565..." autocomplete="off" oninput="filtrarSociosCobro()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50" />
+              <p class="text-[11px] text-slate-400 mt-1">Escribí y la lista de abajo se filtra sola.</p>
+            </div>
+            <div>
+              <label for="sel-cliente" class="block text-xs font-bold text-slate-600 mb-1">Socio / Cliente</label>
+              <select id="sel-cliente" onchange="cargarFacturasSocioSeleccionado()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+                <option value="">-- Seleccioná Socio --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Facturas a pagar (podés marcar varias o dejar sin marcar para anticipo)</label>
+              <div id="lista-facturas-cobro" class="space-y-2 max-h-[240px] overflow-y-auto border border-slate-300 rounded-xl p-2 bg-slate-50">
+                <p class="text-xs text-slate-500 text-center py-2">-- Primero elegí Socio --</p>
+              </div>
+
+              <div class="mt-2 pt-2 border-t border-slate-200 bg-sky-50/70 border border-sky-200 rounded-xl p-2.5">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="chk-generar-anticipo" onchange="toggleCampoAnticipo()" class="w-4 h-4 accent-sky-600" />
+                  <span class="text-xs font-bold text-sky-900">Generar anticipo / saldo a favor</span>
+                </label>
+                <div id="box-monto-anticipo" class="hidden mt-2">
+                  <label for="inp-monto-anticipo" class="block text-[11px] font-bold text-sky-800 mb-1">Monto de Anticipo (Gs.) - opcional si ya supera facturas</label>
+                  <input type="text" id="inp-monto-anticipo" placeholder="Ej: 25.000" inputmode="numeric" autocomplete="off" class="w-full p-2.5 border border-sky-300 rounded-xl text-sm bg-white font-bold" />
+                </div>
+              </div>
+
+              <p id="info-saldo-favor" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg mt-2"></p>
+              <p class="text-[11px] text-slate-400 mt-1">Marcá facturas para cancelar/amortizar. Podés generar un anticipo marcando la opción o entregando un monto mayor.</p>
+            </div>
+            <div>
+              <label for="inp-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto a Pagar (Gs.) - Total que entrega el socio</label>
+              <input type="text" id="inp-monto" required placeholder="Ej: 50.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
+            </div>
+            <div>
+              <label for="sel-metodo" class="block text-xs font-bold text-slate-600 mb-1">Método de Pago</label>
+              <select id="sel-metodo" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+              </select>
+            </div>
+            <button type="submit" id="btn-pagar" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Pago</button>
+          </form>
+          <div id="pago-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div class="flex justify-between items-center mb-3 border-b pb-2">
+            <h4 class="font-bold text-xs text-slate-700 uppercase">Últimos Pagos y Anticipos</h4>
+            <button type="button" onclick="cargarPagosRecientes()" class="text-[11px] bg-slate-100 px-2 py-1 rounded-full font-bold">Actualizar</button>
+          </div>
+          <div id="lista-pagos" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <section id="seccion-gastos" class="hidden space-y-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Gasto</h4>
+          <form onsubmit="registrarGasto(event)" class="space-y-3">
+            <div>
+              <label for="gasto-concepto" class="block text-xs font-bold text-slate-600 mb-1">Concepto del Gasto</label>
+              <input type="text" id="gasto-concepto" required placeholder="Ej: Electricista, Reparación de caño" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+            </div>
+            <div>
+              <label for="gasto-categoria" class="block text-xs font-bold text-slate-600 mb-1">Categoría</label>
+              <select id="gasto-categoria" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="luz">Luz / ANDE</option>
+                <option value="reparacion">Reparación</option>
+                <option value="materiales">Materiales</option>
+                <option value="otros">Otros</option>
+              </select>
+            </div>
+            <div>
+              <label for="gasto-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto del Gasto (Gs.)</label>
+              <input type="text" id="gasto-monto" required placeholder="Ej: 150.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
+            </div>
+            <div>
+              <label for="gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario (opcional)</label>
+              <input type="text" id="gasto-proveedor" placeholder="Ej: Ferretería, Juan Pérez, ANDE" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+            </div>
+            <button type="submit" id="btn-gasto" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Gasto</button>
+          </form>
+          <div id="gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Últimos Gastos</h4>
+          <div id="lista-gastos" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <section id="seccion-cuotas" class="hidden space-y-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <h4 class="font-bold text-sm text-slate-800 mb-4">Generar Cuotas Mensuales</h4>
+          <form onsubmit="generarCuotasMasivas(event)" class="space-y-3">
+            <div>
+              <label for="inp-mes-cuota" class="block text-xs font-bold text-slate-600 mb-1">Mes a Generar (YYYY-MM)</label>
+              <input type="month" id="inp-mes-cuota" required class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+            </div>
+            <div>
+              <label for="inp-monto-cuota" class="block text-xs font-bold text-slate-600 mb-1">Monto de Cuota (Gs.)</label>
+              <input type="text" id="inp-monto-cuota" value="25.000" required inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
+            </div>
+            <button type="submit" id="btn-generar-cuotas" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm">Generar Cuotas a Todos</button>
+          </form>
+          <div id="cuotas-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="modal-nuevo-socio" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h4 class="font-bold text-sm">Nuevo Socio Rápido</h4>
+        <button type="button" onclick="cerrarModalNuevoSocio()" class="text-slate-400 text-xl leading-none">×</button>
+      </div>
+      <form onsubmit="guardarNuevoSocioRapido(event)" class="space-y-3">
+        <input type="text" id="ns-nombre" required placeholder="Nombre *" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        <input type="text" id="ns-apellido" required placeholder="Apellido *" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        <input type="text" id="ns-cedula" required placeholder="Cédula *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        <input type="text" id="ns-telefono" required placeholder="Teléfono / WhatsApp *" inputmode="tel" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        <input type="text" id="ns-direccion" placeholder="Dirección / Compañía" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        <input type="text" id="ns-cuenta" required placeholder="Nro. Cuenta *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        <button type="submit" id="btn-ns-guardar" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Socio</button>
+      </form>
+      <div id="ns-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+    </div>
+  </div>
+
+  <div id="modal-editar-gasto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h4 class="font-bold text-sm">Editar Gasto</h4>
+        <button type="button" onclick="cerrarModalEditarGasto()" class="text-slate-400 text-xl leading-none">×</button>
+      </div>
+      <form onsubmit="guardarEdicionGasto(event)" class="space-y-3">
+        <input type="hidden" id="edit-gasto-id" />
+        <div>
+          <label for="edit-gasto-descripcion" class="block text-xs font-bold text-slate-600 mb-1">Concepto / Descripción</label>
+          <input type="text" id="edit-gasto-descripcion" required class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        </div>
+        <div>
+          <label for="edit-gasto-categoria" class="block text-xs font-bold text-slate-600 mb-1">Categoría</label>
+          <select id="edit-gasto-categoria" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
             <option value="mantenimiento">Mantenimiento</option>
             <option value="luz">Luz / ANDE</option>
-            <option value="reparacion">Reparacion</option>
+            <option value="reparacion">Reparación</option>
             <option value="materiales">Materiales</option>
             <option value="otros">Otros</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Monto del Gasto (Gs.)</label>
-          <input type="text" id="gasto-monto" required placeholder="Ej: 150.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
+          <label for="edit-gasto-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
+          <input type="text" id="edit-gasto-monto" required inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50 font-bold" />
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario (opcional)</label>
-          <input type="text" id="gasto-proveedor" placeholder="Ej: Ferreteria, Juan Perez, ANDE" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+          <label for="edit-gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario</label>
+          <input type="text" id="edit-gasto-proveedor" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
         </div>
-        <button type="submit" id="btn-gasto" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Gasto</button>
+        <div>
+          <label for="edit-gasto-fecha" class="block text-xs font-bold text-slate-600 mb-1">Fecha</label>
+          <input type="date" id="edit-gasto-fecha" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
+        </div>
+        <button type="submit" id="btn-edit-gasto-guardar" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Cambios</button>
       </form>
-      <div id="gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+      <button type="button" onclick="eliminarGastoDesdeModal()" class="w-full mt-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-sm">Eliminar este gasto</button>
+      <div id="edit-gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
     </div>
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-      <h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Ultimos Gastos</h4>
-      <div id="lista-gastos" class="space-y-3"></div>
-    </div>
-  </section>
-
-  <section id="seccion-cuotas" class="hidden space-y-4">
-    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-      <h4 class="font-bold text-sm text-slate-800 mb-4">Generar Cuotas Mensuales</h4>
-      <form onsubmit="generarCuotasMasivas(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Mes a Generar (YYYY-MM)</label>
-          <input type="month" id="inp-mes-cuota" required class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Monto de Cuota (Gs.)</label>
-          <input type="text" id="inp-monto-cuota" value="25.000" required inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
-        </div>
-        <button type="submit" id="btn-generar-cuotas" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-sm">Generar Cuotas a Todos</button>
-      </form>
-      <div id="cuotas-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
-    </div>
-  </section>
-</div>
-</main>
-
-<div id="modal-nuevo-socio" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
-    <div class="flex justify-between items-center mb-4">
-      <h4 class="font-bold text-sm">Nuevo Socio Rapido</h4>
-      <button onclick="cerrarModalNuevoSocio()" class="text-slate-400 text-xl leading-none">x</button>
-    </div>
-    <form onsubmit="guardarNuevoSocioRapido(event)" class="space-y-3">
-      <input type="text" id="ns-nombre" required placeholder="Nombre *" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      <input type="text" id="ns-apellido" required placeholder="Apellido *" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      <input type="text" id="ns-cedula" required placeholder="Cedula *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      <input type="text" id="ns-telefono" required placeholder="Telefono / WhatsApp *" inputmode="tel" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      <input type="text" id="ns-direccion" placeholder="Direccion / Compania" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      <input type="text" id="ns-cuenta" required placeholder="Nro. Cuenta *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      <button type="submit" id="btn-ns-guardar" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Socio</button>
-    </form>
-    <div id="ns-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
   </div>
-</div>
 
-<div id="modal-editar-gasto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
-    <div class="flex justify-between items-center mb-4">
-      <h4 class="font-bold text-sm">Editar Gasto</h4>
-      <button onclick="cerrarModalEditarGasto()" class="text-slate-400 text-xl leading-none">x</button>
-    </div>
-    <form onsubmit="guardarEdicionGasto(event)" class="space-y-3">
-      <input type="hidden" id="edit-gasto-id">
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Concepto / Descripcion</label>
-        <input type="text" id="edit-gasto-descripcion" required class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Categoria</label>
-        <select id="edit-gasto-categoria" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-          <option value="mantenimiento">Mantenimiento</option>
-          <option value="luz">Luz / ANDE</option>
-          <option value="reparacion">Reparacion</option>
-          <option value="materiales">Materiales</option>
-          <option value="otros">Otros</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
-        <input type="text" id="edit-gasto-monto" required inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50 font-bold">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario</label>
-        <input type="text" id="edit-gasto-proveedor" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Fecha</label>
-        <input type="date" id="edit-gasto-fecha" class="w-full p-3 border rounded-xl text-sm bg-slate-50">
-      </div>
-      <button type="submit" id="btn-edit-gasto-guardar" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Cambios</button>
-    </form>
-    <button onclick="eliminarGastoDesdeModal()" class="w-full mt-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-sm">Eliminar este gasto</button>
-    <div id="edit-gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
-  </div>
-</div>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-window.supabaseClient = supabase;
+    const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supabaseClient = supabase;
 
-function formatearGuaraniesInput(inputEl){
-  if(!inputEl) return;
-  let v = inputEl.value.replace(/\D/g, '');
-  if(!v){ inputEl.value = ''; return; }
-  inputEl.value = Number(v).toLocaleString('es-PY');
-}
-function limpiarGuaraniesInput(valor){
-  if(!valor) return 0;
-  return Number(String(valor).replace(/\./g, '').replace(/,/g, '').trim()) || 0;
-}
-function mostrarMensajeAdmin(id, texto, esError){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.textContent = texto;
-  el.className = esError ? "mt-3 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600" : "mt-3 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700";
-  el.classList.remove('hidden');
-}
-window.cambiarPestanaAdmin = function(pestana){
-  ['cobrar','gastos','cuotas'].forEach(function(t){
-    document.getElementById('seccion-' + t).classList.toggle('hidden', t !== pestana);
-    const btn = document.getElementById('tab-btn-' + t);
-    btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
-  });
-};
-window.abrirModalNuevoSocio = async function() {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    alert('Tenés que iniciar sesión como Admin primero.');
-    return;
-  }
-  document.getElementById('modal-nuevo-socio').classList.remove('hidden');
-};
-window.abrirPadron = async function() {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    alert('Tenés que iniciar sesión como Admin primero.');
-    return;
-  }
-  if (window.parent && window.parent !== window) {
-    const btnPadron = window.parent.document.querySelector('.nav-btn[data-src*="padron.html"]');
-    if (btnPadron) { btnPadron.click(); return; }
-  }
-  window.location.href = 'padron.html';
-};
-window.cerrarModalNuevoSocio = function(){ document.getElementById('modal-nuevo-socio').classList.add('hidden'); document.getElementById('ns-msg').classList.add('hidden'); };
-window.manejarLoginAdmin = async function(event){
-  event.preventDefault();
-  const email = document.getElementById('login-email-admin').value.trim();
-  const pass = document.getElementById('login-pass-admin').value;
-  const btn = document.getElementById('btn-login-admin');
-  btn.textContent = 'Verificando...'; btn.disabled = true;
-  const r = await supabase.auth.signInWithPassword({ email, password: pass });
-  if(r.error){ mostrarMensajeAdmin('login-msg', 'Correo o contrasena incorrecta.', true); btn.textContent = 'Ingresar'; btn.disabled = false; return; }
-  await verificarSesionAdmin();
-};
-window.cerrarSesion = async function(){ await supabase.auth.signOut(); location.reload(); };
-async function verificarSesionAdmin(){
-  const { data } = await supabase.auth.getSession();
-  const session = data.session;
-  const acciones = document.getElementById('header-acciones');
-  if(!session){
-    document.getElementById('box-login').classList.remove('hidden');
-    document.getElementById('box-contenido').classList.add('hidden');
-    if(acciones) acciones.classList.add('hidden');
-    document.getElementById('modal-nuevo-socio').classList.add('hidden');
-    return;
-  }
-  document.getElementById('box-login').classList.add('hidden');
-  document.getElementById('box-contenido').classList.remove('hidden');
-  if(acciones) acciones.classList.remove('hidden');
-  await cargarDatosAdmin();
-}
-async function cargarDatosAdmin(){ await Promise.all([cargarSocios(), cargarPagosRecientes(), cargarGastosRecientes(), cargarBalance()]); }
-let listaSociosCobro = [];
-async function cargarSocios(){
-  const r = await supabase.from('clientes').select('id, nro_cuenta, saldo_favor, personas(nombre, apellido, cedula_ruc)').order('nro_cuenta', { ascending: true });
-  const sel = document.getElementById('sel-cliente');
-  sel.innerHTML = '<option value="">-- Selecciona Socio --</option>';
-  listaSociosCobro = r.data || [];
-  listaSociosCobro.forEach(function(c){
-    const p = c.personas || {};
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = 'Cta ' + c.nro_cuenta + ' - ' + (p.nombre||'') + ' ' + (p.apellido||'') + ' - CI ' + (p.cedula_ruc||'');
-    opt.dataset.busqueda = ((p.nombre||'') + ' ' + (p.apellido||'') + ' ' + (p.cedula_ruc||'') + ' ' + (c.nro_cuenta||'')).toLowerCase();
-    sel.appendChild(opt);
-  });
-}
-window.filtrarSociosCobro = function(){
-  const texto = (document.getElementById('filtro-socio-cobro').value || '').toLowerCase().trim();
-  const sel = document.getElementById('sel-cliente');
-  let visibles = 0;
-  Array.from(sel.options).forEach(function(opt){
-    if(!opt.value){ opt.hidden = false; return; }
-    const coincide = !texto || (opt.dataset.busqueda || '').indexOf(texto) !== -1;
-    opt.hidden = !coincide;
-    if(coincide) visibles++;
-  });
-  if(texto && visibles === 1){
-    Array.from(sel.options).forEach(function(opt){ if(opt.value && !opt.hidden){ sel.value = opt.value; cargarFacturasSocioSeleccionado(); } });
-  }
-};
-window.cargarFacturasSocioSeleccionado = async function(){
-  const clienteId = document.getElementById('sel-cliente').value;
-  const cont = document.getElementById('lista-facturas-cobro');
-  const infoSaldo = document.getElementById('info-saldo-favor');
-  cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
-  infoSaldo.classList.add('hidden');
-  if(!clienteId){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">-- Primero elige Socio --</p>'; return; }
-  const socio = listaSociosCobro.find(function(s){ return String(s.id) === String(clienteId); });
-  if(socio && socio.saldo_favor > 0){
-    infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + Number(socio.saldo_favor).toLocaleString('es-PY');
-    infoSaldo.classList.remove('hidden');
-  }
-  const r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).neq('estado','pagado').order('mes', { ascending: true });
-  const facturas = r.data || [];
-  if(facturas.length === 0){
-    cont.innerHTML = '<p class="text-xs text-emerald-700 text-center py-2 font-bold">Sin facturas pendientes - Al dia ✓</p>';
-    document.getElementById('inp-monto').value = '';
-    return;
-  }
-  cont.innerHTML = facturas.map(function(f){
-    return '<label class="flex items-center gap-2 bg-white border rounded-xl p-2.5 cursor-pointer">'
-      + '<input type="checkbox" class="chk-factura w-4 h-4 accent-emerald-600" value="'+f.id+'" data-saldo="'+f.saldo_pendiente+'" data-mes="'+f.mes+'" checked>'
-      + '<div class="flex-1"><p class="text-xs font-bold">Mes ' + f.mes + '</p><p class="text-[11px] text-slate-500">Pendiente: Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</p></div>'
-      + '<span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">PENDIENTE</span>'
-      + '</label>';
-  }).join('') + '<p class="text-[11px] text-center text-slate-500 pt-1">Total seleccionado: <b id="total-seleccionado">Gs. 0</b> <button type="button" onclick="usarTotalSeleccionado()" class="text-blue-600 font-bold underline ml-1">Usar total</button></p>';
-  cont.querySelectorAll('.chk-factura').forEach(function(chk){ chk.addEventListener('change', actualizarTotalSeleccionado); });
-  actualizarTotalSeleccionado();
-};
-window.actualizarTotalSeleccionado = function(){
-  let total = 0;
-  document.querySelectorAll('.chk-factura:checked').forEach(function(c){ total += Number(c.dataset.saldo || 0); });
-  const el = document.getElementById('total-seleccionado');
-  if(el) el.textContent = 'Gs. ' + total.toLocaleString('es-PY');
-};
-window.usarTotalSeleccionado = function(){
-  let total = 0;
-  document.querySelectorAll('.chk-factura:checked').forEach(function(c){ total += Number(c.dataset.saldo || 0); });
-  document.getElementById('inp-monto').value = total ? total.toLocaleString('es-PY') : '';
-};
-window.registrarPago = async function(event){
-  event.preventDefault();
-  const clienteId = document.getElementById('sel-cliente').value;
-  let montoTotal = limpiarGuaraniesInput(document.getElementById('inp-monto').value);
-  const metodo = document.getElementById('sel-metodo').value;
-  const checks = Array.from(document.querySelectorAll('.chk-factura:checked'));
-  if(!clienteId || checks.length === 0 || !montoTotal || montoTotal <= 0){
-    mostrarMensajeAdmin('pago-msg', 'Elegi socio, marcá al menos 1 factura y monto valido.', true); return;
-  }
-  const btn = document.getElementById('btn-pagar');
-  btn.textContent = 'Registrando...'; btn.disabled = true;
-  try{
-    let montoRestante = montoTotal;
-    let detalle = [];
-    let saldoFavorGenerado = 0;
-    for(let i = 0; i < checks.length; i++){
-      if(montoRestante <= 0) break;
-      const facturaId = checks[i].value;
-      const { data: factura } = await supabase.from('facturas').select('*').eq('id', facturaId).single();
-      if(!factura) continue;
-      const saldoFactura = Number(factura.saldo_pendiente);
-      const aPagar = Math.min(montoRestante, saldoFactura);
-      const nuevoSaldo = saldoFactura - aPagar;
-      const nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
+    let listaSociosCobro = [];
+    let gastosRecientesCache = [];
+    let pagosRecientesCache = [];
+
+    function escapeHtml(valor) {
+      return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatearGuaraniesInput(inputEl) {
+      if (!inputEl) return;
+      const v = inputEl.value.replace(/\D/g, '');
+      if (!v) {
+        inputEl.value = '';
+        return;
+      }
+      inputEl.value = Number(v).toLocaleString('es-PY');
+    }
+
+    function limpiarGuaraniesInput(valor) {
+      if (!valor) return 0;
+      return Number(String(valor).replace(/\./g, '').replace(/,/g, '').trim()) || 0;
+    }
+
+    function mostrarMensajeAdmin(id, texto, esError) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = texto;
+      el.className = esError
+        ? 'mt-3 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600'
+        : 'mt-3 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700';
+      el.classList.remove('hidden');
+    }
+
+    window.toggleCampoAnticipo = function () {
+      const chk = document.getElementById('chk-generar-anticipo');
+      const box = document.getElementById('box-monto-anticipo');
+      if (!chk || !box) return;
+      box.classList.toggle('hidden', !chk.checked);
+      if (!chk.checked) {
+        document.getElementById('inp-monto-anticipo').value = '';
+      }
+    };
+
+    window.cambiarPestanaAdmin = function (pestana) {
+      ['cobrar', 'gastos', 'cuotas'].forEach((t) => {
+        document.getElementById('seccion-' + t).classList.toggle('hidden', t !== pestana);
+        const btn = document.getElementById('tab-btn-' + t);
+        btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
+      });
+    };
+
+    window.abrirModalNuevoSocio = async function () {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        alert('Tenés que iniciar sesión como Admin primero.');
+        return;
+      }
+      document.getElementById('modal-nuevo-socio').classList.remove('hidden');
+    };
+
+    window.abrirPadron = async function () {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        alert('Tenés que iniciar sesión como Admin primero.');
+        return;
+      }
+      if (window.parent && window.parent !== window) {
+        const btnPadron = window.parent.document.querySelector('.nav-btn[data-src*="padron.html"]');
+        if (btnPadron) {
+          btnPadron.click();
+          return;
+        }
+      }
+      window.location.href = 'padron.html';
+    };
+
+    window.cerrarModalNuevoSocio = function () {
+      document.getElementById('modal-nuevo-socio').classList.add('hidden');
+      document.getElementById('ns-msg').classList.add('hidden');
+    };
+
+    window.manejarLoginAdmin = async function (event) {
+      event.preventDefault();
+      const email = document.getElementById('login-email-admin').value.trim();
+      const pass = document.getElementById('login-pass-admin').value;
+      const btn = document.getElementById('btn-login-admin');
+      btn.textContent = 'Verificando...';
+      btn.disabled = true;
+
+      const r = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (r.error) {
+        mostrarMensajeAdmin('login-msg', 'Correo o contraseña incorrecta.', true);
+        btn.textContent = 'Ingresar';
+        btn.disabled = false;
+        return;
+      }
+      await verificarSesionAdmin();
+    };
+
+    window.cerrarSesion = async function () {
+      await supabase.auth.signOut();
+      location.reload();
+    };
+
+    async function verificarSesionAdmin() {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      const acciones = document.getElementById('header-acciones');
+
+      if (!session) {
+        document.getElementById('box-login').classList.remove('hidden');
+        document.getElementById('box-contenido').classList.add('hidden');
+        if (acciones) acciones.classList.add('hidden');
+        document.getElementById('modal-nuevo-socio').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('box-login').classList.add('hidden');
+      document.getElementById('box-contenido').classList.remove('hidden');
+      if (acciones) acciones.classList.remove('hidden');
+      await cargarDatosAdmin();
+    }
+
+    async function cargarDatosAdmin() {
+      await Promise.all([cargarSocios(), cargarPagosRecientes(), cargarGastosRecientes(), cargarBalance()]);
+    }
+
+    async function cargarSocios() {
+      const r = await supabase
+        .from('clientes')
+        .select('id, nro_cuenta, saldo_favor, personas(nombre, apellido, cedula_ruc)')
+        .order('nro_cuenta', { ascending: true });
+
+      const sel = document.getElementById('sel-cliente');
+      sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>';
+      listaSociosCobro = r.data || [];
+
+      listaSociosCobro.forEach((c) => {
+        const p = c.personas || {};
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = 'Cta ' + c.nro_cuenta + ' - ' + (p.nombre || '') + ' ' + (p.apellido || '') + ' - CI ' + (p.cedula_ruc || '');
+        opt.dataset.busqueda = ((p.nombre || '') + ' ' + (p.apellido || '') + ' ' + (p.cedula_ruc || '') + ' ' + (c.nro_cuenta || '')).toLowerCase();
+        sel.appendChild(opt);
+      });
+    }
+
+    window.filtrarSociosCobro = function () {
+      const texto = (document.getElementById('filtro-socio-cobro').value || '').toLowerCase().trim();
+      const sel = document.getElementById('sel-cliente');
+      let visibles = 0;
+
+      Array.from(sel.options).forEach((opt) => {
+        if (!opt.value) {
+          opt.hidden = false;
+          return;
+        }
+        const coincide = !texto || (opt.dataset.busqueda || '').includes(texto);
+        opt.hidden = !coincide;
+        if (coincide) visibles++;
+      });
+
+      if (texto && visibles === 1) {
+        Array.from(sel.options).forEach((opt) => {
+          if (opt.value && !opt.hidden) {
+            sel.value = opt.value;
+            cargarFacturasSocioSeleccionado();
+          }
+        });
+      }
+    };
+
+    window.cargarFacturasSocioSeleccionado = async function () {
+      const clienteId = document.getElementById('sel-cliente').value;
+      const cont = document.getElementById('lista-facturas-cobro');
+      const infoSaldo = document.getElementById('info-saldo-favor');
+      cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
+      infoSaldo.classList.add('hidden');
+
+      if (!clienteId) {
+        cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">-- Primero elegí Socio --</p>';
+        return;
+      }
+
+      const socio = listaSociosCobro.find((s) => String(s.id) === String(clienteId));
+      if (socio && socio.saldo_favor > 0) {
+        infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + Number(socio.saldo_favor).toLocaleString('es-PY');
+        infoSaldo.classList.remove('hidden');
+      }
+
+      const r = await supabase
+        .from('facturas')
+        .select('*')
+        .eq('cliente_id', clienteId)
+        .neq('estado', 'pagado')
+        .order('mes', { ascending: true });
+
+      const facturas = r.data || [];
+      if (facturas.length === 0) {
+        cont.innerHTML = '<p class="text-xs text-emerald-700 text-center py-2 font-bold">Sin facturas pendientes - Al día ✓ (Podés generar un anticipo)</p>';
+        document.getElementById('inp-monto').value = '';
+        return;
+      }
+
+      cont.innerHTML = facturas.map((f) => (
+        '<label class="flex items-center gap-2 bg-white border rounded-xl p-2.5 cursor-pointer">'
+        + '<input type="checkbox" class="chk-factura w-4 h-4 accent-emerald-600" value="' + escapeHtml(f.id) + '" data-saldo="' + escapeHtml(f.saldo_pendiente) + '" data-mes="' + escapeHtml(f.mes) + '" checked>'
+        + '<div class="flex-1"><p class="text-xs font-bold">Mes ' + escapeHtml(f.mes) + '</p><p class="text-[11px] text-slate-500">Pendiente: Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</p></div>'
+        + '<span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">PENDIENTE</span>'
+        + '</label>'
+      )).join('')
+        + '<p class="text-[11px] text-center text-slate-500 pt-1">Total seleccionado: <b id="total-seleccionado">Gs. 0</b> <button type="button" onclick="usarTotalSeleccionado()" class="text-blue-600 font-bold underline ml-1">Usar total</button></p>';
+
+      cont.querySelectorAll('.chk-factura').forEach((chk) => {
+        chk.addEventListener('change', actualizarTotalSeleccionado);
+      });
+      actualizarTotalSeleccionado();
+    };
+
+    window.actualizarTotalSeleccionado = function () {
+      let total = 0;
+      document.querySelectorAll('.chk-factura:checked').forEach((c) => {
+        total += Number(c.dataset.saldo || 0);
+      });
+      const el = document.getElementById('total-seleccionado');
+      if (el) el.textContent = 'Gs. ' + total.toLocaleString('es-PY');
+    };
+
+    window.usarTotalSeleccionado = function () {
+      let total = 0;
+      document.querySelectorAll('.chk-factura:checked').forEach((c) => {
+        total += Number(c.dataset.saldo || 0);
+      });
+      document.getElementById('inp-monto').value = total ? total.toLocaleString('es-PY') : '';
+    };
+
+    async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) {
+      if (!montoAnticipo || montoAnticipo <= 0) return;
+
       const { error: errPago } = await supabase.from('pagos').insert({
         cliente_id: clienteId,
-        factura_id: facturaId,
-        monto_pagado: aPagar,
-        metodo: metodo,
-        concepto: nuevoSaldo === 0 ? 'Pago total factura ' + factura.mes : 'Pago parcial / Amortizacion factura ' + factura.mes + ' - Queda Gs. ' + nuevoSaldo.toLocaleString('es-PY')
+        factura_id: null,
+        monto_pagado: montoAnticipo,
+        metodo,
+        concepto: 'Anticipo - ' + (motivo || 'Saldo a favor del cliente')
       });
-      if(errPago) throw errPago;
-      await supabase.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
-      detalle.push(factura.mes + ': Gs. ' + aPagar.toLocaleString('es-PY') + (nuevoSaldo > 0 ? ' (queda ' + nuevoSaldo.toLocaleString('es-PY') + ')' : ' ✓ pagada'));
-      montoRestante -= aPagar;
-    }
-    if(montoRestante > 0) saldoFavorGenerado = montoRestante;
-    if(saldoFavorGenerado > 0){
+      if (errPago) throw errPago;
+
       const { data: clienteActual } = await supabase.from('clientes').select('saldo_favor').eq('id', clienteId).single();
       const saldoActual = clienteActual ? Number(clienteActual.saldo_favor || 0) : 0;
-      await supabase.from('clientes').update({ saldo_favor: saldoActual + saldoFavorGenerado }).eq('id', clienteId);
+      const { error: errCli } = await supabase
+        .from('clientes')
+        .update({ saldo_favor: saldoActual + montoAnticipo })
+        .eq('id', clienteId);
+      if (errCli) throw errCli;
     }
-    mostrarMensajeAdmin('pago-msg', 'Pago registrado! ' + detalle.join(' | ') + (saldoFavorGenerado > 0 ? ' | Saldo a favor: Gs. ' + saldoFavorGenerado.toLocaleString('es-PY') : ''), false);
-    document.getElementById('inp-monto').value = '';
-    document.getElementById('filtro-socio-cobro').value = '';
-    filtrarSociosCobro();
-    await cargarDatosAdmin();
-    await cargarFacturasSocioSeleccionado();
-  } catch(e){ mostrarMensajeAdmin('pago-msg', 'Error: ' + e.message, true); }
-  btn.textContent = 'Registrar Pago'; btn.disabled = false;
-};
-async function cargarPagosRecientes(){
-  const cont = document.getElementById('lista-pagos');
-  const r = await supabase.from('pagos').select('*, clientes(nro_cuenta, personas(nombre, apellido))').order('created_at', { ascending: false }).limit(20);
-  const pagos = r.data || [];
-  if(pagos.length === 0){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aun.</p>'; return; }
-  cont.innerHTML = pagos.map(function(p){
-    const c = p.clientes || {}; const per = c.personas || {};
-    const fechaMostrar = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '';
-    return '<div class="flex justify-between items-center border-b pb-2"><div><p class="text-xs font-bold">' + (per.nombre||'') + ' ' + (per.apellido||'') + ' - Cta ' + (c.nro_cuenta||'') + '</p><p class="text-[11px] text-slate-500">' + fechaMostrar + ' - ' + (p.metodo||'') + ' - ' + (p.concepto||'') + '</p></div><span class="text-xs font-bold text-emerald-600">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span></div>';
-  }).join('');
-}
-window.registrarGasto = async function(event){
-  event.preventDefault();
-  const descripcion = document.getElementById('gasto-concepto').value.trim();
-  const categoria = document.getElementById('gasto-categoria').value;
-  const monto = limpiarGuaraniesInput(document.getElementById('gasto-monto').value);
-  const proveedor = document.getElementById('gasto-proveedor').value.trim();
-  if(!descripcion || !monto || monto <= 0){ mostrarMensajeAdmin('gasto-msg', 'Completa concepto y monto valido.', true); return; }
-  const btn = document.getElementById('btn-gasto');
-  btn.textContent = 'Registrando...'; btn.disabled = true;
-  try{
-    const { error } = await supabase.from('gastos').insert({
-      descripcion: descripcion,
-      categoria: categoria,
-      monto: monto,
-      proveedor_beneficiario: proveedor || null,
-      fecha: new Date().toISOString().slice(0,10),
-      nota: null,
-      empleado_id: null
-    });
-    if(error) throw error;
-    mostrarMensajeAdmin('gasto-msg', 'Gasto registrado!', false);
-    document.getElementById('gasto-concepto').value = '';
-    document.getElementById('gasto-monto').value = '';
-    document.getElementById('gasto-proveedor').value = '';
-    await cargarDatosAdmin();
-  } catch(e){ mostrarMensajeAdmin('gasto-msg', 'Error: ' + e.message, true); }
-  btn.textContent = 'Registrar Gasto'; btn.disabled = false;
-};
-async function cargarGastosRecientes(){
-  const cont = document.getElementById('lista-gastos');
-  const r = await supabase.from('gastos').select('*').order('created_at', { ascending: false }).limit(20);
-  const gastos = r.data || [];
-  if(gastos.length === 0){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin gastos aun.</p>'; return; }
-  cont.innerHTML = gastos.map(function(g){
-    const descSafe = String(g.descripcion || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const provSafe = String(g.proveedor_beneficiario || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    return '<div class="flex justify-between items-start gap-2 border-b pb-2">'
-      + '<div class="flex-1"><p class="text-xs font-bold">' + (g.descripcion||g.categoria||'') + '</p><p class="text-[11px] text-slate-500">' + (g.categoria||'') + ' - ' + (g.fecha||'') + (g.proveedor_beneficiario ? ' - ' + g.proveedor_beneficiario : '') + '</p></div>'
-      + '<div class="flex flex-col items-end gap-1"><span class="text-xs font-bold text-red-600">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span>'
-      + '<div class="flex gap-1"><button onclick="abrirEditarGasto(\'' + g.id + '\', \'' + descSafe + '\', \'' + (g.categoria||'') + '\', ' + g.monto + ', \'' + provSafe + '\', \'' + (g.fecha||'') + '\')" class="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Editar</button>'
-      + '<button onclick="eliminarGasto(\'' + g.id + '\', \'' + descSafe + '\')" class="text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Borrar</button></div></div>'
-      + '</div>';
-  }).join('');
-}
-window.abrirEditarGasto = function(id, descripcion, categoria, monto, proveedor, fecha){
-  document.getElementById('edit-gasto-id').value = id;
-  document.getElementById('edit-gasto-descripcion').value = descripcion;
-  document.getElementById('edit-gasto-categoria').value = categoria || 'otros';
-  document.getElementById('edit-gasto-monto').value = Number(monto).toLocaleString('es-PY');
-  document.getElementById('edit-gasto-proveedor').value = proveedor || '';
-  document.getElementById('edit-gasto-fecha').value = fecha || new Date().toISOString().slice(0,10);
-  document.getElementById('edit-gasto-msg').classList.add('hidden');
-  document.getElementById('modal-editar-gasto').classList.remove('hidden');
-};
-window.cerrarModalEditarGasto = function(){ document.getElementById('modal-editar-gasto').classList.add('hidden'); };
-window.guardarEdicionGasto = async function(event){
-  event.preventDefault();
-  const id = document.getElementById('edit-gasto-id').value;
-  const descripcion = document.getElementById('edit-gasto-descripcion').value.trim();
-  const categoria = document.getElementById('edit-gasto-categoria').value;
-  const monto = limpiarGuaraniesInput(document.getElementById('edit-gasto-monto').value);
-  const proveedor = document.getElementById('edit-gasto-proveedor').value.trim();
-  const fecha = document.getElementById('edit-gasto-fecha').value;
-  if(!descripcion || !monto || monto <= 0){ mostrarMensajeAdmin('edit-gasto-msg', 'Completa descripcion y monto valido.', true); return; }
-  const btn = document.getElementById('btn-edit-gasto-guardar');
-  btn.textContent = 'Guardando...'; btn.disabled = true;
-  const { error } = await supabase.from('gastos').update({ descripcion: descripcion, categoria: categoria, monto: monto, proveedor_beneficiario: proveedor || null, fecha: fecha }).eq('id', id);
-  if(error){ mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + error.message, true); btn.textContent = 'Guardar Cambios'; btn.disabled = false; return; }
-  btn.textContent = 'Guardar Cambios'; btn.disabled = false;
-  cerrarModalEditarGasto();
-  mostrarMensajeAdmin('gasto-msg', 'Gasto actualizado!', false);
-  await cargarDatosAdmin();
-};
-window.eliminarGasto = async function(id, descripcion){
-  if(!confirm('¿Borrar este gasto?\n' + (descripcion || '') + '\nEsta acción no se puede deshacer.')) return;
-  const { error } = await supabase.from('gastos').delete().eq('id', id);
-  if(error){ alert('Error: ' + error.message); return; }
-  await cargarDatosAdmin();
-};
-window.eliminarGastoDesdeModal = async function(){
-  const id = document.getElementById('edit-gasto-id').value;
-  const desc = document.getElementById('edit-gasto-descripcion').value;
-  cerrarModalEditarGasto();
-  await eliminarGasto(id, desc);
-};
-async function cargarBalance(){
-  const [rp, rg] = await Promise.all([ supabase.from('pagos').select('monto_pagado'), supabase.from('gastos').select('monto') ]);
-  const totalCobrado = (rp.data || []).reduce(function(a,p){ return a + Number(p.monto_pagado||0); }, 0);
-  const totalGastado = (rg.data || []).reduce(function(a,g){ return a + Number(g.monto||0); }, 0);
-  document.getElementById('total-cobrado').textContent = 'Gs. ' + totalCobrado.toLocaleString('es-PY');
-  document.getElementById('total-gastado').textContent = 'Gs. ' + totalGastado.toLocaleString('es-PY');
-  document.getElementById('balance-total').textContent = 'Gs. ' + (totalCobrado - totalGastado).toLocaleString('es-PY');
-}
-window.generarCuotasMasivas = async function(event){
-  event.preventDefault();
-  const mes = document.getElementById('inp-mes-cuota').value;
-  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-cuota').value);
-  if(!mes || !monto || monto <= 0){ mostrarMensajeAdmin('cuotas-msg', 'Elegi mes y monto valido.', true); return; }
-  const btn = document.getElementById('btn-generar-cuotas');
-  btn.textContent = 'Generando...'; btn.disabled = true;
-  try{
-    const { data: clientes } = await supabase.from('clientes').select('id').eq('activo', true);
-    if(!clientes || clientes.length === 0) throw new Error('No hay socios activos.');
-    const { data: existentes } = await supabase.from('facturas').select('cliente_id').eq('mes', mes);
-    const yaTienen = new Set((existentes || []).map(function(f){ return f.cliente_id; }));
-    const nuevas = clientes.filter(function(c){ return !yaTienen.has(c.id); }).map(function(c){ return { cliente_id: c.id, mes: mes, monto: monto, saldo_pendiente: monto, estado: 'pendiente' }; });
-    if(nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
-    const { error } = await supabase.from('facturas').insert(nuevas);
-    if(error) throw error;
-    mostrarMensajeAdmin('cuotas-msg', 'Cuotas generadas: ' + nuevas.length + ' socios. Ya tenian: ' + yaTienen.size, false);
-  } catch(e){ mostrarMensajeAdmin('cuotas-msg', 'Error: ' + e.message, true); }
-  btn.textContent = 'Generar Cuotas a Todos'; btn.disabled = false;
-};
-window.guardarNuevoSocioRapido = async function(event){
-  event.preventDefault();
-  const { data: ses } = await supabase.auth.getSession();
-  if(!ses.session){ alert('Sin sesión de Admin. Logueate primero.'); return; }
-  const nombre = document.getElementById('ns-nombre').value.trim();
-  const apellido = document.getElementById('ns-apellido').value.trim();
-  const cedula = document.getElementById('ns-cedula').value.trim();
-  const telefono = document.getElementById('ns-telefono').value.trim();
-  const direccion = document.getElementById('ns-direccion').value.trim();
-  const cuenta = document.getElementById('ns-cuenta').value.trim();
-  if(!nombre || !apellido || !cedula || !telefono || !cuenta){ mostrarMensajeAdmin('ns-msg', 'Faltan datos obligatorios.', true); return; }
-  const btn = document.getElementById('btn-ns-guardar');
-  btn.textContent = 'Guardando...'; btn.disabled = true;
-  try{
-    const { data: persona, error: e1 } = await supabase.from('personas').insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null }).select().single();
-    if(e1) throw e1;
-    const { error: e2 } = await supabase.from('clientes').insert({ persona_id: persona.id, nro_cuenta: cuenta, tipo_tarifa: 'fija', saldo_favor: 0, activo: true });
-    if(e2) throw e2;
-    mostrarMensajeAdmin('ns-msg', 'Socio guardado: ' + nombre + ' ' + apellido, false);
-    event.target.reset();
-    await cargarSocios();
-  } catch(e){ mostrarMensajeAdmin('ns-msg', 'Error: ' + e.message, true); }
-  btn.textContent = 'Guardar Socio'; btn.disabled = false;
-};
-document.getElementById('inp-monto').addEventListener('input', function(){ formatearGuaraniesInput(this); });
-document.getElementById('gasto-monto').addEventListener('input', function(){ formatearGuaraniesInput(this); });
-document.getElementById('inp-monto-cuota').addEventListener('input', function(){ formatearGuaraniesInput(this); });
-document.getElementById('edit-gasto-monto').addEventListener('input', function(){ formatearGuaraniesInput(this); });
-verificarSesionAdmin();
-</script>
+
+    window.registrarPago = async function (event) {
+      event.preventDefault();
+      const clienteId = document.getElementById('sel-cliente').value;
+      const montoTotal = limpiarGuaraniesInput(document.getElementById('inp-monto').value);
+      const metodo = document.getElementById('sel-metodo').value;
+      const checks = Array.from(document.querySelectorAll('.chk-factura:checked'));
+      const quiereAnticipo = Boolean(document.getElementById('chk-generar-anticipo')?.checked);
+      const montoAnticipoManual = limpiarGuaraniesInput(document.getElementById('inp-monto-anticipo')?.value);
+
+      if (!clienteId || !montoTotal || montoTotal <= 0) {
+        mostrarMensajeAdmin('pago-msg', 'Elegí un socio y un monto válido.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-pagar');
+      btn.textContent = 'Registrando...';
+      btn.disabled = true;
+
+      try {
+        if (checks.length === 0) {
+          const montoA = montoAnticipoManual > 0 ? montoAnticipoManual : montoTotal;
+          await crearDocumentoAnticipo(clienteId, montoA, metodo, 'Anticipo directo');
+          mostrarMensajeAdmin(
+            'pago-msg',
+            '¡Anticipo registrado! El monto de Gs. ' + montoA.toLocaleString('es-PY') + ' quedó como anticipo a favor del cliente.',
+            false
+          );
+        } else {
+          let totalFacturasMarcadas = 0;
+          const facturasData = [];
+
+          for (let i = 0; i < checks.length; i++) {
+            const facturaId = checks[i].value;
+            const { data: factura } = await supabase.from('facturas').select('*').eq('id', facturaId).single();
+            if (factura) {
+              facturasData.push(factura);
+              totalFacturasMarcadas += Number(factura.saldo_pendiente || 0);
+            }
+          }
+
+          let montoParaFacturas = montoTotal;
+          let anticipoGenerado = 0;
+
+          if (quiereAnticipo && montoAnticipoManual > 0) {
+            anticipoGenerado = montoAnticipoManual;
+            montoParaFacturas = Math.max(0, montoTotal - anticipoGenerado);
+          } else if (montoTotal > totalFacturasMarcadas) {
+            anticipoGenerado = montoTotal - totalFacturasMarcadas;
+            montoParaFacturas = totalFacturasMarcadas;
+          }
+
+          let montoRestante = montoParaFacturas;
+          const detalle = [];
+          const facturasCanceladas = [];
+
+          for (let i = 0; i < facturasData.length; i++) {
+            if (montoRestante <= 0) break;
+            const factura = facturasData[i];
+            const saldoFactura = Number(factura.saldo_pendiente);
+            const aPagar = Math.min(montoRestante, saldoFactura);
+            const nuevoSaldo = saldoFactura - aPagar;
+            const nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
+
+            const { error: errPago } = await supabase.from('pagos').insert({
+              cliente_id: clienteId,
+              factura_id: factura.id,
+              monto_pagado: aPagar,
+              metodo,
+              concepto: nuevoSaldo === 0
+                ? 'Factura / deuda cancelada (' + factura.mes + ')'
+                : 'Amortización factura ' + factura.mes + ' - Queda Gs. ' + nuevoSaldo.toLocaleString('es-PY')
+            });
+            if (errPago) throw errPago;
+
+            await supabase.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', factura.id);
+
+            if (nuevoSaldo === 0) {
+              facturasCanceladas.push(factura.mes);
+              detalle.push(factura.mes + ': Gs. ' + aPagar.toLocaleString('es-PY') + ' (factura / deuda cancelada)');
+            } else {
+              detalle.push(factura.mes + ': Gs. ' + aPagar.toLocaleString('es-PY') + ' (queda Gs. ' + nuevoSaldo.toLocaleString('es-PY') + ')');
+            }
+
+            montoRestante -= aPagar;
+          }
+
+          if (anticipoGenerado > 0) {
+            await crearDocumentoAnticipo(clienteId, anticipoGenerado, metodo, 'Excedente / anticipo');
+          }
+
+          const partesMensaje = ['¡Pago registrado!'];
+          if (facturasCanceladas.length > 0) {
+            partesMensaje.push('Factura / deuda cancelada: ' + facturasCanceladas.join(', ') + '.');
+          }
+          if (detalle.length > 0) {
+            partesMensaje.push(detalle.join(' | ') + '.');
+          }
+          if (anticipoGenerado > 0) {
+            partesMensaje.push('El monto de Gs. ' + anticipoGenerado.toLocaleString('es-PY') + ' quedó como anticipo a favor del cliente.');
+          }
+
+          mostrarMensajeAdmin('pago-msg', partesMensaje.join(' '), false);
+        }
+
+        document.getElementById('inp-monto').value = '';
+        document.getElementById('filtro-socio-cobro').value = '';
+        if (document.getElementById('chk-generar-anticipo')) {
+          document.getElementById('chk-generar-anticipo').checked = false;
+          toggleCampoAnticipo();
+        }
+        filtrarSociosCobro();
+        await cargarDatosAdmin();
+        await cargarFacturasSocioSeleccionado();
+      } catch (e) {
+        mostrarMensajeAdmin('pago-msg', 'Error: ' + e.message, true);
+      }
+
+      btn.textContent = 'Registrar Pago';
+      btn.disabled = false;
+    };
+
+    async function cargarPagosRecientes() {
+      const cont = document.getElementById('lista-pagos');
+      const r = await supabase
+        .from('pagos')
+        .select('*, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const pagos = r.data || [];
+      pagosRecientesCache = pagos;
+
+      if (pagos.length === 0) {
+        cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aún.</p>';
+        return;
+      }
+
+      cont.innerHTML = pagos.map((p) => {
+        const c = p.clientes || {};
+        const per = c.personas || {};
+        const fechaMostrar = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '';
+        const esAnticipo = !p.factura_id || String(p.concepto || '').toLowerCase().includes('anticipo');
+        const etiquetaTipo = esAnticipo
+          ? '<span class="ml-1 text-[10px] font-bold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">ANTICIPO</span>'
+          : '<span class="ml-1 text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">COBRO</span>';
+
+        return (
+          '<div class="flex justify-between items-start gap-2 border-b pb-2">'
+          + '<div class="flex-1">'
+          + '<p class="text-xs font-bold">' + escapeHtml((per.nombre || '') + ' ' + (per.apellido || '')) + ' - Cta ' + escapeHtml(c.nro_cuenta || '') + etiquetaTipo + '</p>'
+          + '<p class="text-[11px] text-slate-500">' + escapeHtml(fechaMostrar) + ' - ' + escapeHtml(p.metodo || '') + ' - ' + escapeHtml(p.concepto || '') + '</p>'
+          + '</div>'
+          + '<div class="flex flex-col items-end gap-1">'
+          + '<span class="text-xs font-bold text-emerald-600">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span>'
+          + '<button type="button" data-id="' + escapeHtml(p.id) + '" class="btn-borrar-pago text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button>'
+          + '</div>'
+          + '</div>'
+        );
+      }).join('');
+
+      cont.querySelectorAll('.btn-borrar-pago').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const pago = pagosRecientesCache.find((item) => String(item.id) === String(btn.dataset.id));
+          if (!pago) return;
+          eliminarCobranza(pago);
+        });
+      });
+    }
+
+    async function eliminarCobranza(pago) {
+      const per = pago.clientes?.personas || {};
+      const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || 'Socio';
+      const monto = Number(pago.monto_pagado || 0);
+      const esAnticipo = !pago.factura_id || String(pago.concepto || '').toLowerCase().includes('anticipo');
+
+      const ok = confirm(
+        '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n'
+        + 'Socio: ' + nombreSocio + '\n'
+        + 'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n'
+        + 'Concepto: ' + (pago.concepto || '') + '\n\n'
+        + 'Se revertirá el saldo de la factura o el anticipo si corresponde.'
+      );
+      if (!ok) return;
+
+      try {
+        if (pago.factura_id) {
+          const { data: factura } = await supabase
+            .from('facturas')
+            .select('id, monto, saldo_pendiente, estado')
+            .eq('id', pago.factura_id)
+            .single();
+
+          if (factura) {
+            const montoFactura = Number(factura.monto || 0);
+            const saldoActual = Number(factura.saldo_pendiente || 0);
+            const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
+            await supabase
+              .from('facturas')
+              .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
+              .eq('id', factura.id);
+          }
+        } else if (esAnticipo && pago.cliente_id) {
+          const { data: cliente } = await supabase
+            .from('clientes')
+            .select('saldo_favor')
+            .eq('id', pago.cliente_id)
+            .single();
+          if (cliente) {
+            const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
+            await supabase.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
+          }
+        }
+
+        const { error } = await supabase.from('pagos').delete().eq('id', pago.id);
+        if (error) throw error;
+
+        mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
+        await cargarDatosAdmin();
+        await cargarFacturasSocioSeleccionado();
+      } catch (e) {
+        mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
+      }
+    }
+
+    window.registrarGasto = async function (event) {
+      event.preventDefault();
+      const descripcion = document.getElementById('gasto-concepto').value.trim();
+      const categoria = document.getElementById('gasto-categoria').value;
+      const monto = limpiarGuaraniesInput(document.getElementById('gasto-monto').value);
+      const proveedor = document.getElementById('gasto-proveedor').value.trim();
+
+      if (!descripcion || !monto || monto <= 0) {
+        mostrarMensajeAdmin('gasto-msg', 'Completá concepto y monto válido.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-gasto');
+      btn.textContent = 'Registrando...';
+      btn.disabled = true;
+
+      try {
+        const { error } = await supabase.from('gastos').insert({
+          descripcion,
+          categoria,
+          monto,
+          proveedor_beneficiario: proveedor || null,
+          fecha: new Date().toISOString().slice(0, 10),
+          nota: null,
+          empleado_id: null
+        });
+        if (error) throw error;
+        mostrarMensajeAdmin('gasto-msg', '¡Gasto registrado!', false);
+        document.getElementById('gasto-concepto').value = '';
+        document.getElementById('gasto-monto').value = '';
+        document.getElementById('gasto-proveedor').value = '';
+        await cargarDatosAdmin();
+      } catch (e) {
+        mostrarMensajeAdmin('gasto-msg', 'Error: ' + e.message, true);
+      }
+
+      btn.textContent = 'Registrar Gasto';
+      btn.disabled = false;
+    };
+
+    async function cargarGastosRecientes() {
+      const cont = document.getElementById('lista-gastos');
+      const r = await supabase.from('gastos').select('*').order('created_at', { ascending: false }).limit(20);
+      const gastos = r.data || [];
+      gastosRecientesCache = gastos;
+
+      if (gastos.length === 0) {
+        cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin gastos aún.</p>';
+        return;
+      }
+
+      cont.innerHTML = gastos.map((g) => (
+        '<div class="flex justify-between items-start gap-2 border-b pb-2">'
+        + '<div class="flex-1">'
+        + '<p class="text-xs font-bold">' + escapeHtml(g.descripcion || g.categoria || '') + '</p>'
+        + '<p class="text-[11px] text-slate-500">' + escapeHtml(g.categoria || '') + ' - ' + escapeHtml(g.fecha || '') + (g.proveedor_beneficiario ? ' - ' + escapeHtml(g.proveedor_beneficiario) : '') + '</p>'
+        + '</div>'
+        + '<div class="flex flex-col items-end gap-1">'
+        + '<span class="text-xs font-bold text-red-600">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span>'
+        + '<div class="flex gap-1">'
+        + '<button type="button" data-accion="editar" data-id="' + escapeHtml(g.id) + '" class="btn-gasto-accion text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Editar</button>'
+        + '<button type="button" data-accion="borrar" data-id="' + escapeHtml(g.id) + '" class="btn-gasto-accion text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Borrar</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+      )).join('');
+
+      cont.querySelectorAll('.btn-gasto-accion').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const gasto = gastosRecientesCache.find((item) => String(item.id) === String(btn.dataset.id));
+          if (!gasto) return;
+          if (btn.dataset.accion === 'editar') {
+            abrirEditarGasto(
+              gasto.id,
+              gasto.descripcion || '',
+              gasto.categoria || 'otros',
+              gasto.monto,
+              gasto.proveedor_beneficiario || '',
+              gasto.fecha || ''
+            );
+          } else if (btn.dataset.accion === 'borrar') {
+            eliminarGasto(gasto.id, gasto.descripcion || '');
+          }
+        });
+      });
+    }
+
+    window.abrirEditarGasto = function (id, descripcion, categoria, monto, proveedor, fecha) {
+      document.getElementById('edit-gasto-id').value = id;
+      document.getElementById('edit-gasto-descripcion').value = descripcion;
+      document.getElementById('edit-gasto-categoria').value = categoria || 'otros';
+      document.getElementById('edit-gasto-monto').value = Number(monto).toLocaleString('es-PY');
+      document.getElementById('edit-gasto-proveedor').value = proveedor || '';
+      document.getElementById('edit-gasto-fecha').value = fecha || new Date().toISOString().slice(0, 10);
+      document.getElementById('edit-gasto-msg').classList.add('hidden');
+      document.getElementById('modal-editar-gasto').classList.remove('hidden');
+    };
+
+    window.cerrarModalEditarGasto = function () {
+      document.getElementById('modal-editar-gasto').classList.add('hidden');
+    };
+
+    window.guardarEdicionGasto = async function (event) {
+      event.preventDefault();
+      const id = document.getElementById('edit-gasto-id').value;
+      const descripcion = document.getElementById('edit-gasto-descripcion').value.trim();
+      const categoria = document.getElementById('edit-gasto-categoria').value;
+      const monto = limpiarGuaraniesInput(document.getElementById('edit-gasto-monto').value);
+      const proveedor = document.getElementById('edit-gasto-proveedor').value.trim();
+      const fecha = document.getElementById('edit-gasto-fecha').value;
+
+      if (!descripcion || !monto || monto <= 0) {
+        mostrarMensajeAdmin('edit-gasto-msg', 'Completá descripción y monto válido.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-edit-gasto-guardar');
+      btn.textContent = 'Guardando...';
+      btn.disabled = true;
+
+      const { error } = await supabase
+        .from('gastos')
+        .update({ descripcion, categoria, monto, proveedor_beneficiario: proveedor || null, fecha })
+        .eq('id', id);
+
+      if (error) {
+        mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + error.message, true);
+        btn.textContent = 'Guardar Cambios';
+        btn.disabled = false;
+        return;
+      }
+
+      btn.textContent = 'Guardar Cambios';
+      btn.disabled = false;
+      cerrarModalEditarGasto();
+      mostrarMensajeAdmin('gasto-msg', '¡Gasto actualizado!', false);
+      await cargarDatosAdmin();
+    };
+
+    window.eliminarGasto = async function (id, descripcion) {
+      if (!confirm('¿Borrar este gasto?\n' + (descripcion || '') + '\nEsta acción no se puede deshacer.')) return;
+      const { error } = await supabase.from('gastos').delete().eq('id', id);
+      if (error) {
+        alert('Error: ' + error.message);
+        return;
+      }
+      await cargarDatosAdmin();
+    };
+
+    window.eliminarGastoDesdeModal = async function () {
+      const id = document.getElementById('edit-gasto-id').value;
+      const desc = document.getElementById('edit-gasto-descripcion').value;
+      cerrarModalEditarGasto();
+      await eliminarGasto(id, desc);
+    };
+
+    async function cargarBalance() {
+      const [rp, rg, rc] = await Promise.all([
+        supabase.from('pagos').select('monto_pagado, factura_id, concepto'),
+        supabase.from('gastos').select('monto'),
+        supabase.from('clientes').select('saldo_favor')
+      ]);
+
+      const pagos = rp.data || [];
+      const totalCobradoFacturas = pagos
+        .filter((p) => {
+          const esAnticipo = !p.factura_id || String(p.concepto || '').toLowerCase().includes('anticipo');
+          return !esAnticipo;
+        })
+        .reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
+
+      const totalGastado = (rg.data || []).reduce((a, g) => a + Number(g.monto || 0), 0);
+      const totalAnticiposClientes = (rc.data || []).reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
+
+      const balanceCaja = totalCobradoFacturas - totalGastado;
+      const totalGeneralSaldos = totalCobradoFacturas + totalAnticiposClientes - totalGastado;
+
+      document.getElementById('total-cobrado').textContent = 'Gs. ' + totalCobradoFacturas.toLocaleString('es-PY');
+      document.getElementById('total-gastado').textContent = 'Gs. ' + totalGastado.toLocaleString('es-PY');
+      document.getElementById('total-anticipos').textContent = 'Gs. ' + totalAnticiposClientes.toLocaleString('es-PY');
+      document.getElementById('balance-total').textContent = 'Gs. ' + balanceCaja.toLocaleString('es-PY');
+      document.getElementById('total-general-saldos').textContent = 'Gs. ' + totalGeneralSaldos.toLocaleString('es-PY');
+    }
+
+    window.generarCuotasMasivas = async function (event) {
+      event.preventDefault();
+      const mes = document.getElementById('inp-mes-cuota').value;
+      const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-cuota').value);
+
+      if (!mes || !monto || monto <= 0) {
+        mostrarMensajeAdmin('cuotas-msg', 'Elegí mes y monto válido.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-generar-cuotas');
+      btn.textContent = 'Generando...';
+      btn.disabled = true;
+
+      try {
+        const { data: clientes } = await supabase.from('clientes').select('id').eq('activo', true);
+        if (!clientes || clientes.length === 0) throw new Error('No hay socios activos.');
+
+        const { data: existentes } = await supabase.from('facturas').select('cliente_id').eq('mes', mes);
+        const yaTienen = new Set((existentes || []).map((f) => f.cliente_id));
+        const nuevas = clientes
+          .filter((c) => !yaTienen.has(c.id))
+          .map((c) => ({ cliente_id: c.id, mes, monto, saldo_pendiente: monto, estado: 'pendiente' }));
+
+        if (nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
+
+        const { error } = await supabase.from('facturas').insert(nuevas);
+        if (error) throw error;
+
+        mostrarMensajeAdmin('cuotas-msg', 'Cuotas generadas: ' + nuevas.length + ' socios. Ya tenían: ' + yaTienen.size, false);
+      } catch (e) {
+        mostrarMensajeAdmin('cuotas-msg', 'Error: ' + e.message, true);
+      }
+
+      btn.textContent = 'Generar Cuotas a Todos';
+      btn.disabled = false;
+    };
+
+    window.guardarNuevoSocioRapido = async function (event) {
+      event.preventDefault();
+      const { data: ses } = await supabase.auth.getSession();
+      if (!ses.session) {
+        alert('Sin sesión de Admin. Logueate primero.');
+        return;
+      }
+
+      const nombre = document.getElementById('ns-nombre').value.trim();
+      const apellido = document.getElementById('ns-apellido').value.trim();
+      const cedula = document.getElementById('ns-cedula').value.trim();
+      const telefono = document.getElementById('ns-telefono').value.trim();
+      const direccion = document.getElementById('ns-direccion').value.trim();
+      const cuenta = document.getElementById('ns-cuenta').value.trim();
+
+      if (!nombre || !apellido || !cedula || !telefono || !cuenta) {
+        mostrarMensajeAdmin('ns-msg', 'Faltan datos obligatorios.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-ns-guardar');
+      btn.textContent = 'Guardando...';
+      btn.disabled = true;
+
+      try {
+        const { data: persona, error: e1 } = await supabase
+          .from('personas')
+          .insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
+          .select()
+          .single();
+        if (e1) throw e1;
+
+        const { error: e2 } = await supabase
+          .from('clientes')
+          .insert({ persona_id: persona.id, nro_cuenta: cuenta, tipo_tarifa: 'fija', saldo_favor: 0, activo: true });
+        if (e2) throw e2;
+
+        mostrarMensajeAdmin('ns-msg', 'Socio guardado: ' + nombre + ' ' + apellido, false);
+        event.target.reset();
+        await cargarSocios();
+      } catch (e) {
+        mostrarMensajeAdmin('ns-msg', 'Error: ' + e.message, true);
+      }
+
+      btn.textContent = 'Guardar Socio';
+      btn.disabled = false;
+    };
+
+    document.getElementById('inp-monto').addEventListener('input', function () { formatearGuaraniesInput(this); });
+    document.getElementById('inp-monto-anticipo').addEventListener('input', function () { formatearGuaraniesInput(this); });
+    document.getElementById('gasto-monto').addEventListener('input', function () { formatearGuaraniesInput(this); });
+    document.getElementById('inp-monto-cuota').addEventListener('input', function () { formatearGuaraniesInput(this); });
+    document.getElementById('edit-gasto-monto').addEventListener('input', function () { formatearGuaraniesInput(this); });
+
+    verificarSesionAdmin();
+  </script>
 </body>
 </html>

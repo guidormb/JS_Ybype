@@ -1,8 +1,9 @@
 const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
 const ADMIN_EMAIL = 'guidorafa92@gmail.com';
+const RUTA_PORTAL_SOCIO = './portal-cliente.html';
 
-const sbMenu = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sbMenu = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const visor = document.getElementById('visor');
 const tituloVista = document.getElementById('tituloVista');
@@ -14,60 +15,73 @@ const btnPadron = document.getElementById('btnPadron');
 const btnAccesoAdmin = document.getElementById('btnAccesoAdmin');
 
 function activarBoton(boton) {
+  if (!boton) return;
   botones.forEach((b) => b.classList.remove('active'));
   boton.classList.add('active');
 }
 
 function navegarA(boton) {
+  if (!boton || !visor) return;
   activarBoton(boton);
-  visor.src = boton.dataset.src;
-  tituloVista.textContent = boton.dataset.titulo;
+  if (boton.dataset.src) {
+    visor.src = boton.dataset.src;
+  }
+  if (tituloVista && boton.dataset.titulo) {
+    tituloVista.textContent = boton.dataset.titulo;
+  }
 }
 
 botones.forEach((btn) => {
   btn.addEventListener('click', () => navegarA(btn));
 });
 
+function toggleElemento(el, mostrar) {
+  if (!el) return;
+  el.classList.toggle('hidden', !mostrar);
+}
+
 function aplicarMenuPorRol(session) {
-  const email = session && session.user && session.user.email ?
-    session.user.email.toLowerCase() :
-    '';
+  const email = session?.user?.email ? session.user.email.trim().toLowerCase() : '';
   const esAdmin = email === ADMIN_EMAIL.toLowerCase();
-  
-  if (esAdmin) {
-    labelAdmin.classList.remove('hidden');
-    btnCaja.classList.remove('hidden');
-    btnPadron.classList.remove('hidden');
-    btnAccesoAdmin.classList.add('hidden');
-  } else {
-    labelAdmin.classList.add('hidden');
-    btnCaja.classList.add('hidden');
-    btnPadron.classList.add('hidden');
-    btnAccesoAdmin.classList.remove('hidden');
-    
-    // Si estaba parado en Caja o Padrón y cerró sesión, volver a Portal Socio
+
+  toggleElemento(labelAdmin, esAdmin);
+  toggleElemento(btnCaja, esAdmin);
+  toggleElemento(btnPadron, esAdmin);
+  toggleElemento(btnAccesoAdmin, !esAdmin);
+
+  if (!esAdmin && visor) {
     const rutaActual = visor.getAttribute('src') || '';
     if (rutaActual.includes('padron') || rutaActual.includes('admin-junta.html')) {
-      const btnSocio = document.querySelector('.nav-btn[data-src="./portal-cliente.html"]');
-      if (btnSocio) navegarA(btnSocio);
+      const btnSocio = document.querySelector(`.nav-btn[data-src="${RUTA_PORTAL_SOCIO}"]`);
+      if (btnSocio) {
+        navegarA(btnSocio);
+      } else {
+        visor.src = RUTA_PORTAL_SOCIO;
+      }
     }
   }
 }
 
 async function inicializarMenu() {
-  const { data } = await sbMenu.auth.getSession();
-  aplicarMenuPorRol(data.session);
-  
+  if (!sbMenu?.auth) return;
+
+  const { data, error } = await sbMenu.auth.getSession();
+  if (!error) {
+    aplicarMenuPorRol(data?.session || null);
+  }
+
   // Escucha cambios de login/logout ocurridos dentro de los iframes
   sbMenu.auth.onAuthStateChange((_event, session) => {
     aplicarMenuPorRol(session);
   });
 }
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW registrado:', reg.scope))
-      .catch(err => console.error('Error SW:', err));
+    navigator.serviceWorker
+      .register('./sw.js')
+      .then((reg) => console.log('SW registrado:', reg.scope))
+      .catch((err) => console.error('Error SW:', err));
   });
 }
 

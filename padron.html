@@ -1,94 +1,94 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#2563eb">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Padrón - Junta JSYBYPE</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}
-  h2{margin:0 0 14px}
-  .card{background:white;padding:18px;border-radius:14px;max-width:480px;margin:auto;box-shadow:0 2px 8px #0001}
-  label{font-size:13px;font-weight:700;color:#475569}
-  input{width:100%;padding:12px;margin:6px 0 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;box-sizing:border-box}
-  button{width:100%;padding:14px;background:#16a34a;color:white;border:0;border-radius:10px;font-size:17px;font-weight:800;cursor:pointer}
-  .btn-out{background:#dc2626;padding:10px 16px;width:auto;font-size:14px}
-  .topbar{display:flex;gap:8px;margin-bottom:10px}
-  .topbar button{width:auto;flex:1;padding:12px 6px;font-size:15px}
-  .ok{background:#dcfce7;color:#166534;padding:10px;border-radius:8px;margin-top:12px;display:none}
-  .err{background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;margin-top:12px;display:none}
-  .hint{font-size:12px;color:#64748b;margin-top:-10px;margin-bottom:12px}
-  .hidden{display:none}
-  .item-socio{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#f8fafc}
-  .item-socio:active{background:#dbeafe}
-</style>
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Padrón - Junta JSYBYPE</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; padding: 16px; margin: 0; }
+    h2 { margin: 0 0 14px; }
+    .card { background: white; padding: 18px; border-radius: 14px; max-width: 480px; margin: auto; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07); }
+    label { font-size: 13px; font-weight: 700; color: #475569; }
+    input { width: 100%; padding: 12px; margin: 6px 0 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+    button { width: 100%; padding: 14px; background: #16a34a; color: white; border: 0; border-radius: 10px; font-size: 17px; font-weight: 800; cursor: pointer; }
+    .btn-out { background: #dc2626; padding: 10px 16px; width: auto; font-size: 14px; }
+    .topbar { display: flex; gap: 8px; margin-bottom: 10px; }
+    .topbar button { width: auto; flex: 1; padding: 12px 6px; font-size: 15px; }
+    .ok { background: #dcfce7; color: #166534; padding: 10px; border-radius: 8px; margin-top: 12px; display: none; }
+    .err { background: #fee2e2; color: #991b1b; padding: 10px; border-radius: 8px; margin-top: 12px; display: none; }
+    .hint { font-size: 12px; color: #64748b; margin-top: -10px; margin-bottom: 12px; }
+    .hidden { display: none; }
+    .item-socio { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 8px; cursor: pointer; background: #f8fafc; }
+    .item-socio:active { background: #dbeafe; }
+  </style>
 </head>
 <body>
 
 <div id="sinSesionBox" class="card hidden">
   <h2 style="margin:0 0 8px">Junta JSYBYPE - Padrón</h2>
   <h3 style="margin:0 0 8px">Acceso Admin</h3>
-  <p style="color:#475569;font-size:14px;margin:0 0 14px">Inicia sesión como Admin en <b>Caja y Cobros</b> para gestionar el Padrón.</p>
-  <button onclick="irACaja()" style="background:#0f172a">Ir a Caja y Cobros</button>
+  <p style="color:#475569;font-size:14px;margin:0 0 14px">Iniciá sesión como Admin en <b>Caja y Cobros</b> para gestionar el Padrón.</p>
+  <button type="button" onclick="irACaja()" style="background:#0f172a">Ir a Caja y Cobros</button>
 </div>
 
 <div id="noPermisoBox" class="card hidden">
   <h2 style="margin:0 0 8px">Junta JSYBYPE - Padrón</h2>
-  <h3>No tenes permiso</h3>
+  <h3>No tenés permiso</h3>
   <p>Entraste como <b id="emailLogueado"></b>, pero este panel es solo para Admin.</p>
-  <button class="btn-out" onclick="cerrarSesion()">Cerrar sesion</button>
+  <button type="button" class="btn-out" onclick="cerrarSesion()">Cerrar sesión</button>
 </div>
 
 <div id="contenidoPadron" class="card hidden">
-<h2 style="margin:0">Nuevo Socio</h2>
-<p style="color:#64748b;margin:6px 0 16px">Junta de Saneamiento - Tarifa fija 25.000 Gs</p>
-<input id="buscarCedula" type="text" placeholder="C.I. a editar Ej: 5656565" inputmode="numeric">
-<div class="topbar">
-  <button onclick="volverAlMenu()" style="background:#0f172a">🏠 Menú</button>
-  <button onclick="buscarParaEditar()">✏️ Editar</button>
-  <button onclick="cancelar()" style="background:#f59e0b">❌ Cancelar</button>
-  <button onclick="cerrarSesion()" style="background:#dc3545">🚪 Salir</button>
-</div>
-<p id="modoEditar" style="color:#d97706;font-weight:bold;display:none;">✏️ Editando socio - Guardar para actualizar</p>
+  <h2 style="margin:0">Nuevo Socio</h2>
+  <p style="color:#64748b;margin:6px 0 16px">Junta de Saneamiento - Tarifa fija 25.000 Gs</p>
+  <input id="buscarCedula" type="text" placeholder="C.I. a editar Ej: 5656565" inputmode="numeric" />
+  <div class="topbar">
+    <button type="button" onclick="volverAlMenu()" style="background:#0f172a">🏠 Menú</button>
+    <button type="button" onclick="buscarParaEditar()">✏️ Editar</button>
+    <button type="button" onclick="cancelar()" style="background:#f59e0b">❌ Cancelar</button>
+    <button type="button" onclick="cerrarSesion()" style="background:#dc3545">🚪 Salir</button>
+  </div>
+  <p id="modoEditar" style="color:#d97706;font-weight:bold;display:none;">✏️ Editando socio - Guardar para actualizar</p>
 
-<label>Nombre *</label>
-<input id="nombre" placeholder="Ej: Juan">
+  <label for="nombre">Nombre *</label>
+  <input id="nombre" placeholder="Ej: Juan" />
 
-<label>Apellido *</label>
-<input id="apellido" placeholder="Ej: Benítez">
+  <label for="apellido">Apellido *</label>
+  <input id="apellido" placeholder="Ej: Benítez" />
 
-<label>Cédula *</label>
-<input id="cedula" placeholder="Ej: 5656565" inputmode="numeric">
+  <label for="cedula">Cédula *</label>
+  <input id="cedula" placeholder="Ej: 5656565" inputmode="numeric" />
 
-<label>Teléfono / WhatsApp *</label>
-<input id="telefono" placeholder="Ej: 0981 123456" inputmode="tel">
+  <label for="telefono">Teléfono / WhatsApp *</label>
+  <input id="telefono" placeholder="Ej: 0981 123456" inputmode="tel" />
 
-<label>Dirección / Compañía</label>
-<input id="direccion" placeholder="Ej: Ybypé 1ra.-Linea">
+  <label for="direccion">Dirección / Compañía</label>
+  <input id="direccion" placeholder="Ej: Ybypé 1ra. Línea" />
 
-<label>Nro. Cuenta *</label>
-<input id="cuenta" placeholder="Ej: 001" inputmode="numeric">
+  <label for="cuenta">Nro. Cuenta *</label>
+  <input id="cuenta" placeholder="Ej: 001" inputmode="numeric" />
 
-<label>Nro. Medidor (opcional - a futuro)</label>
-<input id="medidor" placeholder="Dejar vacío si no tiene">
-<div class="hint">Hoy la Junta NO usa medidor. Dejá vacío, se guarda como "Sin medidor".</div>
+  <label for="medidor">Nro. Medidor (opcional - a futuro)</label>
+  <input id="medidor" placeholder="Dejar vacío si no tiene" />
+  <div class="hint">Hoy la Junta NO usa medidor. Dejá vacío, se guarda como "Sin medidor".</div>
 
-<button onclick="guardar()">Guardar Socio</button>
-<div id="ok" class="ok"></div>
-<div id="err" class="err"></div>
+  <button type="button" onclick="guardar()">Guardar Socio</button>
+  <div id="ok" class="ok"></div>
+  <div id="err" class="err"></div>
 
-<p id="contador" style="text-align:center;color:#475569;font-size:14px"></p>
+  <p id="contador" style="text-align:center;color:#475569;font-size:14px"></p>
 
-<hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0">
+  <hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0" />
 
-<h2 style="margin:0 0 8px">Lista de Socios</h2>
-<p style="color:#64748b;font-size:13px;margin:0 0 10px">Buscá por nombre, CI o cuenta y tocá para editar.</p>
-<input id="buscadorPadron" type="text" placeholder="Buscar: Juan, 5656565, 001..." oninput="renderListaPadron()" autocomplete="off" style="margin-bottom:10px">
-<button onclick="cargarListaPadron()" style="background:#0f172a;margin-bottom:12px">🔄 Actualizar lista</button>
-<p id="resumenLista" style="color:#475569;font-size:13px;text-align:center"></p>
-<div id="listaPadron"></div>
+  <h2 style="margin:0 0 8px">Lista de Socios</h2>
+  <p style="color:#64748b;font-size:13px;margin:0 0 10px">Buscá por nombre, CI o cuenta y tocá para editar.</p>
+  <input id="buscadorPadron" type="text" placeholder="Buscar: Juan, 5656565, 001..." oninput="renderListaPadron()" autocomplete="off" style="margin-bottom:10px" />
+  <button type="button" onclick="cargarListaPadron()" style="background:#0f172a;margin-bottom:12px">🔄 Actualizar lista</button>
+  <p id="resumenLista" style="color:#475569;font-size:13px;text-align:center"></p>
+  <div id="listaPadron"></div>
 </div>
 
 <script>
@@ -102,7 +102,16 @@ let editandoPersonaId = null;
 let editandoClienteId = null;
 let listaPadronGlobal = [];
 
-async function verificarSesionPadron(){
+function escapeHtml(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function verificarSesionPadron() {
   const { data } = await db.auth.getSession();
   const session = data.session;
 
@@ -110,13 +119,13 @@ async function verificarSesionPadron(){
   document.getElementById('noPermisoBox').classList.add('hidden');
   document.getElementById('contenidoPadron').classList.add('hidden');
 
-  if(!session){
+  if (!session) {
     document.getElementById('sinSesionBox').classList.remove('hidden');
     return;
   }
 
   const email = (session.user.email || '').toLowerCase();
-  if(email !== ADMIN_EMAIL.toLowerCase()){
+  if (email !== ADMIN_EMAIL.toLowerCase()) {
     document.getElementById('emailLogueado').textContent = email;
     document.getElementById('noPermisoBox').classList.remove('hidden');
     return;
@@ -142,62 +151,77 @@ function volverAlMenu() {
   window.location.href = 'index.html';
 }
 
-async function cerrarSesion(){
+async function cerrarSesion() {
   await db.auth.signOut();
   location.reload();
 }
 
-async function actualizarContador(){
-  const {count} = await db.from('clientes').select('*',{count:'exact',head:true});
-  document.getElementById('contador').textContent = 'Socios cargados: ' + (count||0) + ' / 150';
+async function actualizarContador() {
+  const { count } = await db.from('clientes').select('*', { count: 'exact', head: true });
+  document.getElementById('contador').textContent = 'Socios cargados: ' + (count || 0) + ' / 150';
 }
 
-// CORREGIDO: AHORA SÍ PEDIMOS personas(id, ...)
-async function cargarListaPadron(){
+async function cargarListaPadron() {
   const cont = document.getElementById('listaPadron');
   cont.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px">Cargando lista...</p>';
-  const { data, error } = await db.from('clientes').select('*, personas(id, nombre, apellido, cedula_ruc, telefono, direccion)').order('nro_cuenta', { ascending: true });
-  if(error){
-    cont.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar lista: ' + error.message + '</p>';
+  const { data, error } = await db
+    .from('clientes')
+    .select('*, personas(id, nombre, apellido, cedula_ruc, telefono, direccion)')
+    .order('nro_cuenta', { ascending: true });
+
+  if (error) {
+    cont.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar lista: ' + escapeHtml(error.message) + '</p>';
     return;
   }
+
   listaPadronGlobal = data || [];
   renderListaPadron();
 }
 
-function renderListaPadron(){
+function renderListaPadron() {
   const texto = (document.getElementById('buscadorPadron').value || '').toLowerCase().trim();
   const cont = document.getElementById('listaPadron');
   const resumen = document.getElementById('resumenLista');
-  if(!cont) return;
-  const filtrados = listaPadronGlobal.filter(function(c){
-    if(!texto) return true;
+  if (!cont) return;
+
+  const filtrados = listaPadronGlobal.filter((c) => {
+    if (!texto) return true;
     const p = c.personas || {};
-    const hay = ((p.nombre||'') + ' ' + (p.apellido||'') + ' ' + (p.cedula_ruc||'') + ' ' + (c.nro_cuenta||'') + ' ' + (p.telefono||'')).toLowerCase();
-    return hay.indexOf(texto) !== -1;
+    const hay = ((p.nombre || '') + ' ' + (p.apellido || '') + ' ' + (p.cedula_ruc || '') + ' ' + (c.nro_cuenta || '') + ' ' + (p.telefono || '')).toLowerCase();
+    return hay.includes(texto);
   });
+
   resumen.textContent = 'Mostrando ' + filtrados.length + ' de ' + listaPadronGlobal.length + ' socios';
-  if(filtrados.length === 0){
+  if (filtrados.length === 0) {
     cont.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px">No se encontró ningún socio con ese dato.</p>';
     return;
   }
-  let html = '';
-  filtrados.forEach(function(c){
+
+  cont.innerHTML = filtrados.map((c) => {
     const p = c.personas || {};
-    const nombre = (p.nombre||'') + ' ' + (p.apellido||'');
-    html += '<div class="item-socio" onclick="cargarSocioDesdeLista(\'' + c.id + '\')">'
-      + '<b>' + nombre.trim() + '</b><br>'
-      + '<span style="font-size:13px;color:#475569">CI: ' + (p.cedula_ruc||'-') + ' | Cta: ' + (c.nro_cuenta||'-') + (p.telefono ? ' | ' + p.telefono : '') + '</span><br>'
+    const nombreCompleto = ((p.nombre || '') + ' ' + (p.apellido || '')).trim();
+    const detalleExtra = p.telefono ? ' | ' + escapeHtml(p.telefono) : '';
+    return (
+      '<div class="item-socio" data-cliente-id="' + escapeHtml(c.id) + '">'
+      + '<b>' + escapeHtml(nombreCompleto) + '</b><br>'
+      + '<span style="font-size:13px;color:#475569">CI: ' + escapeHtml(p.cedula_ruc || '-') + ' | Cta: ' + escapeHtml(c.nro_cuenta || '-') + detalleExtra + '</span><br>'
       + '<span style="font-size:12px;color:#2563eb;font-weight:700">✏️ Tocar para editar</span>'
-      + '</div>';
+      + '</div>'
+    );
+  }).join('');
+
+  cont.querySelectorAll('.item-socio').forEach((el) => {
+    el.addEventListener('click', () => {
+      cargarSocioDesdeLista(el.dataset.clienteId);
+    });
   });
-  cont.innerHTML = html;
 }
 
-function cargarSocioDesdeLista(clienteId){
-  const c = listaPadronGlobal.find(function(x){ return String(x.id) === String(clienteId); });
-  if(!c) return;
+function cargarSocioDesdeLista(clienteId) {
+  const c = listaPadronGlobal.find((x) => String(x.id) === String(clienteId));
+  if (!c) return;
   const p = c.personas || {};
+
   document.getElementById('nombre').value = p.nombre || '';
   document.getElementById('apellido').value = p.apellido || '';
   document.getElementById('cedula').value = p.cedula_ruc || '';
@@ -205,26 +229,34 @@ function cargarSocioDesdeLista(clienteId){
   document.getElementById('direccion').value = p.direccion || '';
   document.getElementById('cuenta').value = c.nro_cuenta || '';
   document.getElementById('medidor').value = c.numero_medidor || '';
-  // CORREGIDO: respaldo con c.persona_id por si p.id viene vacío
+
   editandoPersonaId = p.id || c.persona_id || null;
   editandoClienteId = c.id;
+
   document.getElementById('modoEditar').style.display = 'block';
   document.getElementById('buscarCedula').value = p.cedula_ruc || '';
+
   const okEl = document.getElementById('ok');
-  okEl.textContent = '✏️ Cargado para editar: ' + (p.nombre||'') + ' ' + (p.apellido||'');
+  okEl.textContent = '✏️ Cargado para editar: ' + (p.nombre || '') + ' ' + (p.apellido || '');
   okEl.style.display = 'block';
   document.getElementById('nombre').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function buscarParaEditar() {
   const cedulaBuscar = document.getElementById('buscarCedula').value.trim();
-  if (!cedulaBuscar) { alert('Escribí una C.I. Ej: 5656565'); return; }
-  
+  if (!cedulaBuscar) {
+    alert('Escribí una C.I. Ej: 5656565');
+    return;
+  }
+
   const { data: persona } = await db.from('personas').select('*').eq('cedula_ruc', cedulaBuscar).single();
-  if (!persona) { alert('No existe esa C.I.'); return; }
-  
+  if (!persona) {
+    alert('No existe esa C.I.');
+    return;
+  }
+
   const { data: cliente } = await db.from('clientes').select('*').eq('persona_id', persona.id).single();
-  
+
   document.getElementById('nombre').value = persona.nombre;
   document.getElementById('apellido').value = persona.apellido;
   document.getElementById('cedula').value = persona.cedula_ruc;
@@ -232,17 +264,20 @@ async function buscarParaEditar() {
   document.getElementById('direccion').value = persona.direccion || '';
   document.getElementById('cuenta').value = cliente ? cliente.nro_cuenta : '';
   document.getElementById('medidor').value = cliente ? (cliente.numero_medidor || '') : '';
-  
+
   editandoPersonaId = persona.id;
   editandoClienteId = cliente ? cliente.id : null;
-  
+
   document.getElementById('modoEditar').style.display = 'block';
-  document.getElementById('ok').textContent = cliente ? '✏️ Cargado para editar: ' + persona.nombre : '⚠️ Esta persona NO tenía cuenta, poné una cuenta y Guardar para recuperarla';
-  document.getElementById('ok').style.display = 'block';
-}  
-    
+  const okEl = document.getElementById('ok');
+  okEl.textContent = cliente
+    ? '✏️ Cargado para editar: ' + persona.nombre
+    : '⚠️ Esta persona NO tenía cuenta, poné una cuenta y Guardar para recuperarla';
+  okEl.style.display = 'block';
+}
+
 function cancelar() {
-  ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'cuenta', 'medidor', 'buscarCedula', 'buscarCuenta'].forEach(id => {
+  ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'cuenta', 'medidor', 'buscarCedula'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -253,7 +288,7 @@ function cancelar() {
   document.getElementById('err').style.display = 'none';
 }
 
-async function guardar(){
+async function guardar() {
   const nombre = document.getElementById('nombre').value.trim();
   const apellido = document.getElementById('apellido').value.trim();
   const cedula = document.getElementById('cedula').value.trim();
@@ -265,38 +300,62 @@ async function guardar(){
 
   const okEl = document.getElementById('ok');
   const errEl = document.getElementById('err');
-  okEl.style.display='none'; errEl.style.display='none';
+  okEl.style.display = 'none';
+  errEl.style.display = 'none';
 
-  if(!nombre || !apellido || !cedula || !telefono || !cuenta){
+  if (!nombre || !apellido || !cedula || !telefono || !cuenta) {
     errEl.textContent = 'Faltan datos obligatorios (*)';
-    errEl.style.display='block'; return;
+    errEl.style.display = 'block';
+    return;
   }
 
-  const {data: cuentaExiste} = await db.from('clientes').select('id, personas(nombre, apellido)').eq('nro_cuenta', cuenta).maybeSingle();
-  if(cuentaExiste && cuentaExiste.id !== editandoClienteId){
+  const { data: cuentaExiste } = await db
+    .from('clientes')
+    .select('id, personas(nombre, apellido)')
+    .eq('nro_cuenta', cuenta)
+    .maybeSingle();
+
+  if (cuentaExiste && cuentaExiste.id !== editandoClienteId) {
     const dueno = cuentaExiste.personas ? cuentaExiste.personas.nombre + ' ' + cuentaExiste.personas.apellido : '';
     errEl.textContent = '⚠️ Número de cuenta ya se encuentra registrada. Verificar - La cuenta ' + cuenta + ' ya es de ' + dueno;
-    errEl.style.display='block'; return;
+    errEl.style.display = 'block';
+    return;
   }
-  
-  if(editandoPersonaId){
-    const {error: e1} = await db.from('personas').update({nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null}).eq('id', editandoPersonaId);
-    if(e1){
-      // Si la cédula ya es de OTRO socio, avisar lindo
-      if(e1.message && e1.message.indexOf('personas_cedula_ruc_key') !== -1){
+
+  if (editandoPersonaId) {
+    const { error: e1 } = await db
+      .from('personas')
+      .update({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
+      .eq('id', editandoPersonaId);
+
+    if (e1) {
+      if (e1.message && e1.message.includes('personas_cedula_ruc_key')) {
         errEl.textContent = '⚠️ Esa cédula ' + cedula + ' ya existe en otro socio. Revisá que no esté duplicado.';
       } else {
         errEl.textContent = 'Error al actualizar: ' + e1.message;
       }
-      errEl.style.display='block'; return;
+      errEl.style.display = 'block';
+      return;
     }
 
-    if(editandoClienteId){
-      await db.from('clientes').update({nro_cuenta: cuenta, numero_medidor: medidor}).eq('id', editandoClienteId);
+    if (editandoClienteId) {
+      await db.from('clientes').update({ nro_cuenta: cuenta, numero_medidor: medidor }).eq('id', editandoClienteId);
     } else {
-      const {error: e2} = await db.from('clientes').insert({persona_id: editandoPersonaId, nro_cuenta: cuenta, numero_medidor: medidor, tipo_tarifa: 'fija', saldo_favor: 0, activo: true});
-      if(e2){ errEl.textContent = 'Error al crear cuenta: ' + e2.message; errEl.style.display='block'; return; }
+      const { error: e2 } = await db.from('clientes').insert({
+        persona_id: editandoPersonaId,
+        nro_cuenta: cuenta,
+        numero_medidor: medidor,
+        tipo_tarifa: 'fija',
+        saldo_favor: 0,
+        activo: true
+      });
+      if (e2) {
+        errEl.textContent = 'Error al crear cuenta: ' + e2.message;
+        errEl.style.display = 'block';
+        return;
+      }
     }
+
     const mensajeFinal = '✅ Datos del Cliente Actualizado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta;
     cancelar();
     okEl.textContent = mensajeFinal;
@@ -306,20 +365,19 @@ async function guardar(){
     return;
   }
 
-  const {data: persona, error: e1} = await db.from('personas').insert({
-    nombre: nombre,
-    apellido: apellido,
-    cedula_ruc: cedula,
-    telefono: telefono,
-    direccion: direccion || null
-  }).select().single();
+  const { data: persona, error: e1 } = await db
+    .from('personas')
+    .insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
+    .select()
+    .single();
 
-  if(e1){
+  if (e1) {
     errEl.textContent = 'Error en persona: ' + e1.message;
-    errEl.style.display='block'; return;
+    errEl.style.display = 'block';
+    return;
   }
 
-  const {error: e2} = await db.from('clientes').insert({
+  const { error: e2 } = await db.from('clientes').insert({
     persona_id: persona.id,
     nro_cuenta: cuenta,
     numero_medidor: medidor,
@@ -328,15 +386,18 @@ async function guardar(){
     activo: true
   });
 
-  if(e2){
+  if (e2) {
     errEl.textContent = 'Error en cliente: ' + e2.message + ' (la persona quedó creada, revisá nro. cuenta duplicado)';
-    errEl.style.display='block'; return;
+    errEl.style.display = 'block';
+    return;
   }
 
   okEl.textContent = '✅ Socio guardado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta + (medidor ? ' - Medidor ' + medidor : ' - Sin medidor');
-  okEl.style.display='block';
-  ['nombre','apellido','cedula','telefono','direccion','medidor'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('cuenta').value = String(Number(cuenta)+1).padStart(3,'0');
+  okEl.style.display = 'block';
+  ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'medidor'].forEach((id) => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('cuenta').value = String(Number(cuenta) + 1).padStart(3, '0');
   document.getElementById('nombre').focus();
   actualizarContador();
   cargarListaPadron();

@@ -1,8 +1,9 @@
 {
   "name": "Junta de Saneamiento JSYBYPE",
   "short_name": "Junta JSYBYPE",
-  "description": "Portal del Socio y Administracion Junta JSYBYPE",
+  "description": "Portal del Socio y Administración Junta JSYBYPE",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
