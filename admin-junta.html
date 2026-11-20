@@ -453,18 +453,10 @@ async function generarCuotasMensuales() {
   btn.disabled = true;
   
   try {
-    // 1. Solo los activos - ahora sí sabemos que existe la columna
-    const { data: socios, error: e1 } = await supabase
-      .from('clientes')
-      .select('id')
-      .eq('activo', true);
+    const { data: socios, error: e1 } = await sb.from('clientes').select('id').eq('activo', true);
     if (e1) throw new Error('Clientes: ' + e1.message);
     
-    // 2. Los que ya tienen factura en ese MES (no periodo)
-    const { data: ya, error: e2 } = await supabase
-      .from('facturas')
-      .select('cliente_id')
-      .eq('mes', periodo);
+    const { data: ya, error: e2 } = await sb.from('facturas').select('cliente_id').eq('mes', periodo);
     if (e2) throw new Error('Facturas: ' + e2.message);
     
     const yaIds = new Set((ya || []).map(f => f.cliente_id));
@@ -487,7 +479,7 @@ async function generarCuotasMensuales() {
       consumo_m3: 0
     }));
     
-    const { error: e3 } = await supabase.from('facturas').insert(paraInsertar);
+    const { error: e3 } = await sb.from('facturas').insert(paraInsertar);
     if (e3) throw new Error('Insert: ' + e3.message);
     
     msg.textContent = `¡Listo! Se generaron ${nuevos.length} cuotas de ${periodo}.`;
