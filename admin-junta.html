@@ -71,7 +71,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">Buscar Socio por nombre o cedula</label>
           <input type="text" id="filtro-socio-cobro" placeholder="Ej: Juan, Benitez, 5656565..." autocomplete="off" oninput="filtrarSociosCobro()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50">
-          <p class="text-[11px] text-slate-400 mt-1">Escribí y la lista de abajo se filtra sola. Tocá ✕ para ver todos de nuevo.</p>
+          <p class="text-[11px] text-slate-400 mt-1">Escribí y la lista de abajo se filtra sola.</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">Socio / Cliente</label>
@@ -79,16 +79,18 @@
             <option value="">-- Selecciona Socio --</option>
           </select>
         </div>
+        <!-- NUEVO: YA NO ES SELECT, ES LISTA CON CHECKBOX PARA PAGAR VARIAS -->
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Factura a pagar</label>
-          <select id="sel-factura" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
-            <option value="">-- Primero elige Socio --</option>
-          </select>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Facturas a pagar (podés marcar varias)</label>
+          <div id="lista-facturas-cobro" class="space-y-2 max-h-[240px] overflow-y-auto border border-slate-300 rounded-xl p-2 bg-slate-50">
+            <p class="text-xs text-slate-500 text-center py-2">-- Primero elige Socio --</p>
+          </div>
           <p id="info-saldo-favor" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg mt-2"></p>
+          <p class="text-[11px] text-slate-400 mt-1">Marcá las que quiere pagar. Si el monto es menor, se hace pago parcial de la más vieja primero.</p>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">Monto a Pagar (Gs.)</label>
-          <input type="text" id="inp-monto" required placeholder="Ej: 25.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
+          <label class="block text-xs font-bold text-slate-600 mb-1">Monto a Pagar (Gs.) - Total que entrega el socio</label>
+          <input type="text" id="inp-monto" required placeholder="Ej: 37.500" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold">
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">Metodo de Pago</label>
@@ -217,13 +219,8 @@ window.cambiarPestanaAdmin = function(pestana){
     btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
   });
 };
-window.abrirModalNuevoSocio = function(){
-  document.getElementById('modal-nuevo-socio').classList.remove('hidden');
-};
-window.cerrarModalNuevoSocio = function(){
-  document.getElementById('modal-nuevo-socio').classList.add('hidden');
-  document.getElementById('ns-msg').classList.add('hidden');
-};
+window.abrirModalNuevoSocio = function(){ document.getElementById('modal-nuevo-socio').classList.remove('hidden'); };
+window.cerrarModalNuevoSocio = function(){ document.getElementById('modal-nuevo-socio').classList.add('hidden'); document.getElementById('ns-msg').classList.add('hidden'); };
 window.manejarLoginAdmin = async function(event){
   event.preventDefault();
   const email = document.getElementById('login-email-admin').value.trim();
@@ -231,31 +228,18 @@ window.manejarLoginAdmin = async function(event){
   const btn = document.getElementById('btn-login-admin');
   btn.textContent = 'Verificando...'; btn.disabled = true;
   const r = await supabase.auth.signInWithPassword({ email, password: pass });
-  if(r.error){
-    mostrarMensajeAdmin('login-msg', 'Correo o contrasena incorrecta.', true);
-    btn.textContent = 'Ingresar'; btn.disabled = false; return;
-  }
+  if(r.error){ mostrarMensajeAdmin('login-msg', 'Correo o contrasena incorrecta.', true); btn.textContent = 'Ingresar'; btn.disabled = false; return; }
   await verificarSesionAdmin();
 };
-window.cerrarSesion = async function(){
-  await supabase.auth.signOut();
-  location.reload();
-};
+window.cerrarSesion = async function(){ await supabase.auth.signOut(); location.reload(); };
 async function verificarSesionAdmin(){
   const { data } = await supabase.auth.getSession();
   const session = data.session;
-  if(!session){
-    document.getElementById('box-login').classList.remove('hidden');
-    document.getElementById('box-contenido').classList.add('hidden');
-    return;
-  }
-  document.getElementById('box-login').classList.add('hidden');
-  document.getElementById('box-contenido').classList.remove('hidden');
+  if(!session){ document.getElementById('box-login').classList.remove('hidden'); document.getElementById('box-contenido').classList.add('hidden'); return; }
+  document.getElementById('box-login').classList.add('hidden'); document.getElementById('box-contenido').classList.remove('hidden');
   await cargarDatosAdmin();
 }
-async function cargarDatosAdmin(){
-  await Promise.all([cargarSocios(), cargarPagosRecientes(), cargarGastosRecientes(), cargarBalance()]);
-}
+async function cargarDatosAdmin(){ await Promise.all([cargarSocios(), cargarPagosRecientes(), cargarGastosRecientes(), cargarBalance()]); }
 let listaSociosCobro = [];
 async function cargarSocios(){
   const r = await supabase.from('clientes').select('id, nro_cuenta, saldo_favor, personas(nombre, apellido, cedula_ruc)').order('nro_cuenta', { ascending: true });
@@ -271,7 +255,6 @@ async function cargarSocios(){
     sel.appendChild(opt);
   });
 }
-// NUEVO: FILTRAR POR NOMBRE O CEDULA
 window.filtrarSociosCobro = function(){
   const texto = (document.getElementById('filtro-socio-cobro').value || '').toLowerCase().trim();
   const sel = document.getElementById('sel-cliente');
@@ -282,20 +265,18 @@ window.filtrarSociosCobro = function(){
     opt.hidden = !coincide;
     if(coincide) visibles++;
   });
-  // Si queda 1 solo, seleccionarlo solo
   if(texto && visibles === 1){
-    Array.from(sel.options).forEach(function(opt){
-      if(opt.value && !opt.hidden){ sel.value = opt.value; cargarFacturasSocioSeleccionado(); }
-    });
+    Array.from(sel.options).forEach(function(opt){ if(opt.value && !opt.hidden){ sel.value = opt.value; cargarFacturasSocioSeleccionado(); } });
   }
 };
+// NUEVO: LISTA CON CHECKBOX
 window.cargarFacturasSocioSeleccionado = async function(){
   const clienteId = document.getElementById('sel-cliente').value;
-  const selFactura = document.getElementById('sel-factura');
+  const cont = document.getElementById('lista-facturas-cobro');
   const infoSaldo = document.getElementById('info-saldo-favor');
-  selFactura.innerHTML = '<option value="">-- Cargando... --</option>';
+  cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
   infoSaldo.classList.add('hidden');
-  if(!clienteId){ selFactura.innerHTML = '<option value="">-- Primero elige Socio --</option>'; return; }
+  if(!clienteId){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">-- Primero elige Socio --</p>'; return; }
   const socio = listaSociosCobro.find(function(s){ return String(s.id) === String(clienteId); });
   if(socio && socio.saldo_favor > 0){
     infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + Number(socio.saldo_favor).toLocaleString('es-PY');
@@ -304,62 +285,81 @@ window.cargarFacturasSocioSeleccionado = async function(){
   const r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).neq('estado','pagado').order('mes', { ascending: true });
   const facturas = r.data || [];
   if(facturas.length === 0){
-    selFactura.innerHTML = '<option value="">Sin facturas pendientes - Al dia</option>';
+    cont.innerHTML = '<p class="text-xs text-emerald-700 text-center py-2 font-bold">Sin facturas pendientes - Al dia ✓</p>';
     document.getElementById('inp-monto').value = '';
     return;
   }
-  selFactura.innerHTML = '<option value="">-- Selecciona Factura --</option>';
-  facturas.forEach(function(f){
-    const opt = document.createElement('option');
-    opt.value = f.id;
-    opt.textContent = 'Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY');
-    opt.dataset.saldo = f.saldo_pendiente;
-    selFactura.appendChild(opt);
-  });
-  selFactura.onchange = function(){
-    const optSel = selFactura.options[selFactura.selectedIndex];
-    if(optSel && optSel.dataset.saldo){
-      document.getElementById('inp-monto').value = Number(optSel.dataset.saldo).toLocaleString('es-PY');
-    }
-  };
+  cont.innerHTML = facturas.map(function(f){
+    return '<label class="flex items-center gap-2 bg-white border rounded-xl p-2.5 cursor-pointer">'
+      + '<input type="checkbox" class="chk-factura w-4 h-4 accent-emerald-600" value="'+f.id+'" data-saldo="'+f.saldo_pendiente+'" data-mes="'+f.mes+'" checked>'
+      + '<div class="flex-1"><p class="text-xs font-bold">Mes ' + f.mes + '</p><p class="text-[11px] text-slate-500">Pendiente: Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</p></div>'
+      + '<span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">PENDIENTE</span>'
+      + '</label>';
+  }).join('') + '<p class="text-[11px] text-center text-slate-500 pt-1">Total seleccionado: <b id="total-seleccionado">Gs. 0</b> <button type="button" onclick="usarTotalSeleccionado()" class="text-blue-600 font-bold underline ml-1">Usar total</button></p>';
+  cont.querySelectorAll('.chk-factura').forEach(function(chk){ chk.addEventListener('change', actualizarTotalSeleccionado); });
+  actualizarTotalSeleccionado();
 };
+window.actualizarTotalSeleccionado = function(){
+  let total = 0;
+  document.querySelectorAll('.chk-factura:checked').forEach(function(c){ total += Number(c.dataset.saldo || 0); });
+  const el = document.getElementById('total-seleccionado');
+  if(el) el.textContent = 'Gs. ' + total.toLocaleString('es-PY');
+};
+window.usarTotalSeleccionado = function(){
+  let total = 0;
+  document.querySelectorAll('.chk-factura:checked').forEach(function(c){ total += Number(c.dataset.saldo || 0); });
+  document.getElementById('inp-monto').value = total ? total.toLocaleString('es-PY') : '';
+};
+// NUEVO: PAGO MULTIPLE + PARCIAL / AMORTIZACION
 window.registrarPago = async function(event){
   event.preventDefault();
   const clienteId = document.getElementById('sel-cliente').value;
-  const facturaId = document.getElementById('sel-factura').value;
-  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto').value);
+  let montoTotal = limpiarGuaraniesInput(document.getElementById('inp-monto').value);
   const metodo = document.getElementById('sel-metodo').value;
-  if(!clienteId || !facturaId || !monto || monto <= 0){
-    mostrarMensajeAdmin('pago-msg', 'Elegi socio, factura y monto valido.', true); return;
+  const checks = Array.from(document.querySelectorAll('.chk-factura:checked'));
+  if(!clienteId || checks.length === 0 || !montoTotal || montoTotal <= 0){
+    mostrarMensajeAdmin('pago-msg', 'Elegi socio, marcá al menos 1 factura y monto valido.', true); return;
   }
   const btn = document.getElementById('btn-pagar');
   btn.textContent = 'Registrando...'; btn.disabled = true;
   try{
-    const { data: factura, error: errF } = await supabase.from('facturas').select('*').eq('id', facturaId).single();
-    if(errF || !factura) throw new Error('No se encontro la factura.');
-    const nuevoSaldo = Number(factura.saldo_pendiente) - monto;
+    let montoRestante = montoTotal;
+    let detalle = [];
     let saldoFavorGenerado = 0;
-    let saldoFinalFactura = nuevoSaldo;
-    if(nuevoSaldo < 0){ saldoFavorGenerado = Math.abs(nuevoSaldo); saldoFinalFactura = 0; }
-    const nuevoEstado = saldoFinalFactura === 0 ? 'pagado' : 'pendiente';
-    const { error: errPago } = await supabase.from('pagos').insert({ cliente_id: clienteId, factura_id: facturaId, monto_pagado: monto, metodo_pago: metodo, fecha_pago: new Date().toISOString().slice(0,10) });
-    if(errPago) throw errPago;
-    const { error: errFac } = await supabase.from('facturas').update({ saldo_pendiente: saldoFinalFactura, estado: nuevoEstado }).eq('id', facturaId);
-    if(errFac) throw errFac;
+    for(let i = 0; i < checks.length; i++){
+      if(montoRestante <= 0) break;
+      const facturaId = checks[i].value;
+      const { data: factura } = await supabase.from('facturas').select('*').eq('id', facturaId).single();
+      if(!factura) continue;
+      const saldoFactura = Number(factura.saldo_pendiente);
+      const aPagar = Math.min(montoRestante, saldoFactura);
+      const nuevoSaldo = saldoFactura - aPagar;
+      const nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
+      const { error: errPago } = await supabase.from('pagos').insert({
+        cliente_id: clienteId,
+        factura_id: facturaId,
+        monto_pagado: aPagar,
+        metodo: metodo,
+        concepto: nuevoSaldo === 0 ? 'Pago total factura ' + factura.mes : 'Pago parcial / Amortizacion factura ' + factura.mes + ' - Queda Gs. ' + nuevoSaldo.toLocaleString('es-PY')
+      });
+      if(errPago) throw errPago;
+      await supabase.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
+      detalle.push(factura.mes + ': Gs. ' + aPagar.toLocaleString('es-PY') + (nuevoSaldo > 0 ? ' (queda ' + nuevoSaldo.toLocaleString('es-PY') + ')' : ' ✓ pagada'));
+      montoRestante -= aPagar;
+    }
+    if(montoRestante > 0) saldoFavorGenerado = montoRestante;
     if(saldoFavorGenerado > 0){
       const { data: clienteActual } = await supabase.from('clientes').select('saldo_favor').eq('id', clienteId).single();
       const saldoActual = clienteActual ? Number(clienteActual.saldo_favor || 0) : 0;
       await supabase.from('clientes').update({ saldo_favor: saldoActual + saldoFavorGenerado }).eq('id', clienteId);
     }
-    mostrarMensajeAdmin('pago-msg', 'Pago registrado! ' + (saldoFavorGenerado > 0 ? 'Saldo a favor generado: Gs. ' + saldoFavorGenerado.toLocaleString('es-PY') : ''), false);
+    mostrarMensajeAdmin('pago-msg', 'Pago registrado! ' + detalle.join(' | ') + (saldoFavorGenerado > 0 ? ' | Saldo a favor: Gs. ' + saldoFavorGenerado.toLocaleString('es-PY') : ''), false);
     document.getElementById('inp-monto').value = '';
     document.getElementById('filtro-socio-cobro').value = '';
     filtrarSociosCobro();
     await cargarDatosAdmin();
     await cargarFacturasSocioSeleccionado();
-  } catch(e){
-    mostrarMensajeAdmin('pago-msg', 'Error: ' + e.message, true);
-  }
+  } catch(e){ mostrarMensajeAdmin('pago-msg', 'Error: ' + e.message, true); }
   btn.textContent = 'Registrar Pago'; btn.disabled = false;
 };
 async function cargarPagosRecientes(){
@@ -369,7 +369,8 @@ async function cargarPagosRecientes(){
   if(pagos.length === 0){ cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aun.</p>'; return; }
   cont.innerHTML = pagos.map(function(p){
     const c = p.clientes || {}; const per = c.personas || {};
-    return '<div class="flex justify-between items-center border-b pb-2"><div><p class="text-xs font-bold">' + (per.nombre||'') + ' ' + (per.apellido||'') + ' - Cta ' + (c.nro_cuenta||'') + '</p><p class="text-[11px] text-slate-500">' + (p.fecha_pago||'') + ' - ' + (p.metodo_pago||'') + '</p></div><span class="text-xs font-bold text-emerald-600">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span></div>';
+    const fechaMostrar = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '';
+    return '<div class="flex justify-between items-center border-b pb-2"><div><p class="text-xs font-bold">' + (per.nombre||'') + ' ' + (per.apellido||'') + ' - Cta ' + (c.nro_cuenta||'') + '</p><p class="text-[11px] text-slate-500">' + fechaMostrar + ' - ' + (p.metodo||'') + ' - ' + (p.concepto||'') + '</p></div><span class="text-xs font-bold text-emerald-600">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span></div>';
   }).join('');
 }
 window.registrarGasto = async function(event){
@@ -402,10 +403,7 @@ async function cargarGastosRecientes(){
   }).join('');
 }
 async function cargarBalance(){
-  const [rp, rg] = await Promise.all([
-    supabase.from('pagos').select('monto_pagado'),
-    supabase.from('gastos').select('monto')
-  ]);
+  const [rp, rg] = await Promise.all([ supabase.from('pagos').select('monto_pagado'), supabase.from('gastos').select('monto') ]);
   const totalCobrado = (rp.data || []).reduce(function(a,p){ return a + Number(p.monto_pagado||0); }, 0);
   const totalGastado = (rg.data || []).reduce(function(a,g){ return a + Number(g.monto||0); }, 0);
   document.getElementById('total-cobrado').textContent = 'Gs. ' + totalCobrado.toLocaleString('es-PY');
@@ -424,9 +422,7 @@ window.generarCuotasMasivas = async function(event){
     if(!clientes || clientes.length === 0) throw new Error('No hay socios activos.');
     const { data: existentes } = await supabase.from('facturas').select('cliente_id').eq('mes', mes);
     const yaTienen = new Set((existentes || []).map(function(f){ return f.cliente_id; }));
-    const nuevas = clientes.filter(function(c){ return !yaTienen.has(c.id); }).map(function(c){
-      return { cliente_id: c.id, mes: mes, monto: monto, saldo_pendiente: monto, estado: 'pendiente' };
-    });
+    const nuevas = clientes.filter(function(c){ return !yaTienen.has(c.id); }).map(function(c){ return { cliente_id: c.id, mes: mes, monto: monto, saldo_pendiente: monto, estado: 'pendiente' }; });
     if(nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
     const { error } = await supabase.from('facturas').insert(nuevas);
     if(error) throw error;
