@@ -599,17 +599,25 @@ if (inputMonto) {
   });
 }
 
-// 2. FACTURA: 0010010012345 -> 001-001-0012345
-const inputFactura = document.getElementById('gastoNota');
-if (inputFactura) {
-  inputFactura.addEventListener('input', () => {
-    let n = inputFactura.value.replace(/\D/g, '').slice(0, 13); // max 3+3+7 = 13
-    if (n.length > 6) n = n.slice(0, 3) + '-' + n.slice(3, 6) + '-' + n.slice(6);
-    else if (n.length > 3) n = n.slice(0, 3) + '-' + n.slice(3);
-    inputFactura.value = n;
+// FORMATO 10.000.000 y 001-001-0012345
+const mGasto = document.getElementById('inp-monto-gasto');
+if (mGasto) {
+  mGasto.addEventListener('input', () => {
+    let n = mGasto.value.replace(/\D/g, '');
+    mGasto.value = n ? Number(n).toLocaleString('es-PY') : '';
   });
 }
-function limpiarMonto() {
+const nGasto = document.getElementById('inp-nota-gasto');
+if (nGasto) {
+  nGasto.addEventListener('input', () => {
+    let v = nGasto.value;
+    if (/[a-zA-Z]/.test(v)) return;
+    let n = v.replace(/\D/g, '').slice(0, 13);
+    if (n.length > 6) nGasto.value = n.slice(0, 3) + '-' + n.slice(3, 6) + '-' + n.slice(6);
+    else if (n.length > 3) nGasto.value = n.slice(0, 3) + '-' + n.slice(3);
+    else nGasto.value = n;
+  });
+}
   return parseInt(document.getElementById('gastoMonto').value.replace(/\./g, '')) || 0;
 }
 </script>
