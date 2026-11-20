@@ -330,11 +330,14 @@ async function registrarPago(){
     await sb.from('facturas').update({ saldo_pendiente: nSaldo, estado: nEstado }).eq('id', lista[i].id);
     restante -= aPagar;
   }
-  msg.textContent = '¡Cobro múltiple guardado! Se pagaron ' + lista.length + ' facturas por Gs. ' + montoTotal.toLocaleString('es-PY');
+    msg.textContent = '¡Cobro múltiple guardado! Se pagaron ' + lista.length + ' facturas por Gs. ' + montoTotal.toLocaleString('es-PY');
   msg.style.color = 'green';
   document.getElementById('inp-monto').value = '';
+  document.getElementById('sel-cliente').value = '';
+  document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
+  document.getElementById('total-a-cobrar').textContent = '';
   cargar();
-}
+  }
 function editarGasto(id){
   var g = gastosGlobal.find(function(item){ return String(item.id) === String(id); });
   if(!g) return;
@@ -434,7 +437,12 @@ async function registrarGasto(){
   if(r.error){ if(msg){ msg.textContent = 'Error al guardar gasto: ' + r.error.message; msg.style.color = 'red'; } return; }
   if(msg){ msg.textContent = 'Gasto guardado! Se descontó del Balance: Gs. ' + monto.toLocaleString('es-PY'); msg.style.color = 'green'; }
   document.getElementById('inp-concepto-gasto').value = '';
-  document.getElementById('inp-monto-gasto').value = '';
+  
+      document.getElementById('inp-monto').value = '';
+    document.getElementById('sel-cliente').value = '';
+    document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
+    document.getElementById('total-a-cobrar').textContent = '';
+    cargar(); return;
   document.getElementById('inp-proveedor-gasto').value = '';
   document.getElementById('inp-nota-gasto').value = '';
   cargar();
