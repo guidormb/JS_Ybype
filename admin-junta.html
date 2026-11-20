@@ -92,10 +92,13 @@
     <h3>Registrar Pago</h3>
     <label>Socio</label>
     <select id="sel-cliente" onchange="cargarFacturasPendientes()"></select>
-    <label>Factura Pendiente</label>
-    <select id="sel-factura"></select>
-    <label>Monto Gs.</label>
-    <input type="number" id="inp-monto" placeholder="Ej: 20000" style="border:1px solid #ccc;border-radius:8px;padding:10px">
+        <label>Facturas Pendientes - Tildá las que paga</label>
+    <div id="lista-facturas-pago" style="border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:10px;max-height:180px;overflow-y:auto;background:#f8fafc">
+      <span style="color:#64748b;font-size:13px">Elegí primero el socio</span>
+    </div>
+    <div id="total-a-cobrar" style="font-weight:800;font-size:16px;margin-bottom:10px"></div>
+    <label>Monto Gs. (total que te paga)</label>
+    <input type="number" id="inp-monto" placeholder="Ej: 50000" style="border:1px solid #ccc;border-radius:8px;padding:10px">
     <label>Metodo</label>
     <select id="sel-metodo">
       <option value="efectivo">Efectivo</option>
@@ -248,40 +251,86 @@ async function cargarClientesParaPago(){
     sel.innerHTML += '<option value="' + c.id + '">' + nom + ' - Cuenta ' + c.nro_cuenta + '</option>';
   });
 }
-async function cargarFacturasPendientes() {
+async function cargarFacturasPendientes(){
   var clienteId = document.getElementById('sel-cliente').value;
-  var sel = document.getElementById('sel-factura');
-  sel.innerHTML = '<option value="">-- Elegi factura --</option>';
-  if (!clienteId) return;
-  
-  var listaOrdenada = (facturasGlobal || []).slice().sort(function(a, b) {
+  var cont = document.getElementById('lista-facturas-pago');
+  var totalEl = document.getElementById('total-a-cobrar');
+  cont.innerHTML = '';
+  totalEl.textContent = '';
+  document.getElementById('inp-monto').value = '';
+  if(!clienteId){
+    cont.innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
+    return;
+  }
+  var listaOrdenada = (facturasGlobal || []).slice().sort(function(a,b){
     return String(b.mes).localeCompare(String(a.mes));
   });
-  
-  listaOrdenada.forEach(function(f) {
-    if (String(f.cliente_id) === String(clienteId) && f.estado !== 'pagado') {
-      sel.innerHTML += '<option value="' + f.id + '">Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</option>';
-    }
+  var pendientes = listaOrdenada.filter(function(f){
+    return String(f.cliente_id) === String(clienteId) && f.estado !== 'pagado';
+  });
+  if(pendientes.length === 0){
+    cont.innerHTML = '<span style="color:#16a34a">Este socio no tiene deuda. ¡Al día!</span>';
+    return;
+  }
+  pendientes.forEach(function(f){
+    cont.innerHTML += '<label style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e2e8f0;cursor:pointer">'
+      + '<input type="checkbox" class="chk-factura" value="' + f.id + '" data-saldo="' + f.saldo_pendiente + '" data-mes="' + f.mes + '" onchange="actualizarTotalPago()" style="width:20px;height:20px">'
+      + '<span>Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</span></label>';
   });
 }
+
+function actualizarTotalPago(){
+  var checks = document.querySelectorAll('.chk-factura:checked');
+  var total = 0;
+  checks.forEach(function(c){ total += Number(c.getAttribute('data-saldo')) || 0; });
+  document.getElementById('total-a-cobrar').textContent = checks.length > 0 ? 'Total a cobrar: Gs. ' + total.toLocaleString('es-PY') + ' (' + checks.length + ' facturas)' : '';
+  if(checks.length > 0) document.getElementById('inp-monto').value = total;
+}
+
 async function registrarPago(){
   var clienteId = document.getElementById('sel-cliente').value;
-  var facturaId = document.getElementById('sel-factura').value;
-  var monto = Number(document.getElementById('inp-monto').value);
+  var checks = document.querySelectorAll('.chk-factura:checked');
+  var montoTotal = Number(document.getElementById('inp-monto').value);
   var metodo = document.getElementById('sel-metodo').value;
   var msg = document.getElementById('msg-pago');
-  if(!clienteId || !facturaId || !monto || monto <= 0){ msg.textContent = 'Completa socio, factura y monto.'; msg.style.color = 'red'; return; }
-  var rf = await sb.from('facturas').select('saldo_pendiente').eq('id', facturaId).single();
-  if(rf.error || !rf.data){ msg.textContent = 'No se pudo leer la factura.'; msg.style.color = 'red'; return; }
-  var saldoActual = Number(rf.data.saldo_pendiente);
-  if(monto > saldoActual){ msg.textContent = 'El monto es mayor a la deuda Gs. ' + saldoActual.toLocaleString('es-PY'); msg.style.color = 'red'; return; }
-  var r1 = await sb.from('pagos').insert([{ cliente_id: clienteId, factura_id: facturaId, monto_pagado: monto, metodo: metodo }]);
-  if(r1.error){ msg.textContent = 'Error al guardar pago: ' + r1.error.message; msg.style.color = 'red'; return; }
-  var nuevoSaldo = saldoActual - monto;
-  var nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
-  var r2 = await sb.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
-  if(r2.error){ msg.textContent = 'Pago guardado pero no se actualizo factura: ' + r2.error.message; msg.style.color = 'red'; return; }
-  msg.textContent = 'Pago guardado! Nuevo saldo: Gs. ' + nuevoSaldo.toLocaleString('es-PY');
+  if(!clienteId || checks.length === 0 || !montoTotal || montoTotal <= 0){
+    msg.textContent = 'Elegí socio, tildá al menos 1 factura y poné el monto.';
+    msg.style.color = 'red'; return;
+  }
+
+  // Si es 1 sola factura, permite pago parcial como antes
+  if(checks.length === 1){
+    var facturaId = checks[0].value;
+    var saldoActual = Number(checks[0].getAttribute('data-saldo'));
+    if(montoTotal > saldoActual){ msg.textContent = 'El monto es mayor a la deuda Gs. ' + saldoActual.toLocaleString('es-PY'); msg.style.color = 'red'; return; }
+    var r1 = await sb.from('pagos').insert([{ cliente_id: clienteId, factura_id: facturaId, monto_pagado: montoTotal, metodo: metodo }]);
+    if(r1.error){ msg.textContent = 'Error: ' + r1.error.message; msg.style.color = 'red'; return; }
+    var nuevoSaldo = saldoActual - montoTotal;
+    var nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
+    await sb.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
+    msg.textContent = 'Pago guardado! Nuevo saldo: Gs. ' + nuevoSaldo.toLocaleString('es-PY');
+    msg.style.color = 'green';
+    document.getElementById('inp-monto').value = '';
+    cargar(); return;
+  }
+
+  // Si son varias, reparte el monto en orden: primero la más vieja
+  var lista = Array.from(checks).map(function(c){
+    return { id: c.value, mes: c.getAttribute('data-mes'), saldo: Number(c.getAttribute('data-saldo')) };
+  }).sort(function(a,b){ return String(a.mes).localeCompare(String(b.mes)); });
+
+  var restante = montoTotal;
+  for(var i = 0; i < lista.length; i++){
+    if(restante <= 0) break;
+    var aPagar = Math.min(lista[i].saldo, restante);
+    var rPago = await sb.from('pagos').insert([{ cliente_id: clienteId, factura_id: lista[i].id, monto_pagado: aPagar, metodo: metodo }]);
+    if(rPago.error){ msg.textContent = 'Error en ' + lista[i].mes + ': ' + rPago.error.message; msg.style.color = 'red'; return; }
+    var nSaldo = lista[i].saldo - aPagar;
+    var nEstado = nSaldo === 0 ? 'pagado' : 'pendiente';
+    await sb.from('facturas').update({ saldo_pendiente: nSaldo, estado: nEstado }).eq('id', lista[i].id);
+    restante -= aPagar;
+  }
+  msg.textContent = '¡Cobro múltiple guardado! Se pagaron ' + lista.length + ' facturas por Gs. ' + montoTotal.toLocaleString('es-PY');
   msg.style.color = 'green';
   document.getElementById('inp-monto').value = '';
   cargar();
