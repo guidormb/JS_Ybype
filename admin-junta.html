@@ -372,7 +372,7 @@ function editarGasto(id){
   gastoEditandoId = g.id;
   document.getElementById('inp-concepto-gasto').value = g.descripcion || '';
   document.getElementById('sel-categoria-gasto').value = g.categoria || 'otros';
-  document.getElementById('inp-monto-gasto').value = g.monto || '';
+  document.getElementById('inp-monto-gasto').value = g.monto ? Number(g.monto).toLocaleString('es-PY') : '';
   document.getElementById('inp-fecha-gasto').value = g.fecha ? String(g.fecha).slice(0, 10) : '';
   document.getElementById('inp-proveedor-gasto').value = g.proveedor_beneficiario || '';
   document.getElementById('inp-nota-gasto').value = g.nota || '';
@@ -411,7 +411,7 @@ function cancelarEdicionGasto(){
 }
 async function registrarGasto(){
   var descripcion = document.getElementById('inp-concepto-gasto').value.trim();
-  var monto = Number(document.getElementById('inp-monto-gasto').value);
+ var monto = parseInt(document.getElementById('inp-monto-gasto').value.replace(/\./g, '')) || 0;
   var categoria = document.getElementById('sel-categoria-gasto').value;
   var fecha = document.getElementById('inp-fecha-gasto').value;
   var proveedor = document.getElementById('inp-proveedor-gasto').value.trim();
@@ -585,20 +585,7 @@ document.getElementById('btnGenerarCuotas').addEventListener('click', generarCuo
     window.addEventListener('load', function() {
       navigator.serviceWorker.register('./sw.js');
     });
-  }
-  // --- FORMATO BONITO PARA MONTO Y FACTURA ---
-
-// 1. MONTO: 10000000 -> 10.000.000
-const inputMonto = document.getElementById('gastoMonto');
-if (inputMonto) {
-  inputMonto.addEventListener('input', () => {
-    let soloNumeros = inputMonto.value.replace(/\D/g, '');
-    if (!soloNumeros) { inputMonto.value = ''; return; }
-    // Le pone los puntos cada 3 digitos
-    inputMonto.value = Number(soloNumeros).toLocaleString('es-PY');
-  });
 }
-
 // FORMATO 10.000.000 y 001-001-0012345
 const mGasto = document.getElementById('inp-monto-gasto');
 if (mGasto) {
@@ -617,8 +604,6 @@ if (nGasto) {
     else if (n.length > 3) nGasto.value = n.slice(0, 3) + '-' + n.slice(3);
     else nGasto.value = n;
   });
-}
-  return parseInt(document.getElementById('gastoMonto').value.replace(/\./g, '')) || 0;
 }
 </script>
 </body>
