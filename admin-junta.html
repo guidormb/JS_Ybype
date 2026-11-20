@@ -20,6 +20,11 @@
     <div>
       <h1 class="font-bold text-base">Junta de Saneamiento</h1>
       <p class="text-[11px] text-slate-400">Caja y Cobros - Admin</p>
+      <div id="header-acciones" class="flex gap-2 flex-wrap justify-end hidden">
+  <button onclick="abrirPadron()" class="bg-amber-500 px-3 py-2 rounded-lg text-xs font-bold">📋 Padrón</button>
+  <button onclick="abrirModalNuevoSocio()" class="bg-blue-600 px-3 py-2 rounded-lg text-xs font-bold">+ Nuevo Socio</button>
+  <button onclick="cerrarSesion()" class="bg-red-600 px-3 py-2 rounded-lg text-xs font-bold">Salir</button>
+</div>
     </div>
     <div class="flex gap-2 flex-wrap justify-end">
   <button onclick="abrirPadron()" class="bg-amber-500 px-3 py-2 rounded-lg text-xs font-bold">📋 Padrón</button>
@@ -261,7 +266,14 @@ window.cambiarPestanaAdmin = function(pestana){
     btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
   });
 };
-window.abrirModalNuevoSocio = function(){ document.getElementById('modal-nuevo-socio').classList.remove('hidden'); };
+window.abrirModalNuevoSocio = async function() {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    alert('Tenés que iniciar sesión como Admin primero.');
+    return;
+  }
+  document.getElementById('modal-nuevo-socio').classList.remove('hidden');
+};
 window.abrirPadron = function() {
   if (window.parent && window.parent !== window) {
     const btnPadron = window.parent.document.querySelector('.nav-btn[data-src*="padron.html"]');
