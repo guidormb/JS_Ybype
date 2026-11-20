@@ -85,8 +85,8 @@ window.dispatchEvent(new Event('supabaseReady'));
 <span id="panel-nro-cuenta" class="font-bold text-sm">--</span>
 </div>
 <div class="text-right">
-<span class="text-blue-200 block text-[10px]">SALDO A FAVOR</span>
-<span id="panel-saldo-favor" class="font-bold text-sm text-emerald-300">Gs. 0</span>
+<span class="text-blue-200 block text-[10px]">DEUDA TOTAL</span>
+<span id="panel-deuda-total" class="font-bold text-sm text-emerald-300">Gs. 0</span>
 </div>
 </div>
 </div>
@@ -142,6 +142,18 @@ function setBotonEstado(btn, texto, deshabilitado){
   if(!btn) return;
   btn.textContent = texto;
   btn.disabled = deshabilitado;
+}
+
+function actualizarDeudaTotal(deudaTotal){
+  var el = document.getElementById('panel-deuda-total');
+  if(!el) return;
+  if(deudaTotal > 0){
+    el.textContent = 'Gs. ' + Number(deudaTotal).toLocaleString('es-PY');
+    el.className = 'font-bold text-sm text-red-300';
+  } else {
+    el.textContent = 'Gs. 0 - ¡AL DÍA!';
+    el.className = 'font-bold text-sm text-emerald-300';
+  }
 }
 
 window.cambiarTab = function(tab){
@@ -303,7 +315,6 @@ async function cargarDatosPortalCliente(cedula){
 
   document.getElementById('panel-nombre-cliente').textContent = persona.nombre + ' ' + (persona.apellido || '');
   document.getElementById('panel-nro-cuenta').textContent = cliente.nro_cuenta;
-  document.getElementById('panel-saldo-favor').textContent = 'Gs. ' + Number(cliente.saldo_favor || 0).toLocaleString('es-PY');
   document.getElementById('lbl-nombre-usuario').textContent = persona.nombre;
   document.getElementById('user-info').classList.remove('hidden');
 
@@ -331,13 +342,21 @@ async function cargarFacturasCliente(clienteId){
   var facturas = r.data || [];
   if(r.error || facturas.length === 0){
     contadorEl.textContent = '0 pendientes';
+    actualizarDeudaTotal(0);
     contenedor.innerHTML = '<div class="text-center py-6 bg-emerald-50/50 rounded-xl"><p class="text-sm font-bold text-emerald-700">Estas al dia!</p></div>';
     return;
   }
 
   var pendientesCount = 0;
-  facturas.forEach(function(f){ if(f.estado !== 'pagado') pendientesCount++; });
+  var deudaTotal = 0;
+  facturas.forEach(function(f){
+    if(f.estado !== 'pagado'){
+      pendientesCount++;
+      deudaTotal += (f.saldo_pendiente || 0);
+    }
+  });
   contadorEl.textContent = pendientesCount + ' pendientes';
+  actualizarDeudaTotal(deudaTotal);
 
   var html = '';
   facturas.forEach(function(f){
