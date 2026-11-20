@@ -23,8 +23,6 @@
   .btn{width:100%;padding:14px;border:none;border-radius:12px;background:#0f172a;color:white;font-size:17px;font-weight:700;cursor:pointer}
   .btn-out{background:#dc2626;padding:10px 16px;width:auto;font-size:14px}
   .hidden{display:none}
-  /* Tabla Gastos que entra en pantalla */
-    /* Tabla Gastos que entra en pantalla */
   .tabla-gastos{ table-layout:auto; font-size:13px; width:100%; }
   .tabla-gastos th, .tabla-gastos td{ padding:8px 5px; word-break:normal; overflow-wrap:break-word; white-space:normal; }
   .tabla-gastos th:nth-child(1), .tabla-gastos td:nth-child(1){ width:62px; }
@@ -34,7 +32,6 @@
   .tabla-gastos th:nth-child(5), .tabla-gastos td:nth-child(5){ width:36px; }
   .tabla-gastos td:nth-child(1){ white-space:nowrap; font-size:12px; }
   .tabla-gastos td:nth-child(2){ line-height:1.3; }
-  /* Que en celular no se vea chiquito */
 @media (max-width: 768px){
   body{ flex-direction:column !important; }
   .sidebar, aside, nav{
@@ -121,7 +118,7 @@
     </div>
     <div id="total-a-cobrar" style="font-weight:800;font-size:16px;margin-bottom:10px"></div>
     <label>Monto Gs. (total que te paga)</label>
-    <input type="number" id="inp-monto" placeholder="Ej: 50000" style="border:1px solid #ccc;border-radius:8px;padding:10px">
+    <input type="text" inputmode="numeric" id="inp-monto" placeholder="Ej: 10.000.000" style="border:1px solid #ccc;border-radius:8px;padding:10px">
     <label>Metodo</label>
     <select id="sel-metodo">
       <option value="efectivo">Efectivo</option>
@@ -307,21 +304,19 @@ function actualizarTotalPago(){
   var total = 0;
   checks.forEach(function(c){ total += Number(c.getAttribute('data-saldo')) || 0; });
   document.getElementById('total-a-cobrar').textContent = checks.length > 0 ? 'Total a cobrar: Gs. ' + total.toLocaleString('es-PY') + ' (' + checks.length + ' facturas)' : '';
-  if(checks.length > 0) document.getElementById('inp-monto').value = total;
+  if(checks.length > 0) document.getElementById('inp-monto').value = total.toLocaleString('es-PY');
 }
 
 async function registrarPago(){
   var clienteId = document.getElementById('sel-cliente').value;
   var checks = document.querySelectorAll('.chk-factura:checked');
-  var montoTotal = Number(document.getElementById('inp-monto').value);
+  var montoTotal = parseInt(document.getElementById('inp-monto').value.replace(/\./g, '')) || 0;
   var metodo = document.getElementById('sel-metodo').value;
   var msg = document.getElementById('msg-pago');
   if(!clienteId || checks.length === 0 || !montoTotal || montoTotal <= 0){
     msg.textContent = 'Elegí socio, tildá al menos 1 factura y poné el monto.';
     msg.style.color = 'red'; return;
   }
-
-  // Si es 1 sola factura, permite pago parcial como antes
   if(checks.length === 1){
     var facturaId = checks[0].value;
     var saldoActual = Number(checks[0].getAttribute('data-saldo'));
@@ -333,19 +328,15 @@ async function registrarPago(){
     await sb.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
     msg.textContent = 'Pago guardado! Nuevo saldo: Gs. ' + nuevoSaldo.toLocaleString('es-PY');
     msg.style.color = 'green';
-    // LIMPIAR IGUAL QUE CON VARIAS
     document.getElementById('inp-monto').value = '';
     document.getElementById('sel-cliente').value = '';
     document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
     document.getElementById('total-a-cobrar').textContent = '';
     cargar(); return;
   }
-
-  // Si son varias, reparte el monto en orden: primero la más vieja
   var lista = Array.from(checks).map(function(c){
     return { id: c.value, mes: c.getAttribute('data-mes'), saldo: Number(c.getAttribute('data-saldo')) };
   }).sort(function(a,b){ return String(a.mes).localeCompare(String(b.mes)); });
-
   var restante = montoTotal;
   for(var i = 0; i < lista.length; i++){
     if(restante <= 0) break;
@@ -368,7 +359,6 @@ async function registrarPago(){
 function editarGasto(id){
   var g = gastosGlobal.find(function(item){ return String(item.id) === String(id); });
   if(!g) return;
-
   gastoEditandoId = g.id;
   document.getElementById('inp-concepto-gasto').value = g.descripcion || '';
   document.getElementById('sel-categoria-gasto').value = g.categoria || 'otros';
@@ -376,18 +366,15 @@ function editarGasto(id){
   document.getElementById('inp-fecha-gasto').value = g.fecha ? String(g.fecha).slice(0, 10) : '';
   document.getElementById('inp-proveedor-gasto').value = g.proveedor_beneficiario || '';
   document.getElementById('inp-nota-gasto').value = g.nota || '';
-
   var btnGuardar = document.getElementById('btn-guardar-gasto');
   btnGuardar.textContent = 'Actualizar Gasto';
   btnGuardar.style.background = '#2563eb';
   document.getElementById('btn-cancelar-gasto').style.display = 'block';
-
   var msg = document.getElementById('msg-gasto');
   if(msg){
     msg.textContent = 'Editando gasto seleccionado. Modificá los datos y tocá Actualizar Gasto.';
     msg.style.color = '#2563eb';
   }
-
   document.getElementById('inp-concepto-gasto').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 function cancelarEdicionGasto(){
@@ -398,16 +385,12 @@ function cancelarEdicionGasto(){
   document.getElementById('inp-fecha-gasto').value = '';
   document.getElementById('inp-proveedor-gasto').value = '';
   document.getElementById('inp-nota-gasto').value = '';
-
   var btnGuardar = document.getElementById('btn-guardar-gasto');
   btnGuardar.textContent = 'Guardar Gasto';
   btnGuardar.style.background = '#dc2626';
   document.getElementById('btn-cancelar-gasto').style.display = 'none';
-
   var msg = document.getElementById('msg-gasto');
-  if(msg){
-    msg.textContent = '';
-  }
+  if(msg){ msg.textContent = ''; }
 }
 async function registrarGasto(){
   var descripcion = document.getElementById('inp-concepto-gasto').value.trim();
@@ -417,12 +400,10 @@ async function registrarGasto(){
   var proveedor = document.getElementById('inp-proveedor-gasto').value.trim();
   var nota = document.getElementById('inp-nota-gasto').value.trim();
   var msg = document.getElementById('msg-gasto');
-
   if(!descripcion){ if(msg){ msg.textContent = 'Escribí la descripción del gasto'; msg.style.color = 'red'; } return; }
   if(!monto || monto <= 0){ if(msg){ msg.textContent = 'El monto tiene que ser mayor a 0'; msg.style.color = 'red'; } return; }
   if(!fecha){ fecha = new Date().toISOString().slice(0,10); }
   if(!categoria){ categoria = 'otros'; }
-
   var datosGasto = {
     descripcion: descripcion,
     monto: monto,
@@ -431,8 +412,6 @@ async function registrarGasto(){
     proveedor_beneficiario: proveedor || null,
     nota: nota || null
   };
-
-  // VALIDAR FONDO EN CAJA - AVISA PERO DEJA PASAR
   var rPagos = await sb.from('pagos').select('monto_pagado');
   var rGastosTot = await sb.from('gastos').select('id, monto');
   var cobrado = 0; (rPagos.data||[]).forEach(function(p){ cobrado += (p.monto_pagado||0); });
@@ -443,14 +422,12 @@ async function registrarGasto(){
     }
   });
   var balanceDisponible = cobrado - gastadoSinActual;
-
   if(monto > balanceDisponible){
     var falta = monto - balanceDisponible;
     var nuevoBalance = balanceDisponible - monto;
     var seguir = confirm('⚠️ Atención! No tenés fondos suficientes.\n\nBalance disponible: Gs. ' + balanceDisponible.toLocaleString('es-PY') + '\nMonto del gasto: Gs. ' + monto.toLocaleString('es-PY') + '\nTe van a faltar: Gs. ' + falta.toLocaleString('es-PY') + '\nVas a quedar en: Gs. ' + nuevoBalance.toLocaleString('es-PY') + ' (en rojo)\n\n¿Seguro querés guardar igual?');
     if(!seguir){ if(msg){ msg.textContent = 'Operación cancelada. Te faltan Gs. ' + falta.toLocaleString('es-PY'); msg.style.color = 'red'; } return; }
   }
-
   if(gastoEditandoId){
     var rUpd = await sb.from('gastos').update(datosGasto).eq('id', gastoEditandoId);
     if(rUpd.error){ if(msg){ msg.textContent = 'Error al actualizar gasto: ' + rUpd.error.message; msg.style.color = 'red'; } return; }
@@ -459,12 +436,9 @@ async function registrarGasto(){
     cargar();
     return;
   }
-
     var r = await sb.from('gastos').insert([datosGasto]);
   if(r.error){ if(msg){ msg.textContent = 'Error al guardar gasto: ' + r.error.message; msg.style.color = 'red'; } return; }
   if(msg){ msg.textContent = 'Gasto guardado! Se descontó del Balance: Gs. ' + monto.toLocaleString('es-PY'); msg.style.color = 'green'; }
-
-  // Limpiar SOLO los campos del gasto, no tocar el pago
   document.getElementById('inp-concepto-gasto').value = '';
   document.getElementById('inp-monto-gasto').value = '';
   document.getElementById('inp-fecha-gasto').value = '';
@@ -526,35 +500,27 @@ function render(){
   document.getElementById('resumenFiltro').textContent = (texto ? 'Buscando: ' + texto + ' - ' : '') + 'Mostrando ' + lista.length + ' socios - Deuda filtrada: ' + total.toLocaleString('es-PY') + ' Gs - Facturas: ' + cant;
 }
 verificarSesion();
-//GENERADOR DE CUOTAS DEL MES
 async function generarCuotasMensuales() {
   const periodo = document.getElementById('periodoCuota').value;
   const monto = parseInt(document.getElementById('montoCuota').value) || 20000;
   const msg = document.getElementById('msgCuotas');
   const btn = document.getElementById('btnGenerarCuotas');
-  
   if (!periodo) { msg.textContent = 'Elegí el mes primero'; return; }
   if (!confirm(`¿Generar cuota de ${monto.toLocaleString()} Gs para ${periodo}?`)) return;
-  
   msg.textContent = 'Generando...';
   btn.disabled = true;
-  
   try {
     const { data: socios, error: e1 } = await sb.from('clientes').select('id').eq('activo', true);
     if (e1) throw new Error('Clientes: ' + e1.message);
-    
     const { data: ya, error: e2 } = await sb.from('facturas').select('cliente_id').eq('mes', periodo);
     if (e2) throw new Error('Facturas: ' + e2.message);
-    
     const yaIds = new Set((ya || []).map(f => f.cliente_id));
     const nuevos = socios.filter(s => !yaIds.has(s.id));
-    
     if (nuevos.length === 0) {
       msg.textContent = `Ya están todos generados para ${periodo}`;
       btn.disabled = false;
       return;
     }
-    
     const paraInsertar = nuevos.map(s => ({
       cliente_id: s.id,
       mes: periodo,
@@ -565,20 +531,16 @@ async function generarCuotasMensuales() {
       lectura_actual: 0,
       consumo_m3: 0
     }));
-    
     const { error: e3 } = await sb.from('facturas').insert(paraInsertar);
     if (e3) throw new Error('Insert: ' + e3.message);
-    
     msg.textContent = `¡Listo! Se generaron ${nuevos.length} cuotas de ${periodo}.`;
     if (window.cargarDatos) cargarDatos();
-    
   } catch (err) {
     msg.textContent = 'ERROR: ' + err.message;
   }
   btn.disabled = false;
 }
 document.getElementById('btnGenerarCuotas').addEventListener('click', generarCuotasMensuales);
-
 </script>
 <script>
   if ('serviceWorker' in navigator) {
@@ -587,6 +549,13 @@ document.getElementById('btnGenerarCuotas').addEventListener('click', generarCuo
     });
 }
 // FORMATO 10.000.000 y 001-001-0012345
+const mPago = document.getElementById('inp-monto');
+if (mPago) {
+  mPago.addEventListener('input', () => {
+    let n = mPago.value.replace(/\D/g, '');
+    mPago.value = n ? Number(n).toLocaleString('es-PY') : '';
+  });
+}
 const mGasto = document.getElementById('inp-monto-gasto');
 if (mGasto) {
   mGasto.addEventListener('input', () => {
