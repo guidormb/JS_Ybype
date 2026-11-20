@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#2563eb">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
   <title>Junta de Saneamiento JSYBYPE</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: #0f172a;
@@ -105,7 +106,7 @@
       .layout {
         flex-direction: column-reverse;
       }
-           nav {
+      nav {
         width: 100%;
         flex-direction: row;
         justify-content: flex-start;
@@ -146,7 +147,7 @@
       <button id="btnCaja" class="nav-btn hidden" data-src="./admin-junta.html" data-titulo="Panel SuperAdmin">
         📊 Caja y Cobros
       </button>
-<button id="btnPadron" class="nav-btn hidden" data-src="./padron.html" data-titulo="Padrón de Socios">
+      <button id="btnPadron" class="nav-btn hidden" data-src="./padron.html" data-titulo="Padrón de Socios">
         📋 Padrón
       </button>
 
