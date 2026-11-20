@@ -312,7 +312,11 @@ async function registrarPago(){
     await sb.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', facturaId);
     msg.textContent = 'Pago guardado! Nuevo saldo: Gs. ' + nuevoSaldo.toLocaleString('es-PY');
     msg.style.color = 'green';
+    // LIMPIAR IGUAL QUE CON VARIAS
     document.getElementById('inp-monto').value = '';
+    document.getElementById('sel-cliente').value = '';
+    document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
+    document.getElementById('total-a-cobrar').textContent = '';
     cargar(); return;
   }
 
@@ -339,7 +343,7 @@ async function registrarPago(){
   document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
   document.getElementById('total-a-cobrar').textContent = '';
   cargar();
-  }
+}
 function editarGasto(id){
   var g = gastosGlobal.find(function(item){ return String(item.id) === String(id); });
   if(!g) return;
@@ -435,16 +439,14 @@ async function registrarGasto(){
     return;
   }
 
-  var r = await sb.from('gastos').insert([datosGasto]);
+    var r = await sb.from('gastos').insert([datosGasto]);
   if(r.error){ if(msg){ msg.textContent = 'Error al guardar gasto: ' + r.error.message; msg.style.color = 'red'; } return; }
   if(msg){ msg.textContent = 'Gasto guardado! Se descontó del Balance: Gs. ' + monto.toLocaleString('es-PY'); msg.style.color = 'green'; }
+
+  // Limpiar SOLO los campos del gasto, no tocar el pago
   document.getElementById('inp-concepto-gasto').value = '';
-  
-      document.getElementById('inp-monto').value = '';
-    document.getElementById('sel-cliente').value = '';
-    document.getElementById('lista-facturas-pago').innerHTML = '<span style="color:#64748b;font-size:13px">Elegí primero el socio</span>';
-    document.getElementById('total-a-cobrar').textContent = '';
-    cargar(); return;
+  document.getElementById('inp-monto-gasto').value = '';
+  document.getElementById('inp-fecha-gasto').value = '';
   document.getElementById('inp-proveedor-gasto').value = '';
   document.getElementById('inp-nota-gasto').value = '';
   cargar();
