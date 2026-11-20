@@ -21,6 +21,8 @@
   .err{background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;margin-top:12px;display:none}
   .hint{font-size:12px;color:#64748b;margin-top:-10px;margin-bottom:12px}
   .hidden{display:none}
+  .item-socio{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#f8fafc}
+  .item-socio:active{background:#dbeafe}
 </style>
 </head>
 <body>
@@ -77,6 +79,15 @@
 <div id="err" class="err"></div>
 
 <p id="contador" style="text-align:center;color:#475569;font-size:14px"></p>
+
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0">
+
+<h2 style="margin:0 0 8px">Lista de Socios</h2>
+<p style="color:#64748b;font-size:13px;margin:0 0 10px">Buscá por nombre, CI o cuenta y tocá para editar.</p>
+<input id="buscadorPadron" type="text" placeholder="Buscar: Juan, 5656565, 001..." oninput="renderListaPadron()" autocomplete="off" style="margin-bottom:10px">
+<button onclick="cargarListaPadron()" style="background:#0f172a;margin-bottom:12px">🔄 Actualizar lista</button>
+<p id="resumenLista" style="color:#475569;font-size:13px;text-align:center"></p>
+<div id="listaPadron"></div>
 </div>
 
 <script>
@@ -88,6 +99,7 @@ const ADMIN_EMAIL = 'guidorafa92@gmail.com';
 
 let editandoPersonaId = null;
 let editandoClienteId = null;
+let listaPadronGlobal = [];
 
 async function verificarSesionPadron(){
   const { data } = await db.auth.getSession();
@@ -111,6 +123,7 @@ async function verificarSesionPadron(){
 
   document.getElementById('contenidoPadron').classList.remove('hidden');
   actualizarContador();
+  cargarListaPadron();
 }
 
 function irACaja(){
@@ -129,6 +142,69 @@ async function cerrarSesion(){
 async function actualizarContador(){
   const {count} = await db.from('clientes').select('*',{count:'exact',head:true});
   document.getElementById('contador').textContent = 'Socios cargados: ' + (count||0) + ' / 150';
+}
+
+// NUEVO: LISTA + BUSQUEDA
+async function cargarListaPadron(){
+  const cont = document.getElementById('listaPadron');
+  cont.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px">Cargando lista...</p>';
+  const { data, error } = await db.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono, direccion)').order('nro_cuenta', { ascending: true });
+  if(error){
+    cont.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar lista: ' + error.message + '</p>';
+    return;
+  }
+  listaPadronGlobal = data || [];
+  renderListaPadron();
+}
+
+function renderListaPadron(){
+  const texto = (document.getElementById('buscadorPadron').value || '').toLowerCase().trim();
+  const cont = document.getElementById('listaPadron');
+  const resumen = document.getElementById('resumenLista');
+  if(!cont) return;
+  const filtrados = listaPadronGlobal.filter(function(c){
+    if(!texto) return true;
+    const p = c.personas || {};
+    const hay = ((p.nombre||'') + ' ' + (p.apellido||'') + ' ' + (p.cedula_ruc||'') + ' ' + (c.nro_cuenta||'') + ' ' + (p.telefono||'')).toLowerCase();
+    return hay.indexOf(texto) !== -1;
+  });
+  resumen.textContent = 'Mostrando ' + filtrados.length + ' de ' + listaPadronGlobal.length + ' socios';
+  if(filtrados.length === 0){
+    cont.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px">No se encontró ningún socio con ese dato.</p>';
+    return;
+  }
+  let html = '';
+  filtrados.forEach(function(c){
+    const p = c.personas || {};
+    const nombre = (p.nombre||'') + ' ' + (p.apellido||'');
+    html += '<div class="item-socio" onclick="cargarSocioDesdeLista(\'' + c.id + '\')">'
+      + '<b>' + nombre.trim() + '</b><br>'
+      + '<span style="font-size:13px;color:#475569">CI: ' + (p.cedula_ruc||'-') + ' | Cta: ' + (c.nro_cuenta||'-') + (p.telefono ? ' | ' + p.telefono : '') + '</span><br>'
+      + '<span style="font-size:12px;color:#2563eb;font-weight:700">✏️ Tocar para editar</span>'
+      + '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+function cargarSocioDesdeLista(clienteId){
+  const c = listaPadronGlobal.find(function(x){ return String(x.id) === String(clienteId); });
+  if(!c) return;
+  const p = c.personas || {};
+  document.getElementById('nombre').value = p.nombre || '';
+  document.getElementById('apellido').value = p.apellido || '';
+  document.getElementById('cedula').value = p.cedula_ruc || '';
+  document.getElementById('telefono').value = p.telefono || '';
+  document.getElementById('direccion').value = p.direccion || '';
+  document.getElementById('cuenta').value = c.nro_cuenta || '';
+  document.getElementById('medidor').value = c.numero_medidor || '';
+  editandoPersonaId = p.id || null;
+  editandoClienteId = c.id;
+  document.getElementById('modoEditar').style.display = 'block';
+  document.getElementById('buscarCedula').value = p.cedula_ruc || '';
+  const okEl = document.getElementById('ok');
+  okEl.textContent = '✏️ Cargado para editar: ' + (p.nombre||'') + ' ' + (p.apellido||'');
+  okEl.style.display = 'block';
+  document.getElementById('nombre').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function buscarParaEditar() {
@@ -209,6 +285,7 @@ async function guardar(){
     okEl.textContent = mensajeFinal;
     okEl.style.display = 'block';
     actualizarContador();
+    cargarListaPadron();
     return;
   }
 
@@ -245,6 +322,7 @@ async function guardar(){
   document.getElementById('cuenta').value = String(Number(cuenta)+1).padStart(3,'0');
   document.getElementById('nombre').focus();
   actualizarContador();
+  cargarListaPadron();
 }
 
 verificarSesionPadron();
