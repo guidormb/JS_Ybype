@@ -326,7 +326,7 @@ async function cargarFacturasCliente(clienteId){
     .from('facturas')
     .select('*')
     .eq('cliente_id', clienteId)
-    .order('id', { ascending: false });
+    .order('mes', { ascending: false });
 
   var facturas = r.data || [];
   if(r.error || facturas.length === 0){

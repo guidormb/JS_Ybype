@@ -214,7 +214,7 @@ function actualizarChips(){ document.getElementById('chipTodos').className = 'ch
 
 async function cargar(){
   var rClientes = await sb.from('clientes').select('*, personas(nombre, apellido, cedula_ruc, telefono)');
-  var rFacturas = await sb.from('facturas').select('*');
+  var rFacturas = await sb.from('facturas').select('*').order('mes', { ascending: false });
   var rPagos = await sb.from('pagos').select('monto_pagado');
   var rGastos = await sb.from('gastos').select('*').order('fecha', { ascending: false }).limit(20);
   var rGastosTotal = await sb.from('gastos').select('monto');
@@ -248,16 +248,22 @@ async function cargarClientesParaPago(){
     sel.innerHTML += '<option value="' + c.id + '">' + nom + ' - Cuenta ' + c.nro_cuenta + '</option>';
   });
 }
-async function cargarFacturasPendientes(){
+async function cargarFacturasPendientes() {
   var clienteId = document.getElementById('sel-cliente').value;
   var sel = document.getElementById('sel-factura');
   sel.innerHTML = '<option value="">-- Elegi factura --</option>';
-  if(!clienteId) return;
-  (facturasGlobal || []).forEach(function(f){
-    if(String(f.cliente_id) === String(clienteId) && f.estado !== 'pagado'){
+  if (!clienteId) return;
+  
+  var listaOrdenada = (facturasGlobal || []).slice().sort(function(a, b) {
+    return String(b.mes).localeCompare(String(a.mes));
+  });
+  
+  listaOrdenada.forEach(function(f) {
+    if (String(f.cliente_id) === String(clienteId) && f.estado !== 'pagado') {
       sel.innerHTML += '<option value="' + f.id + '">Mes ' + f.mes + ' - Pendiente Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</option>';
     }
   });
+}
 }
 async function registrarPago(){
   var clienteId = document.getElementById('sel-cliente').value;
