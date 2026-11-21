@@ -10,6 +10,7 @@
   const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
   const sbMenu = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 </script>
+
 <style>
   *{box-sizing:border-box}
   body{font-family:Arial, sans-serif; padding:16px; max-width:520px; margin:auto; background:#f5f5f5}
@@ -30,6 +31,8 @@
     body{background:white; padding:0}
     .caja{border:1px solid #000}
   }
+  .parcial{background:#fff3cd; color:#856404; border:1px solid #ffeeba; padding:8px; border-radius:8px; text-align:center; font-weight:bold; font-size:13px; margin-bottom:10px}
+.definitivo{background:#d4edda; color:#155724; border:1px solid #c3e6cb; padding:8px; border-radius:8px; text-align:center; font-weight:bold; font-size:13px; margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -85,11 +88,21 @@ async function verResumen(){
   }
 
   const r = data[0];
+  // Ver si este mes ya está cerrado en la tabla
+const { data: cierreExistente } = await sbMenu.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
+const esParcial = !cierreExistente;
+const leyenda = esParcial ?
+  `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>` :
+  `<div class="definitivo">✅ CIERRE DEFINITIVO - Mes cerrado</div>`;
+const botonCerrar = esParcial ?
+  `<button onclick="cerrarMes(${anio}, ${mes}, ${r.cobrado_facturas}, ${r.cobrado_anticipos}, ${r.total_gastado}, ${saldo})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>` :
+  `<div style="background:#d4edda; color:#155724; padding:12px; border-radius:8px; text-align:center; font-weight:bold; margin-top:15px">✅ Este mes ya está cerrado. No se puede volver a cerrar.</div>`;
   const saldo = Number(r.total_cobrado) - Number(r.total_gastado);
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
 
   document.getElementById('resultado').innerHTML = `
     <div class="caja">
+    ${leyenda}
       <h3 style="text-align:center; margin:0">JUNTA JSYBYPE</h3>
       <p style="text-align:center; margin:4px 0 12px"><b>CIERRE ${nombres[mes].toUpperCase()} ${anio}</b></p>
       <div class="fila"><span>Cobrado Facturas:</span><b>Gs. ${fmt(r.cobrado_facturas)}</b></div>
@@ -101,15 +114,25 @@ async function verResumen(){
       <p class="nota">Regla: el mes anterior se cierra el 15. Cobrar deuda vieja siempre se puede. Lo que se bloquea es anular / borrar.</p>
     </div>
     <div class="no-print">
-      <button class="cerrar" onclick="cerrarMes(${anio}, ${mes}, ${r.cobrado_facturas}, ${r.cobrado_anticipos}, ${r.total_gastado}, ${saldo})">🔒 Cerrar Mes</button>
+${botonCerrar}
       <button onclick="window.print()">📄 Generar PDF</button>
     </div>
   `;
 }
 
-async function cerrarMes(anio, mes, cf, ca, tg, saldo){
-  if(!confirm('¿Cerrar este mes? Después del 15 ya no se podrá anular nada de este mes.')) return;
-
+async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
+  const fechaPermitida = new Date(anio, mes, 15);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  
+  if (hoy < fechaPermitida) {
+    const nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const mesSiguiente = mes === 12 ? 'Enero' : nombres[mes + 1];
+    return alert(`No se puede cerrar todavía.\n\n${nombres[mes]} ${anio} solo se puede cerrar desde el 15 de ${mesSiguiente}.`);
+  }
+  
+  if (!confirm('¿Cerrar este mes? Después del 15 ya no se podrá anular nada de este mes.')) return;
+  
   const { error } = await sbMenu.from('cierres_mensuales').insert({
     anio: anio,
     mes: mes,
@@ -119,8 +142,8 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo){
     total_gastado: tg,
     saldo_final: saldo
   });
-
-  if(error) return alert('Error al cerrar: ' + error.message);
+  
+  if (error) return alert('Error al cerrar: ' + error.message);
   alert('¡Mes cerrado y guardado!');
 }
 </script>
