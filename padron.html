@@ -44,36 +44,47 @@
 <div id="contenidoPadron" class="card hidden">
   <h2 style="margin:0">Nuevo Socio</h2>
   <p style="color:#64748b;margin:6px 0 16px">Junta de Saneamiento - Tarifa fija 25.000 Gs</p>
-  <input id="buscarCedula" type="text" placeholder="C.I. a editar Ej: 5656565" inputmode="numeric" />
+
+  <label for="buscarCedula">C.I. a editar</label>
+  <input id="buscarCedula" placeholder="Ej: 5656565" inputmode="numeric" maxlength="8" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+
   <div class="topbar">
-    <button type="button" onclick="volverAlMenu()" style="background:#0f172a">🏠 Menú</button>
-    <button type="button" onclick="buscarParaEditar()">✏️ Editar</button>
-    <button type="button" onclick="cancelar()" style="background:#f59e0b">❌ Cancelar</button>
-    <button type="button" onclick="cerrarSesion()" style="background:#dc3545">🚪 Salir</button>
+    <button type="button" id="btnMenu" onclick="volverAlMenu()" style="background:#0f172a">🏠 Menú</button>
+    <button type="button" id="btnEditar" onclick="buscarParaEditar()">✏️ Editar</button>
+    <button type="button" id="btnSalir" onclick="cerrarSesion()" style="background:#dc3545">🚪 Salir</button>
+    <button type="button" id="btnGuardar" onclick="guardar()" style="background:#16a34a;display:none">💾 Guardar</button>
+    <button type="button" id="btnCancelar" onclick="cancelar()" style="background:#f59e0b;display:none">❌ Cancelar</button>
   </div>
-  <p id="modoEditar" style="color:#d97706;font-weight:bold;display:none;">✏️ Editando socio - Guardar para actualizar</p>
+
+  <p id="modoEditar" style="color:#d97706;font-weight:bold;display:none;">✏️ Editando: <span id="nombreEditando"></span> - Guardar para actualizar</p>
 
   <label for="nombre">Nombre *</label>
-  <input id="nombre" placeholder="Ej: Juan" />
+  <input id="nombre" placeholder="Ej: Juan" maxlength="30" />
 
   <label for="apellido">Apellido *</label>
-  <input id="apellido" placeholder="Ej: Benítez" />
+  <input id="apellido" placeholder="Ej: Benítez" maxlength="30" />
 
   <label for="cedula">Cédula *</label>
-  <input id="cedula" placeholder="Ej: 5656565" inputmode="numeric" />
+  <input id="cedula" placeholder="Ej: 5656565" inputmode="numeric" maxlength="8" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 
   <label for="telefono">Teléfono / WhatsApp *</label>
-  <input id="telefono" placeholder="Ej: 0981 123456" inputmode="tel" />
+  <input id="telefono" placeholder="Ej: 0981 123456" inputmode="tel" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 
   <label for="direccion">Dirección / Compañía</label>
   <input id="direccion" placeholder="Ej: Ybypé 1ra. Línea" />
 
   <label for="cuenta">Nro. Cuenta *</label>
-  <input id="cuenta" placeholder="Ej: 001" inputmode="numeric" />
+  <input id="cuenta" placeholder="Ej: 001" inputmode="numeric" maxlength="3" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 
   <label for="medidor">Nro. Medidor (opcional - a futuro)</label>
   <input id="medidor" placeholder="Dejar vacío si no tiene" />
   <div class="hint">Hoy la Junta NO usa medidor. Dejá vacío, se guarda como "Sin medidor".</div>
+
+  <label for="estado">Estado del Socio *</label>
+  <select id="estado" style="width:100%;padding:12px;margin:6px 0 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;box-sizing:border-box;background:white">
+    <option value="true">✅ Activo - Puede pagar y usar servicio</option>
+    <option value="false">⛔ Inactivo - Suspendido / Dado de baja</option>
+  </select>
 
   <button type="button" onclick="guardar()">Guardar Socio</button>
   <div id="ok" class="ok"></div>
@@ -114,23 +125,19 @@ function escapeHtml(valor) {
 async function verificarSesionPadron() {
   const { data } = await db.auth.getSession();
   const session = data.session;
-
   document.getElementById('sinSesionBox').classList.add('hidden');
   document.getElementById('noPermisoBox').classList.add('hidden');
   document.getElementById('contenidoPadron').classList.add('hidden');
-
   if (!session) {
     document.getElementById('sinSesionBox').classList.remove('hidden');
     return;
   }
-
   const email = (session.user.email || '').toLowerCase();
   if (email !== ADMIN_EMAIL.toLowerCase()) {
     document.getElementById('emailLogueado').textContent = email;
     document.getElementById('noPermisoBox').classList.remove('hidden');
     return;
   }
-
   document.getElementById('contenidoPadron').classList.remove('hidden');
   actualizarContador();
   cargarListaPadron();
@@ -168,12 +175,10 @@ async function cargarListaPadron() {
     .from('clientes')
     .select('*, personas(id, nombre, apellido, cedula_ruc, telefono, direccion)')
     .order('nro_cuenta', { ascending: true });
-
   if (error) {
     cont.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar lista: ' + escapeHtml(error.message) + '</p>';
     return;
   }
-
   listaPadronGlobal = data || [];
   renderListaPadron();
 }
@@ -183,33 +188,31 @@ function renderListaPadron() {
   const cont = document.getElementById('listaPadron');
   const resumen = document.getElementById('resumenLista');
   if (!cont) return;
-
   const filtrados = listaPadronGlobal.filter((c) => {
     if (!texto) return true;
     const p = c.personas || {};
     const hay = ((p.nombre || '') + ' ' + (p.apellido || '') + ' ' + (p.cedula_ruc || '') + ' ' + (c.nro_cuenta || '') + ' ' + (p.telefono || '')).toLowerCase();
     return hay.includes(texto);
   });
-
   resumen.textContent = 'Mostrando ' + filtrados.length + ' de ' + listaPadronGlobal.length + ' socios';
   if (filtrados.length === 0) {
     cont.innerHTML = '<p style="text-align:center;color:#64748b;font-size:13px">No se encontró ningún socio con ese dato.</p>';
     return;
   }
-
   cont.innerHTML = filtrados.map((c) => {
     const p = c.personas || {};
     const nombreCompleto = ((p.nombre || '') + ' ' + (p.apellido || '')).trim();
     const detalleExtra = p.telefono ? ' | ' + escapeHtml(p.telefono) : '';
+    const badgeEstado = c.activo === false ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:800">⛔ INACTIVO</span>' : '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:800">✅ ACTIVO</span>';
     return (
       '<div class="item-socio" data-cliente-id="' + escapeHtml(c.id) + '">'
       + '<b>' + escapeHtml(nombreCompleto) + '</b><br>'
       + '<span style="font-size:13px;color:#475569">CI: ' + escapeHtml(p.cedula_ruc || '-') + ' | Cta: ' + escapeHtml(c.nro_cuenta || '-') + detalleExtra + '</span><br>'
+      + badgeEstado + '<br>'
       + '<span style="font-size:12px;color:#2563eb;font-weight:700">✏️ Tocar para editar</span>'
       + '</div>'
     );
   }).join('');
-
   cont.querySelectorAll('.item-socio').forEach((el) => {
     el.addEventListener('click', () => {
       cargarSocioDesdeLista(el.dataset.clienteId);
@@ -221,7 +224,6 @@ function cargarSocioDesdeLista(clienteId) {
   const c = listaPadronGlobal.find((x) => String(x.id) === String(clienteId));
   if (!c) return;
   const p = c.personas || {};
-
   document.getElementById('nombre').value = p.nombre || '';
   document.getElementById('apellido').value = p.apellido || '';
   document.getElementById('cedula').value = p.cedula_ruc || '';
@@ -229,13 +231,18 @@ function cargarSocioDesdeLista(clienteId) {
   document.getElementById('direccion').value = p.direccion || '';
   document.getElementById('cuenta').value = c.nro_cuenta || '';
   document.getElementById('medidor').value = c.numero_medidor || '';
-
+  document.getElementById('estado').value = c.activo === false ? 'false' : 'true';
   editandoPersonaId = p.id || c.persona_id || null;
   editandoClienteId = c.id;
-
   document.getElementById('modoEditar').style.display = 'block';
-  document.getElementById('buscarCedula').value = p.cedula_ruc || '';
-
+  document.getElementById('nombreEditando').textContent = (p.nombre || '') + ' ' + (p.apellido || '');
+  const buscarEl = document.getElementById('buscarCedula');
+  if (buscarEl) buscarEl.value = p.cedula_ruc || '';
+  document.getElementById('btnMenu').style.display = 'none';
+  document.getElementById('btnEditar').style.display = 'none';
+  document.getElementById('btnSalir').style.display = 'none';
+  document.getElementById('btnGuardar').style.display = '';
+  document.getElementById('btnCancelar').style.display = '';
   const okEl = document.getElementById('ok');
   okEl.textContent = '✏️ Cargado para editar: ' + (p.nombre || '') + ' ' + (p.apellido || '');
   okEl.style.display = 'block';
@@ -243,20 +250,18 @@ function cargarSocioDesdeLista(clienteId) {
 }
 
 async function buscarParaEditar() {
-  const cedulaBuscar = document.getElementById('buscarCedula').value.trim();
+  const elBuscar = document.getElementById('buscarCedula');
+  const cedulaBuscar = elBuscar ? elBuscar.value.trim() : '';
   if (!cedulaBuscar) {
     alert('Escribí una C.I. Ej: 5656565');
     return;
   }
-
   const { data: persona } = await db.from('personas').select('*').eq('cedula_ruc', cedulaBuscar).single();
   if (!persona) {
     alert('No existe esa C.I.');
     return;
   }
-
   const { data: cliente } = await db.from('clientes').select('*').eq('persona_id', persona.id).single();
-
   document.getElementById('nombre').value = persona.nombre;
   document.getElementById('apellido').value = persona.apellido;
   document.getElementById('cedula').value = persona.cedula_ruc;
@@ -264,11 +269,16 @@ async function buscarParaEditar() {
   document.getElementById('direccion').value = persona.direccion || '';
   document.getElementById('cuenta').value = cliente ? cliente.nro_cuenta : '';
   document.getElementById('medidor').value = cliente ? (cliente.numero_medidor || '') : '';
-
+  document.getElementById('estado').value = cliente && cliente.activo === false ? 'false' : 'true';
   editandoPersonaId = persona.id;
   editandoClienteId = cliente ? cliente.id : null;
-
+  document.getElementById('btnMenu').style.display = 'none';
+  document.getElementById('btnEditar').style.display = 'none';
+  document.getElementById('btnSalir').style.display = 'none';
+  document.getElementById('btnGuardar').style.display = '';
+  document.getElementById('btnCancelar').style.display = '';
   document.getElementById('modoEditar').style.display = 'block';
+  document.getElementById('nombreEditando').textContent = persona.nombre;
   const okEl = document.getElementById('ok');
   okEl.textContent = cliente
     ? '✏️ Cargado para editar: ' + persona.nombre
@@ -281,11 +291,18 @@ function cancelar() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const estadoEl = document.getElementById('estado');
+  if (estadoEl) estadoEl.value = 'true';
   editandoPersonaId = null;
   editandoClienteId = null;
   document.getElementById('modoEditar').style.display = 'none';
   document.getElementById('ok').style.display = 'none';
   document.getElementById('err').style.display = 'none';
+  document.getElementById('btnMenu').style.display = '';
+  document.getElementById('btnEditar').style.display = '';
+  document.getElementById('btnSalir').style.display = '';
+  document.getElementById('btnGuardar').style.display = 'none';
+  document.getElementById('btnCancelar').style.display = 'none';
 }
 
 async function guardar() {
@@ -297,37 +314,32 @@ async function guardar() {
   const cuenta = document.getElementById('cuenta').value.trim();
   const medidorRaw = document.getElementById('medidor').value.trim();
   const medidor = medidorRaw === '' ? null : medidorRaw;
-
+  const activo = document.getElementById('estado').value === 'true';
   const okEl = document.getElementById('ok');
   const errEl = document.getElementById('err');
   okEl.style.display = 'none';
   errEl.style.display = 'none';
-
   if (!nombre || !apellido || !cedula || !telefono || !cuenta) {
     errEl.textContent = 'Faltan datos obligatorios (*)';
     errEl.style.display = 'block';
     return;
   }
-
   const { data: cuentaExiste } = await db
     .from('clientes')
     .select('id, personas(nombre, apellido)')
     .eq('nro_cuenta', cuenta)
     .maybeSingle();
-
   if (cuentaExiste && cuentaExiste.id !== editandoClienteId) {
     const dueno = cuentaExiste.personas ? cuentaExiste.personas.nombre + ' ' + cuentaExiste.personas.apellido : '';
     errEl.textContent = '⚠️ Número de cuenta ya se encuentra registrada. Verificar - La cuenta ' + cuenta + ' ya es de ' + dueno;
     errEl.style.display = 'block';
     return;
   }
-
   if (editandoPersonaId) {
     const { error: e1 } = await db
       .from('personas')
       .update({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
       .eq('id', editandoPersonaId);
-
     if (e1) {
       if (e1.message && e1.message.includes('personas_cedula_ruc_key')) {
         errEl.textContent = '⚠️ Esa cédula ' + cedula + ' ya existe en otro socio. Revisá que no esté duplicado.';
@@ -337,9 +349,8 @@ async function guardar() {
       errEl.style.display = 'block';
       return;
     }
-
     if (editandoClienteId) {
-      await db.from('clientes').update({ nro_cuenta: cuenta, numero_medidor: medidor }).eq('id', editandoClienteId);
+      await db.from('clientes').update({ nro_cuenta: cuenta, numero_medidor: medidor, activo }).eq('id', editandoClienteId);
     } else {
       const { error: e2 } = await db.from('clientes').insert({
         persona_id: editandoPersonaId,
@@ -347,7 +358,7 @@ async function guardar() {
         numero_medidor: medidor,
         tipo_tarifa: 'fija',
         saldo_favor: 0,
-        activo: true
+        activo: activo
       });
       if (e2) {
         errEl.textContent = 'Error al crear cuenta: ' + e2.message;
@@ -355,7 +366,6 @@ async function guardar() {
         return;
       }
     }
-
     const mensajeFinal = '✅ Datos del Cliente Actualizado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta;
     cancelar();
     okEl.textContent = mensajeFinal;
@@ -364,39 +374,35 @@ async function guardar() {
     cargarListaPadron();
     return;
   }
-
   const { data: persona, error: e1 } = await db
     .from('personas')
     .insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
     .select()
     .single();
-
   if (e1) {
     errEl.textContent = 'Error en persona: ' + e1.message;
     errEl.style.display = 'block';
     return;
   }
-
   const { error: e2 } = await db.from('clientes').insert({
     persona_id: persona.id,
     nro_cuenta: cuenta,
     numero_medidor: medidor,
     tipo_tarifa: 'fija',
     saldo_favor: 0,
-    activo: true
+    activo: activo
   });
-
   if (e2) {
     errEl.textContent = 'Error en cliente: ' + e2.message + ' (la persona quedó creada, revisá nro. cuenta duplicado)';
     errEl.style.display = 'block';
     return;
   }
-
   okEl.textContent = '✅ Socio guardado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta + (medidor ? ' - Medidor ' + medidor : ' - Sin medidor');
   okEl.style.display = 'block';
   ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'medidor'].forEach((id) => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('estado').value = 'true';
   document.getElementById('cuenta').value = String(Number(cuenta) + 1).padStart(3, '0');
   document.getElementById('nombre').focus();
   actualizarContador();
