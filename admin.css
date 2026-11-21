@@ -1,0 +1,15 @@
+.hidden { display: none; }
+.tab-btn { padding: 8px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+.tab-btn.activo { background: #2563eb; color: white; }
+.tab-btn.no-activo { background: #e2e8f0; color: #475569; }
+@media print {
+body { background: white !important; padding: 0 !important; }
+header, .no-print, #box-login, #modal-nuevo-socio, #modal-editar-gasto { display: none !important; }
+main { max-width: 100% !important; padding: 0 !important; }
+#box-contenido, #seccion-reportes { display: block !important; }
+#area-impresion-reporte {
+box-shadow: none !important;
+border: 1px solid #cbd5e1 !important;
+padding: 16px !important;
+}
+}

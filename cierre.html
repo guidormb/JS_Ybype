@@ -114,7 +114,15 @@ async function verResumen(){
     `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>` :
     `<div class="definitivo">✅ CIERRE DEFINITIVO - Mes cerrado</div>`;
 
-  const saldo = Number(r.total_cobrado) - Number(r.total_gastado);
+  // --- SALDO MES ANTERIOR ---
+let mesAnt = mes - 1;
+let anioAnt = anio;
+if (mesAnt === 0) { mesAnt = 12; anioAnt = anio - 1; }
+
+const { data: cierreAnt } = await sbMenu.from('cierres_mensuales').select('saldo_final').eq('anio', anioAnt).eq('mes', mesAnt).maybeSingle();
+const saldoAnterior = Number(cierreAnt?.saldo_final || 0);
+
+const saldo = saldoAnterior + Number(r.total_cobrado) - Number(r.total_gastado);
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
 
   const botonCerrar = esParcial ?
@@ -126,6 +134,7 @@ async function verResumen(){
     ${leyenda}
       <h3 style="text-align:center; margin:0">JUNTA JSYBYPE</h3>
       <p style="text-align:center; margin:4px 0 12px"><b>CIERRE ${nombres[mes].toUpperCase()} ${anio}</b></p>
+      <div class="fila"><span>Saldo mes anterior:</span><b>Gs. ${fmt(saldoAnterior)}</b></div>
       <div class="fila"><span>Cobrado Facturas:</span><b>Gs. ${fmt(r.cobrado_facturas)}</b></div>
       <div class="fila"><span>Cobrado Anticipos:</span><b>Gs. ${fmt(r.cobrado_anticipos)}</b></div>
       <div class="fila"><span>Total Cobrado:</span><b>Gs. ${fmt(r.total_cobrado)}</b></div>
