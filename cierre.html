@@ -59,10 +59,7 @@
   </select>
 
   <label for="anio">Año</label>
-  <select id="anio">
-    <option value="2026" selected>2026</option>
-    <option value="2027">2027</option>
-  </select>
+  <select id="anio"></select>
 
   <button type="button" onclick="verResumen()">Ver Resumen</button>
 </div>
@@ -74,6 +71,27 @@
 </div>
 
 <script>
+function poblarSelectorAnios() {
+  const selAnio = document.getElementById('anio');
+  if (!selAnio) return;
+
+  const hoy = new Date();
+  const anioActual = hoy.getFullYear();
+  const anioInicio = 2026;
+  const anioFin = Math.max(2028, anioActual + 1);
+
+  selAnio.innerHTML = '';
+  for (let a = anioInicio; a <= anioFin; a++) {
+    const opt = document.createElement('option');
+    opt.value = String(a);
+    opt.textContent = String(a);
+    if (a === anioActual) {
+      opt.selected = true;
+    }
+    selAnio.appendChild(opt);
+  }
+}
+
 async function verResumen(){
   const mes = Number(document.getElementById('mes').value);
   const anio = Number(document.getElementById('anio').value);
@@ -158,6 +176,8 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
   alert('¡Mes cerrado y guardado!');
   verResumen();
 }
+
+poblarSelectorAnios();
 </script>
 
 </body>
