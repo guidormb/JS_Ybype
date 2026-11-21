@@ -1,5 +1,4 @@
-// admin-cobros.js - Copiado tal cual de tu gigante
-
+// admin-cobros.js
 window.cargarFacturasSocioSeleccionado = async function () {
   const clienteId = document.getElementById('sel-cliente').value;
   const cont = document.getElementById('lista-facturas-cobro');
@@ -18,7 +17,7 @@ window.cargarFacturasSocioSeleccionado = async function () {
     infoSaldo.classList.remove('hidden');
   }
 
-  const r = await supabase
+  const r = await supabaseClient
     .from('facturas')
     .select('*')
     .eq('cliente_id', clienteId)
@@ -67,7 +66,7 @@ window.usarTotalSeleccionado = function () {
 async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) {
   if (!montoAnticipo || montoAnticipo <= 0) return;
 
-  const { error: errPago } = await supabase.from('pagos').insert({
+  const { error: errPago } = await supabaseClient.from('pagos').insert({
     cliente_id: clienteId,
     factura_id: null,
     monto_pagado: montoAnticipo,
@@ -76,9 +75,9 @@ async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) 
   });
   if (errPago) throw errPago;
 
-  const { data: clienteActual } = await supabase.from('clientes').select('saldo_favor').eq('id', clienteId).single();
+  const { data: clienteActual } = await supabaseClient.from('clientes').select('saldo_favor').eq('id', clienteId).single();
   const saldoActual = clienteActual ? Number(clienteActual.saldo_favor || 0) : 0;
-  const { error: errCli } = await supabase
+  const { error: errCli } = await supabaseClient
     .from('clientes')
     .update({ saldo_favor: saldoActual + montoAnticipo })
     .eq('id', clienteId);
@@ -118,7 +117,7 @@ window.registrarPago = async function (event) {
 
       for (let i = 0; i < checks.length; i++) {
         const facturaId = checks[i].value;
-        const { data: factura } = await supabase.from('facturas').select('*').eq('id', facturaId).single();
+        const { data: factura } = await supabaseClient.from('facturas').select('*').eq('id', facturaId).single();
         if (factura) {
           facturasData.push(factura);
           totalFacturasMarcadas += Number(factura.saldo_pendiente || 0);
@@ -148,7 +147,7 @@ window.registrarPago = async function (event) {
         const nuevoSaldo = saldoFactura - aPagar;
         const nuevoEstado = nuevoSaldo === 0 ? 'pagado' : 'pendiente';
 
-        const { error: errPago } = await supabase.from('pagos').insert({
+        const { error: errPago } = await supabaseClient.from('pagos').insert({
           cliente_id: clienteId,
           factura_id: factura.id,
           monto_pagado: aPagar,
@@ -159,7 +158,7 @@ window.registrarPago = async function (event) {
         });
         if (errPago) throw errPago;
 
-        await supabase.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', factura.id);
+        await supabaseClient.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', factura.id);
 
         if (nuevoSaldo === 0) {
           facturasCanceladas.push(factura.mes);
@@ -208,7 +207,7 @@ window.registrarPago = async function (event) {
 
 async function cargarPagosRecientes() {
   const cont = document.getElementById('lista-pagos');
-  const r = await supabase
+  const r = await supabaseClient
     .from('pagos')
     .select('*, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
     .order('created_at', { ascending: false })
@@ -270,11 +269,11 @@ async function eliminarCobranza(pago) {
   if (!ok) return;
 
   try {
-    const { error } = await supabase.from('pagos').delete().eq('id', pago.id);
+    const { error } = await supabaseClient.from('pagos').delete().eq('id', pago.id);
     if (error) throw error;
 
     if (pago.factura_id) {
-      const { data: factura } = await supabase
+      const { data: factura } = await supabaseClient
         .from('facturas')
         .select('id, monto, saldo_pendiente, estado')
         .eq('id', pago.factura_id)
@@ -284,20 +283,20 @@ async function eliminarCobranza(pago) {
         const montoFactura = Number(factura.monto || 0);
         const saldoActual = Number(factura.saldo_pendiente || 0);
         const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
-        await supabase
+        await supabaseClient
           .from('facturas')
           .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
           .eq('id', factura.id);
       }
     } else if (esAnticipo && pago.cliente_id) {
-      const { data: cliente } = await supabase
+      const { data: cliente } = await supabaseClient
         .from('clientes')
         .select('saldo_favor')
         .eq('id', pago.cliente_id)
         .single();
       if (cliente) {
         const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
-        await supabase.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
+        await supabaseClient.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
       }
     }
 

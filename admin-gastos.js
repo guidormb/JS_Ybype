@@ -13,7 +13,7 @@ window.registrarGasto = async function (event) {
   btn.textContent = 'Registrando...';
   btn.disabled = true;
   try {
-    const { error } = await supabase.from('gastos').insert({
+    const { error } = await supabaseClient.from('gastos').insert({
       descripcion, categoria, monto,
       proveedor_beneficiario: proveedor || null,
       fecha: new Date().toISOString().slice(0, 10),
@@ -34,7 +34,7 @@ window.registrarGasto = async function (event) {
 
 async function cargarGastosRecientes() {
   const cont = document.getElementById('lista-gastos');
-  const r = await supabase.from('gastos').select('*').order('created_at', { ascending: false }).limit(20);
+  const r = await supabaseClient.from('gastos').select('*').order('created_at', { ascending: false }).limit(20);
   const gastos = r.data || [];
   gastosRecientesCache = gastos;
   if (gastos.length === 0) {
@@ -97,7 +97,7 @@ window.guardarEdicionGasto = async function (event) {
   const btn = document.getElementById('btn-edit-gasto-guardar');
   btn.textContent = 'Guardando...';
   btn.disabled = true;
-  const { error } = await supabase.from('gastos').update({ descripcion, categoria, monto, proveedor_beneficiario: proveedor || null, fecha }).eq('id', id);
+  const { error } = await supabaseClient.from('gastos').update({ descripcion, categoria, monto, proveedor_beneficiario: proveedor || null, fecha }).eq('id', id);
   if (error) {
     mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + error.message, true);
     btn.textContent = 'Guardar Cambios';
@@ -113,7 +113,7 @@ window.guardarEdicionGasto = async function (event) {
 
 window.eliminarGasto = async function (id, descripcion) {
   if (!confirm('¿Borrar este gasto?\n' + (descripcion || '') + '\nEsta acción no se puede deshacer.')) return;
-  const { error } = await supabase.from('gastos').delete().eq('id', id);
+  const { error } = await supabaseClient.from('gastos').delete().eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   await cargarDatosAdmin();
 };

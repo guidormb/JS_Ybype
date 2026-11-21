@@ -33,7 +33,7 @@ window.generarReporteCobranzas = async function () {
   btnConsultar.textContent = 'Consultando...';
   btnConsultar.disabled = true;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('pagos')
       .select('id, created_at, monto_pagado, metodo, concepto, factura_id, clientes(nro_cuenta, personas(nombre, apellido, cedula_ruc))')
       .gte('created_at', fechaInicioISO)
@@ -89,9 +89,9 @@ window.generarReporteCobranzas = async function () {
 
 async function cargarBalance() {
   const [rp, rg, rc] = await Promise.all([
-    supabase.from('pagos').select('monto_pagado, factura_id, concepto'),
-    supabase.from('gastos').select('monto'),
-    supabase.from('clientes').select('saldo_favor')
+    supabaseClient.from('pagos').select('monto_pagado, factura_id, concepto'),
+    supabaseClient.from('gastos').select('monto'),
+    supabaseClient.from('clientes').select('saldo_favor')
   ]);
   const pagos = rp.data || [];
   const totalCobradoFacturas = pagos.filter((p) => {
@@ -118,13 +118,13 @@ window.generarCuotasMasivas = async function (event) {
   btn.textContent = 'Generando...';
   btn.disabled = true;
   try {
-    const { data: clientes } = await supabase.from('clientes').select('id').eq('activo', true);
+    const { data: clientes } = await supabaseClient.from('clientes').select('id').eq('activo', true);
     if (!clientes || clientes.length === 0) throw new Error('No hay socios activos.');
-    const { data: existentes } = await supabase.from('facturas').select('cliente_id').eq('mes', mes);
+    const { data: existentes } = await supabaseClient.from('facturas').select('cliente_id').eq('mes', mes);
     const yaTienen = new Set((existentes || []).map((f) => f.cliente_id));
     const nuevas = clientes.filter((c) => !yaTienen.has(c.id)).map((c) => ({ cliente_id: c.id, mes, monto, saldo_pendiente: monto, estado: 'pendiente' }));
     if (nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
-    const { error } = await supabase.from('facturas').insert(nuevas);
+    const { error } = await supabaseClient.from('facturas').insert(nuevas);
     if (error) throw error;
     await cargarDatosAdmin();
     mostrarMensajeAdmin('cuotas-msg', 'Cuotas generadas: ' + nuevas.length + ' socios (se aplicó saldo a favor automático donde correspondía). Ya tenían: ' + yaTienen.size, false);
