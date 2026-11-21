@@ -12,10 +12,21 @@
     .tab-btn { padding: 8px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
     .tab-btn.activo { background: #2563eb; color: white; }
     .tab-btn.no-activo { background: #e2e8f0; color: #475569; }
+    @media print {
+      body { background: white !important; padding: 0 !important; }
+      header, .no-print, #box-login, #modal-nuevo-socio, #modal-editar-gasto { display: none !important; }
+      main { max-width: 100% !important; padding: 0 !important; }
+      #box-contenido, #seccion-reportes { display: block !important; }
+      #area-impresion-reporte {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 16px !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen font-sans">
-  <header class="bg-slate-900 text-white p-4 shadow-md">
+  <header class="bg-slate-900 text-white p-4 shadow-md no-print">
     <div class="flex justify-between items-center max-w-md mx-auto">
       <div>
         <h1 class="font-bold text-base">Junta de Saneamiento</h1>
@@ -23,7 +34,7 @@
       </div>
       <div id="header-acciones" class="flex gap-2 flex-wrap justify-end hidden">
         <button type="button" onclick="abrirPadron()" class="bg-amber-500 px-3 py-2 rounded-lg text-xs font-bold">📋 Padrón</button>
-<button type="button" onclick="location.href='cierre.html'" class="bg-purple-600 px-3 py-2 rounded-lg text-xs font-bold text-white">📊 Cierre Mensual</button>
+        <button type="button" onclick="location.href='cierre.html'" class="bg-purple-600 px-3 py-2 rounded-lg text-xs font-bold text-white">📊 Cierre Mensual</button>
         <button type="button" onclick="abrirModalNuevoSocio()" class="bg-blue-600 px-3 py-2 rounded-lg text-xs font-bold">+ Nuevo Socio</button>
         <button type="button" onclick="cerrarSesion()" class="bg-red-600 px-3 py-2 rounded-lg text-xs font-bold">Salir</button>
       </div>
@@ -31,7 +42,7 @@
   </header>
 
   <main class="p-4 max-w-md mx-auto w-full space-y-4 pb-24">
-    <div id="box-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+    <div id="box-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
       <div class="text-center mb-5">
         <h2 class="text-xl font-extrabold text-slate-800">Acceso Administrador</h2>
         <p class="text-xs text-slate-500 mt-1">Solo personal autorizado.</p>
@@ -51,7 +62,7 @@
     </div>
 
     <div id="box-contenido" class="hidden space-y-4">
-      <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-md">
+      <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-md no-print">
         <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
         <h3 id="balance-total" class="text-2xl font-extrabold mt-1">Gs. 0</h3>
         <div class="grid grid-cols-2 gap-3 mt-4 text-xs">
@@ -74,13 +85,14 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1 no-print">
         <button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
         <button type="button" id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
         <button type="button" id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
+        <button type="button" id="tab-btn-reportes" onclick="cambiarPestanaAdmin('reportes')" class="tab-btn no-activo flex-1">PDF Cobros</button>
       </div>
 
-      <section id="seccion-cobrar" class="space-y-4">
+      <section id="seccion-cobrar" class="space-y-4 no-print">
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Pago</h4>
           <form onsubmit="registrarPago(event)" class="space-y-3">
@@ -140,7 +152,7 @@
         </div>
       </section>
 
-      <section id="seccion-gastos" class="hidden space-y-4">
+      <section id="seccion-gastos" class="hidden space-y-4 no-print">
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Gasto</h4>
           <form onsubmit="registrarGasto(event)" class="space-y-3">
@@ -176,7 +188,7 @@
         </div>
       </section>
 
-      <section id="seccion-cuotas" class="hidden space-y-4">
+      <section id="seccion-cuotas" class="hidden space-y-4 no-print">
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <h4 class="font-bold text-sm text-slate-800 mb-4">Generar Cuotas Mensuales</h4>
           <form onsubmit="generarCuotasMasivas(event)" class="space-y-3">
@@ -193,10 +205,68 @@
           <div id="cuotas-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
         </div>
       </section>
+
+      <section id="seccion-reportes" class="hidden space-y-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3 no-print">
+          <h4 class="font-bold text-sm text-slate-800">Reporte PDF de Cobranzas</h4>
+
+          <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+            <button type="button" id="modo-rep-mes" onclick="cambiarModoReporte('mes')" class="py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm">Mensual</button>
+            <button type="button" id="modo-rep-rango" onclick="cambiarModoReporte('rango')" class="py-2 text-xs font-bold rounded-lg text-slate-500">Rango de Fechas</button>
+          </div>
+
+          <div id="filtro-rep-mes">
+            <label for="rep-mes-input" class="block text-xs font-bold text-slate-600 mb-1">Seleccioná Mes y Año</label>
+            <input type="month" id="rep-mes-input" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+          </div>
+
+          <div id="filtro-rep-rango" class="hidden grid grid-cols-2 gap-2">
+            <div>
+              <label for="rep-fecha-desde" class="block text-xs font-bold text-slate-600 mb-1">Desde</label>
+              <input type="date" id="rep-fecha-desde" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+            </div>
+            <div>
+              <label for="rep-fecha-hasta" class="block text-xs font-bold text-slate-600 mb-1">Hasta</label>
+              <input type="date" id="rep-fecha-hasta" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="button" id="btn-generar-reporte" onclick="generarReporteCobranzas()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">Consultar Cobros</button>
+            <button type="button" id="btn-imprimir-reporte" onclick="window.print()" class="hidden bg-slate-900 text-white px-4 py-3 rounded-xl font-bold text-sm">📄 PDF</button>
+          </div>
+          <div id="reporte-msg" class="p-3 rounded-xl text-xs text-center hidden font-medium"></div>
+        </div>
+
+        <div id="area-impresion-reporte" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div class="border-b pb-3 text-center">
+            <h3 class="font-extrabold text-base text-slate-900">JUNTA DE SANEAMIENTO JSYBYPE</h3>
+            <p id="rep-titulo-periodo" class="text-xs font-bold text-blue-700 mt-0.5 uppercase">Reporte de Cobranzas</p>
+            <p id="rep-fecha-emision" class="text-[11px] text-slate-500 mt-0.5"></p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+              <span class="block text-[10px] font-bold text-emerald-700">FACTURAS</span>
+              <span id="rep-total-facturas" class="font-extrabold text-emerald-900">Gs. 0</span>
+            </div>
+            <div class="bg-sky-50 border border-sky-200 p-2.5 rounded-xl">
+              <span class="block text-[10px] font-bold text-sky-700">ANTICIPOS</span>
+              <span id="rep-total-anticipos" class="font-extrabold text-sky-900">Gs. 0</span>
+            </div>
+            <div class="bg-slate-900 text-white p-2.5 rounded-xl">
+              <span class="block text-[10px] font-bold text-amber-300">TOTAL COBRADO</span>
+              <span id="rep-total-general" class="font-extrabold">Gs. 0</span>
+            </div>
+          </div>
+
+          <div id="rep-tabla-contenedor" class="overflow-x-auto"></div>
+        </div>
+      </section>
     </div>
   </main>
 
-  <div id="modal-nuevo-socio" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="modal-nuevo-socio" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
     <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center mb-4">
         <h4 class="font-bold text-sm">Nuevo Socio Rápido</h4>
@@ -215,7 +285,7 @@
     </div>
   </div>
 
-  <div id="modal-editar-gasto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div id="modal-editar-gasto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
     <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center mb-4">
         <h4 class="font-bold text-sm">Editar Gasto</h4>
@@ -267,6 +337,7 @@
     let listaSociosCobro = [];
     let gastosRecientesCache = [];
     let pagosRecientesCache = [];
+    let modoReporteActual = 'mes';
 
     function escapeHtml(valor) {
       return String(valor ?? '')
@@ -313,11 +384,165 @@
     };
 
     window.cambiarPestanaAdmin = function (pestana) {
-      ['cobrar', 'gastos', 'cuotas'].forEach((t) => {
+      ['cobrar', 'gastos', 'cuotas', 'reportes'].forEach((t) => {
         document.getElementById('seccion-' + t).classList.toggle('hidden', t !== pestana);
         const btn = document.getElementById('tab-btn-' + t);
         btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
       });
+    };
+
+    window.cambiarModoReporte = function (modo) {
+      modoReporteActual = modo;
+      const btnMes = document.getElementById('modo-rep-mes');
+      const btnRango = document.getElementById('modo-rep-rango');
+      const boxMes = document.getElementById('filtro-rep-mes');
+      const boxRango = document.getElementById('filtro-rep-rango');
+
+      if (modo === 'mes') {
+        btnMes.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
+        btnRango.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
+        boxMes.classList.remove('hidden');
+        boxRango.classList.add('hidden');
+      } else {
+        btnRango.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
+        btnMes.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
+        boxRango.classList.remove('hidden');
+        boxMes.classList.add('hidden');
+      }
+    };
+
+    window.generarReporteCobranzas = async function () {
+      const msgEl = document.getElementById('reporte-msg');
+      const areaEl = document.getElementById('area-impresion-reporte');
+      const btnImprimir = document.getElementById('btn-imprimir-reporte');
+      const btnConsultar = document.getElementById('btn-generar-reporte');
+
+      msgEl.classList.add('hidden');
+      areaEl.classList.add('hidden');
+      btnImprimir.classList.add('hidden');
+
+      let fechaInicioISO = '';
+      let fechaFinISO = '';
+      let tituloPeriodo = '';
+
+      if (modoReporteActual === 'mes') {
+        const valorMes = document.getElementById('rep-mes-input').value;
+        if (!valorMes) {
+          mostrarMensajeAdmin('reporte-msg', 'Seleccioná un mes y año para el reporte.', true);
+          return;
+        }
+        const [anioStr, mesStr] = valorMes.split('-');
+        const anio = Number(anioStr);
+        const mes = Number(mesStr);
+        const ultimoDia = new Date(anio, mes, 0).getDate();
+        fechaInicioISO = `${anioStr}-${mesStr}-01T00:00:00.000Z`;
+        fechaFinISO = `${anioStr}-${mesStr}-${String(ultimoDia).padStart(2, '0')}T23:59:59.999Z`;
+        const nombresMes = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        tituloPeriodo = `Cobranzas Mensuales - ${nombresMes[mes]} ${anio}`;
+      } else {
+        const desde = document.getElementById('rep-fecha-desde').value;
+        const hasta = document.getElementById('rep-fecha-hasta').value;
+        if (!desde || !hasta) {
+          mostrarMensajeAdmin('reporte-msg', 'Completá la fecha Desde y Hasta.', true);
+          return;
+        }
+        if (desde > hasta) {
+          mostrarMensajeAdmin('reporte-msg', 'La fecha Desde no puede ser mayor que Hasta.', true);
+          return;
+        }
+        fechaInicioISO = `${desde}T00:00:00.000Z`;
+        fechaFinISO = `${hasta}T23:59:59.999Z`;
+        tituloPeriodo = `Cobros del ${desde.split('-').reverse().join('/')} al ${hasta.split('-').reverse().join('/')}`;
+      }
+
+      btnConsultar.textContent = 'Consultando...';
+      btnConsultar.disabled = true;
+
+      try {
+        const { data, error } = await supabase
+          .from('pagos')
+          .select('id, created_at, monto_pagado, metodo, concepto, factura_id, clientes(nro_cuenta, personas(nombre, apellido, cedula_ruc))')
+          .gte('created_at', fechaInicioISO)
+          .lte('created_at', fechaFinISO)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        const lista = data || [];
+        let totalFacturas = 0;
+        let totalAnticipos = 0;
+
+        lista.forEach((p) => {
+          const monto = Number(p.monto_pagado || 0);
+          const esAnticipo = !p.factura_id || String(p.concepto || '').toLowerCase().includes('anticipo');
+          if (esAnticipo) {
+            totalAnticipos += monto;
+          } else {
+            totalFacturas += monto;
+          }
+        });
+
+        const totalGeneral = totalFacturas + totalAnticipos;
+
+        document.getElementById('rep-titulo-periodo').textContent = tituloPeriodo;
+        document.getElementById('rep-fecha-emision').textContent =
+          'Emitido: ' + new Date().toLocaleDateString('es-PY') + ' | Movimientos: ' + lista.length;
+        document.getElementById('rep-total-facturas').textContent = 'Gs. ' + totalFacturas.toLocaleString('es-PY');
+        document.getElementById('rep-total-anticipos').textContent = 'Gs. ' + totalAnticipos.toLocaleString('es-PY');
+        document.getElementById('rep-total-general').textContent = 'Gs. ' + totalGeneral.toLocaleString('es-PY');
+
+        const tablaCont = document.getElementById('rep-tabla-contenedor');
+        if (lista.length === 0) {
+          tablaCont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No se encontraron cobranzas en este período.</p>';
+        } else {
+          const filasHtml = lista.map((p) => {
+            const c = p.clientes || {};
+            const per = c.personas || {};
+            const fecha = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '-';
+            const esAnticipo = !p.factura_id || String(p.concepto || '').toLowerCase().includes('anticipo');
+            const tipo = esAnticipo ? 'Anticipo' : 'Factura';
+            return (
+              '<tr class="border-b border-slate-200">'
+              + '<td class="py-2 pr-2 whitespace-nowrap">' + escapeHtml(fecha) + '</td>'
+              + '<td class="py-2 pr-2 font-bold">' + escapeHtml(c.nro_cuenta || '-') + '</td>'
+              + '<td class="py-2 pr-2">' + escapeHtml(((per.nombre || '') + ' ' + (per.apellido || '')).trim()) + '</td>'
+              + '<td class="py-2 pr-2">' + escapeHtml(tipo) + ' (' + escapeHtml(p.metodo || '-') + ')</td>'
+              + '<td class="py-2 text-right font-bold whitespace-nowrap">Gs. ' + Number(p.monto_pagado || 0).toLocaleString('es-PY') + '</td>'
+              + '</tr>'
+            );
+          }).join('');
+
+          tablaCont.innerHTML =
+            '<table class="w-full text-[11px] text-left border-collapse">'
+            + '<thead>'
+            + '<tr class="border-b-2 border-slate-300 text-slate-600 uppercase">'
+            + '<th class="py-2 pr-2">Fecha</th>'
+            + '<th class="py-2 pr-2">Cta</th>'
+            + '<th class="py-2 pr-2">Socio</th>'
+            + '<th class="py-2 pr-2">Detalle</th>'
+            + '<th class="py-2 text-right">Monto</th>'
+            + '</tr>'
+            + '</thead>'
+            + '<tbody>' + filasHtml + '</tbody>'
+            + '<tfoot>'
+            + '<tr class="border-t-2 border-slate-400 font-extrabold text-slate-900">'
+            + '<td colspan="4" class="py-2 text-right pr-2">TOTAL DEL PERÍODO:</td>'
+            + '<td class="py-2 text-right whitespace-nowrap">Gs. ' + totalGeneral.toLocaleString('es-PY') + '</td>'
+            + '</tr>'
+            + '</tfoot>'
+            + '</table>';
+        }
+
+        areaEl.classList.remove('hidden');
+        if (lista.length > 0) {
+          btnImprimir.classList.remove('hidden');
+        }
+      } catch (e) {
+        mostrarMensajeAdmin('reporte-msg', 'Error al generar reporte: ' + e.message, true);
+      } finally {
+        btnConsultar.textContent = 'Consultar Cobros';
+        btnConsultar.disabled = false;
+      }
     };
 
     window.abrirModalNuevoSocio = async function () {
@@ -389,6 +614,17 @@
       document.getElementById('box-login').classList.add('hidden');
       document.getElementById('box-contenido').classList.remove('hidden');
       if (acciones) acciones.classList.remove('hidden');
+
+      const hoy = new Date();
+      const ym = hoy.toISOString().slice(0, 7);
+      const ymd = hoy.toISOString().slice(0, 10);
+      const repMesEl = document.getElementById('rep-mes-input');
+      const repDesdeEl = document.getElementById('rep-fecha-desde');
+      const repHastaEl = document.getElementById('rep-fecha-hasta');
+      if (repMesEl && !repMesEl.value) repMesEl.value = ym;
+      if (repDesdeEl && !repDesdeEl.value) repDesdeEl.value = `${ym}-01`;
+      if (repHastaEl && !repHastaEl.value) repHastaEl.value = ymd;
+
       await cargarDatosAdmin();
     }
 
@@ -696,63 +932,60 @@
     }
 
     async function eliminarCobranza(pago) {
-  const per = pago.clientes?.personas || {};
-  const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || 'Socio';
-  const monto = Number(pago.monto_pagado || 0);
-  const esAnticipo = !pago.factura_id || String(pago.concepto || '').toLowerCase().includes('anticipo');
-  
-  const ok = confirm(
-    '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n' +
-    'Socio: ' + nombreSocio + '\n' +
-    'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n' +
-    'Concepto: ' + (pago.concepto || '') + '\n\n' +
-    'Se revertirá el saldo de la factura o el anticipo si corresponde.'
-  );
-  if (!ok) return;
-  
-  try {
-    // 1. PRIMERO intentamos borrar. Si es mes cerrado, acá la base lo frena.
-    const { error } = await supabase.from('pagos').delete().eq('id', pago.id);
-    if (error) throw error;
-    
-    // 2. SOLO si se borró, revertimos saldos
-    if (pago.factura_id) {
-      const { data: factura } = await supabase
-        .from('facturas')
-        .select('id, monto, saldo_pendiente, estado')
-        .eq('id', pago.factura_id)
-        .single();
-      
-      if (factura) {
-        const montoFactura = Number(factura.monto || 0);
-        const saldoActual = Number(factura.saldo_pendiente || 0);
-        const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
-        await supabase
-          .from('facturas')
-          .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
-          .eq('id', factura.id);
-      }
-    } else if (esAnticipo && pago.cliente_id) {
-      const { data: cliente } = await supabase
-        .from('clientes')
-        .select('saldo_favor')
-        .eq('id', pago.cliente_id)
-        .single();
-      if (cliente) {
-        const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
-        await supabase.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
+      const per = pago.clientes?.personas || {};
+      const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || 'Socio';
+      const monto = Number(pago.monto_pagado || 0);
+      const esAnticipo = !pago.factura_id || String(pago.concepto || '').toLowerCase().includes('anticipo');
+
+      const ok = confirm(
+        '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n'
+        + 'Socio: ' + nombreSocio + '\n'
+        + 'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n'
+        + 'Concepto: ' + (pago.concepto || '') + '\n\n'
+        + 'Se revertirá el saldo de la factura o el anticipo si corresponde.'
+      );
+      if (!ok) return;
+
+      try {
+        const { error } = await supabase.from('pagos').delete().eq('id', pago.id);
+        if (error) throw error;
+
+        if (pago.factura_id) {
+          const { data: factura } = await supabase
+            .from('facturas')
+            .select('id, monto, saldo_pendiente, estado')
+            .eq('id', pago.factura_id)
+            .single();
+
+          if (factura) {
+            const montoFactura = Number(factura.monto || 0);
+            const saldoActual = Number(factura.saldo_pendiente || 0);
+            const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
+            await supabase
+              .from('facturas')
+              .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
+              .eq('id', factura.id);
+          }
+        } else if (esAnticipo && pago.cliente_id) {
+          const { data: cliente } = await supabase
+            .from('clientes')
+            .select('saldo_favor')
+            .eq('id', pago.cliente_id)
+            .single();
+          if (cliente) {
+            const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
+            await supabase.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
+          }
+        }
+
+        mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
+        await cargarDatosAdmin();
+        await cargarFacturasSocioSeleccionado();
+      } catch (e) {
+        alert('No se pudo anular: ' + e.message);
+        mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
       }
     }
-    
-    mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
-    await cargarDatosAdmin();
-    await cargarFacturasSocioSeleccionado();
-  } catch (e) {
-    // 3. AVISO QUE SÍ SE VE: cartel + mensaje arriba
-    alert('No se pudo anular: ' + e.message);
-    mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
-  }
-}
 
     window.registrarGasto = async function (event) {
       event.preventDefault();
