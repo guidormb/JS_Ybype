@@ -14,10 +14,13 @@ window.registrarGasto = async function (event) {
   btn.disabled = true;
   try {
     const { error } = await supabaseClient.from('gastos').insert({
-      descripcion, categoria, monto,
+      descripcion,
+      categoria,
+      monto,
       proveedor_beneficiario: proveedor || null,
       fecha: new Date().toISOString().slice(0, 10),
-      nota: null, empleado_id: null
+      nota: null,
+      empleado_id: null
     });
     if (error) throw error;
     mostrarMensajeAdmin('gasto-msg', '¡Gasto registrado!', false);
@@ -97,7 +100,10 @@ window.guardarEdicionGasto = async function (event) {
   const btn = document.getElementById('btn-edit-gasto-guardar');
   btn.textContent = 'Guardando...';
   btn.disabled = true;
-  const { error } = await supabaseClient.from('gastos').update({ descripcion, categoria, monto, proveedor_beneficiario: proveedor || null, fecha }).eq('id', id);
+  const { error } = await supabaseClient
+    .from('gastos')
+    .update({ descripcion, categoria, monto, proveedor_beneficiario: proveedor || null, fecha })
+    .eq('id', id);
   if (error) {
     mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + error.message, true);
     btn.textContent = 'Guardar Cambios';

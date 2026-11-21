@@ -1,4 +1,29 @@
 // admin-cobros.js
+function calcularDiasVencidaFactura(mesStr) {
+  if (!mesStr || !/^\d{4}-\d{2}$/.test(String(mesStr).trim())) {
+    return { fechaVencimiento: null, diasVencida: 0, vencidaMas15Dias: false };
+  }
+  const [anioStr, mesNumStr] = String(mesStr).trim().split('-');
+  const anio = Number(anioStr);
+  const mesNum = Number(mesNumStr);
+
+  // Criterio estándar: vence el día 1 del mes siguiente al período facturado
+  const fechaVencimiento = new Date(anio, mesNum, 1);
+  fechaVencimiento.setHours(0, 0, 0, 0);
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const msPorDia = 1000 * 60 * 60 * 24;
+  const diasVencida = Math.floor((hoy.getTime() - fechaVencimiento.getTime()) / msPorDia);
+
+  return {
+    fechaVencimiento,
+    diasVencida,
+    vencidaMas15Dias: diasVencida > 15
+  };
+}
+
 window.cargarFacturasSocioSeleccionado = async function () {
   const clienteId = document.getElementById('sel-cliente').value;
   const cont = document.getElementById('lista-facturas-cobro');
@@ -12,8 +37,9 @@ window.cargarFacturasSocioSeleccionado = async function () {
   }
 
   const socio = listaSociosCobro.find((s) => String(s.id) === String(clienteId));
-  if (socio && socio.saldo_favor > 0) {
-    infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + Number(socio.saldo_favor).toLocaleString('es-PY');
+  const saldoFavorSocio = Number(socio?.saldo_favor || 0);
+  if (saldoFavorSocio > 0) {
+    infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + saldoFavorSocio.toLocaleString('es-PY');
     infoSaldo.classList.remove('hidden');
   }
 
@@ -31,19 +57,140 @@ window.cargarFacturasSocioSeleccionado = async function () {
     return;
   }
 
-  cont.innerHTML = facturas.map((f) => (
-    '<label class="flex items-center gap-2 bg-white border rounded-xl p-2.5 cursor-pointer">'
-    + '<input type="checkbox" class="chk-factura w-4 h-4 accent-emerald-600" value="' + escapeHtml(f.id) + '" data-saldo="' + escapeHtml(f.saldo_pendiente) + '" data-mes="' + escapeHtml(f.mes) + '" checked>'
-    + '<div class="flex-1"><p class="text-xs font-bold">Mes ' + escapeHtml(f.mes) + '</p><p class="text-[11px] text-slate-500">Pendiente: Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</p></div>'
-    + '<span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">PENDIENTE</span>'
-    + '</label>'
-  )).join('')
+  const facturaElegibleVencida = saldoFavorSocio > 0
+    ? facturas.find((f) => Number(f.saldo_pendiente || 0) > 0 && calcularDiasVencidaFactura(f.mes).vencidaMas15Dias)
+    : null;
+
+  let alertaVencidaHtml = '';
+  if (facturaElegibleVencida) {
+    const infoVenc = calcularDiasVencidaFactura(facturaElegibleVencida.mes);
+    const montoAplicable = Math.min(saldoFavorSocio, Number(facturaElegibleVencida.saldo_pendiente || 0));
+    const fechaVencStr = infoVenc.fechaVencimiento
+      ? infoVenc.fechaVencimiento.toLocaleDateString('es-PY')
+      : '-';
+
+    alertaVencidaHtml =
+      '<div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 mb-2">'
+      + '<p class="text-[11px] font-extrabold text-amber-900">⚠️ Factura vencida hace ' + escapeHtml(infoVenc.diasVencida) + ' días (vto. ' + escapeHtml(fechaVencStr) + ')</p>'
+      + '<p class="text-[11px] text-amber-800 mt-0.5">Mes ' + escapeHtml(facturaElegibleVencida.mes) + ' · Saldo a favor disponible: Gs. ' + saldoFavorSocio.toLocaleString('es-PY') + '</p>'
+      + '<button type="button" onclick="aplicarSaldoFacturaVencida15Dias(\'' + escapeHtml(clienteId) + '\', \'' + escapeHtml(facturaElegibleVencida.id) + '\')" class="mt-2 w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-3 rounded-lg">'
+      + 'Aplicar saldo a factura vencida (+15 días): Gs. ' + montoAplicable.toLocaleString('es-PY')
+      + '</button>'
+      + '</div>';
+  }
+
+  cont.innerHTML = alertaVencidaHtml + facturas.map((f) => {
+    const infoVenc = calcularDiasVencidaFactura(f.mes);
+    const badgeVenc = infoVenc.vencidaMas15Dias
+      ? '<span class="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-1 rounded-full">+15D VENCIDA</span>'
+      : '<span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">PENDIENTE</span>';
+
+    return (
+      '<label class="flex items-center gap-2 bg-white border rounded-xl p-2.5 cursor-pointer">'
+      + '<input type="checkbox" class="chk-factura w-4 h-4 accent-emerald-600" value="' + escapeHtml(f.id) + '" data-saldo="' + escapeHtml(f.saldo_pendiente) + '" data-mes="' + escapeHtml(f.mes) + '" checked>'
+      + '<div class="flex-1"><p class="text-xs font-bold">Mes ' + escapeHtml(f.mes) + '</p><p class="text-[11px] text-slate-500">Pendiente: Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</p></div>'
+      + badgeVenc
+      + '</label>'
+    );
+  }).join('')
     + '<p class="text-[11px] text-center text-slate-500 pt-1">Total seleccionado: <b id="total-seleccionado">Gs. 0</b> <button type="button" onclick="usarTotalSeleccionado()" class="text-blue-600 font-bold underline ml-1">Usar total</button></p>';
 
   cont.querySelectorAll('.chk-factura').forEach((chk) => {
     chk.addEventListener('change', actualizarTotalSeleccionado);
   });
   actualizarTotalSeleccionado();
+};
+
+window.aplicarSaldoFacturaVencida15Dias = async function (clienteId, facturaId) {
+  if (!clienteId || !facturaId) return;
+
+  try {
+    const { data: cli, error: errCliLeer } = await supabaseClient
+      .from('clientes')
+      .select('id, saldo_favor, nro_cuenta, personas(nombre, apellido)')
+      .eq('id', clienteId)
+      .single();
+    if (errCliLeer) throw errCliLeer;
+
+    const { data: fac, error: errFacLeer } = await supabaseClient
+      .from('facturas')
+      .select('*')
+      .eq('id', facturaId)
+      .single();
+    if (errFacLeer) throw errFacLeer;
+
+    const saldoFavorActual = Number(cli?.saldo_favor || 0);
+    const saldoFacturaActual = Number(fac?.saldo_pendiente || 0);
+    const infoVenc = calcularDiasVencidaFactura(fac?.mes);
+
+    if (!fac || fac.estado === 'pagado' || saldoFacturaActual <= 0) {
+      mostrarMensajeAdmin('pago-msg', 'La factura seleccionada ya no tiene saldo pendiente.', true);
+      await cargarFacturasSocioSeleccionado();
+      return;
+    }
+
+    if (!infoVenc.vencidaMas15Dias) {
+      mostrarMensajeAdmin('pago-msg', 'Esta factura aún no supera los 15 días de vencimiento bajo el criterio estándar.', true);
+      return;
+    }
+
+    if (saldoFavorActual <= 0) {
+      mostrarMensajeAdmin('pago-msg', 'El socio no cuenta con saldo a favor disponible.', true);
+      return;
+    }
+
+    const montoAplicar = Math.min(saldoFavorActual, saldoFacturaActual);
+    const nuevoSaldoFactura = saldoFacturaActual - montoAplicar;
+    const nuevoEstadoFactura = nuevoSaldoFactura === 0 ? 'pagado' : 'pendiente';
+    const nuevoSaldoFavor = saldoFavorActual - montoAplicar;
+    const per = cli?.personas || {};
+    const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || ('Cta ' + (cli?.nro_cuenta || ''));
+
+    const confirmar = confirm(
+      '⚠️ Aplicar saldo a favor por factura vencida (+15 días)\n\n'
+      + 'Socio: ' + nombreSocio + '\n'
+      + 'Factura: ' + fac.mes + ' (' + infoVenc.diasVencida + ' días vencida)\n'
+      + 'Monto a aplicar: Gs. ' + montoAplicar.toLocaleString('es-PY') + '\n'
+      + 'Saldo a favor restante: Gs. ' + nuevoSaldoFavor.toLocaleString('es-PY') + '\n'
+      + 'Saldo pendiente restante en factura: Gs. ' + nuevoSaldoFactura.toLocaleString('es-PY') + '\n\n'
+      + '¿Confirmás esta aplicación?'
+    );
+    if (!confirmar) return;
+
+    const { error: errPago } = await supabaseClient.from('pagos').insert({
+      cliente_id: clienteId,
+      factura_id: fac.id,
+      monto_pagado: montoAplicar,
+      metodo: 'saldo_a_favor',
+      concepto: nuevoSaldoFactura === 0
+        ? 'Aplicación de saldo a favor por factura vencida (+15 días) - Factura ' + fac.mes
+        : 'Amortización con saldo a favor por factura vencida (+15 días) - Factura ' + fac.mes + ' (queda Gs. ' + nuevoSaldoFactura.toLocaleString('es-PY') + ')'
+    });
+    if (errPago) throw errPago;
+
+    const { error: errFacUpd } = await supabaseClient
+      .from('facturas')
+      .update({ saldo_pendiente: nuevoSaldoFactura, estado: nuevoEstadoFactura })
+      .eq('id', fac.id);
+    if (errFacUpd) throw errFacUpd;
+
+    const { error: errCliUpd } = await supabaseClient
+      .from('clientes')
+      .update({ saldo_favor: nuevoSaldoFavor })
+      .eq('id', clienteId);
+    if (errCliUpd) throw errCliUpd;
+
+    mostrarMensajeAdmin(
+      'pago-msg',
+      'Se aplicaron Gs. ' + montoAplicar.toLocaleString('es-PY') + ' de saldo a favor a la factura ' + fac.mes + ' (+15 días vencida).',
+      false
+    );
+
+    await cargarDatosAdmin();
+    await cargarFacturasSocioSeleccionado();
+  } catch (e) {
+    mostrarMensajeAdmin('pago-msg', 'Error al aplicar saldo a factura vencida: ' + e.message, true);
+  }
 };
 
 window.actualizarTotalSeleccionado = function () {

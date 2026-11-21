@@ -231,7 +231,6 @@
           : 'Desactivado: elegís vos cuándo pagar con saldo';
       }
     }
-
     window.cambiarAutoPagarSaldo = async function (nuevoEstado) {
       if (!socioActual?.cliente || actualizandoPreferencia) return;
       actualizandoPreferencia = true;
@@ -241,16 +240,11 @@
 
       try {
         const supabase = window.supabaseClient;
-        const { data, error } = await supabase
-          .from('clientes')
-          .update({ auto_pagar_saldo: Boolean(nuevoEstado) })
-          .eq('id', socioActual.cliente.id)
-          .select('id, auto_pagar_saldo');
+        const { error } = await supabase.rpc('cambiar_auto_pagar_saldo_cliente', {
+          p_activo: Boolean(nuevoEstado)
+        });
 
         if (error) throw error;
-        if (!data || data.length === 0) {
-          throw new Error('No se pudo guardar tu preferencia (revisá políticas RLS de clientes).');
-        }
 
         socioActual.cliente.auto_pagar_saldo = Boolean(nuevoEstado);
         actualizarAutoSaldoUI(socioActual.cliente.auto_pagar_saldo);
@@ -270,7 +264,7 @@
         actualizandoPreferencia = false;
       }
     };
-
+   
     function actualizarSaldoFavorUI(saldoFavor) {
       const montoSaldo = Number(saldoFavor || 0);
       const banner = document.getElementById('box-saldo-favor-banner');
@@ -473,7 +467,7 @@
       await cargarFacturasCliente(cliente.id);
     }
 
-    window.pagarFacturaConSaldoFavor = async function (facturaId) {
+       window.pagarFacturaConSaldoFavor = async function (facturaId) {
       if (!socioActual?.cliente || aplicandoSaldo) return;
       aplicandoSaldo = true;
 
@@ -483,11 +477,11 @@
       try {
         const { data: clienteFresca, error: errLeerCli } = await supabase
           .from('clientes')
-          .select('id, saldo_favor, auto_pagar_saldo')
+          .select('id, saldo_favor')
           .eq('id', clienteId)
           .limit(1);
         if (errLeerCli) throw errLeerCli;
-        const saldoDisponible = Number(clienteFresca?.[0]?.saldo_favor || 0);
+        const saldoDisponible = Number(clienteFresca?.at(0)?.saldo_favor || 0);
 
         const { data: facturaFresca, error: errLeerFac } = await supabase
           .from('facturas')
@@ -495,7 +489,7 @@
           .eq('id', facturaId)
           .limit(1);
         if (errLeerFac) throw errLeerFac;
-        const factura = facturaFresca?.[0];
+        const factura = facturaFresca?.at(0);
 
         if (!factura || factura.estado === 'pagado') {
           mostrarMensajeSaldo('Esta factura ya no está pendiente.', true);
@@ -512,8 +506,6 @@
         }
 
         const aAplicar = Math.min(saldoDisponible, saldoFactura);
-        const nuevoSaldoFactura = saldoFactura - aAplicar;
-        const nuevoEstadoFactura = nuevoSaldoFactura === 0 ? 'pagado' : 'pendiente';
         const nuevoSaldoFavor = saldoDisponible - aAplicar;
 
         const confirmar = confirm(
@@ -530,45 +522,14 @@
           return;
         }
 
-        const { data: pagoInsertado, error: errPago } = await supabase
-          .from('pagos')
-          .insert({
-            cliente_id: clienteId,
-            factura_id: factura.id,
-            monto_pagado: aAplicar,
-            metodo: 'saldo_a_favor',
-            concepto: nuevoSaldoFactura === 0
-              ? 'Pago con saldo a favor - Factura ' + factura.mes
-              : 'Amortizada con saldo a favor - Factura ' + factura.mes + ' (queda Gs. ' + nuevoSaldoFactura.toLocaleString('es-PY') + ')'
-          })
-          .select();
-        if (errPago) throw errPago;
-        if (!pagoInsertado || pagoInsertado.length === 0) {
-          throw new Error('Supabase no permitió registrar el pago (revisá políticas RLS de pagos).');
-        }
+        const { data: resultado, error: errRpc } = await supabase.rpc('pagar_factura_con_saldo_cliente', {
+          p_factura_id: factura.id
+        });
+        if (errRpc) throw errRpc;
 
-        const { data: facActualizada, error: errFac } = await supabase
-          .from('facturas')
-          .update({ saldo_pendiente: nuevoSaldoFactura, estado: nuevoEstadoFactura })
-          .eq('id', factura.id)
-          .select();
-        if (errFac) throw errFac;
-        if (!facActualizada || facActualizada.length === 0) {
-          throw new Error('Supabase no permitió actualizar la factura (revisá políticas RLS de facturas).');
-        }
-
-        const { data: cliActualizada, error: errCli } = await supabase
-          .from('clientes')
-          .update({ saldo_favor: nuevoSaldoFavor })
-          .eq('id', clienteId)
-          .select();
-        if (errCli) throw errCli;
-        if (!cliActualizada || cliActualizada.length === 0) {
-          throw new Error('Supabase no permitió descontar el saldo a favor (revisá políticas RLS de clientes).');
-        }
-
-        socioActual.cliente.saldo_favor = nuevoSaldoFavor;
-        actualizarSaldoFavorUI(nuevoSaldoFavor);
+        const saldoActualizado = Number(resultado?.nuevo_saldo_favor ?? nuevoSaldoFavor);
+        socioActual.cliente.saldo_favor = saldoActualizado;
+        actualizarSaldoFavorUI(saldoActualizado);
         mostrarMensajeSaldo(
           '¡Aplicaste Gs. ' + aAplicar.toLocaleString('es-PY') + ' de tu saldo a favor a la factura ' + factura.mes + '!',
           false

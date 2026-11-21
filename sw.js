@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v20';
+const CACHE_VERSION = 'v22';
 const CACHE_NAME = `jsybype-cache-${CACHE_VERSION}`;
 
 const urlsToCache = [
@@ -9,6 +9,14 @@ const urlsToCache = [
   './padron.html',
   './cierre.html',
   './main.js',
+  './admin-config.js',
+  './admin-utils.js',
+  './admin-auth.js',
+  './admin-socios.js',
+  './admin-cobros.js',
+  './admin-gastos.js',
+  './admin-cuotas-reportes.js',
+  './admin-init.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
