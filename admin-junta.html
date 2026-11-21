@@ -696,59 +696,63 @@
     }
 
     async function eliminarCobranza(pago) {
-      const per = pago.clientes?.personas || {};
-      const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || 'Socio';
-      const monto = Number(pago.monto_pagado || 0);
-      const esAnticipo = !pago.factura_id || String(pago.concepto || '').toLowerCase().includes('anticipo');
-
-      const ok = confirm(
-        '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n'
-        + 'Socio: ' + nombreSocio + '\n'
-        + 'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n'
-        + 'Concepto: ' + (pago.concepto || '') + '\n\n'
-        + 'Se revertirá el saldo de la factura o el anticipo si corresponde.'
-      );
-      if (!ok) return;
-
-      try {
-        if (pago.factura_id) {
-          const { data: factura } = await supabase
-            .from('facturas')
-            .select('id, monto, saldo_pendiente, estado')
-            .eq('id', pago.factura_id)
-            .single();
-
-          if (factura) {
-            const montoFactura = Number(factura.monto || 0);
-            const saldoActual = Number(factura.saldo_pendiente || 0);
-            const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
-            await supabase
-              .from('facturas')
-              .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
-              .eq('id', factura.id);
-          }
-        } else if (esAnticipo && pago.cliente_id) {
-          const { data: cliente } = await supabase
-            .from('clientes')
-            .select('saldo_favor')
-            .eq('id', pago.cliente_id)
-            .single();
-          if (cliente) {
-            const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
-            await supabase.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
-          }
-        }
-
-        const { error } = await supabase.from('pagos').delete().eq('id', pago.id);
-        if (error) throw error;
-
-        mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
-        await cargarDatosAdmin();
-        await cargarFacturasSocioSeleccionado();
-      } catch (e) {
-        mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
+  const per = pago.clientes?.personas || {};
+  const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || 'Socio';
+  const monto = Number(pago.monto_pagado || 0);
+  const esAnticipo = !pago.factura_id || String(pago.concepto || '').toLowerCase().includes('anticipo');
+  
+  const ok = confirm(
+    '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n' +
+    'Socio: ' + nombreSocio + '\n' +
+    'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n' +
+    'Concepto: ' + (pago.concepto || '') + '\n\n' +
+    'Se revertirá el saldo de la factura o el anticipo si corresponde.'
+  );
+  if (!ok) return;
+  
+  try {
+    // 1. PRIMERO intentamos borrar. Si es mes cerrado, acá la base lo frena.
+    const { error } = await supabase.from('pagos').delete().eq('id', pago.id);
+    if (error) throw error;
+    
+    // 2. SOLO si se borró, revertimos saldos
+    if (pago.factura_id) {
+      const { data: factura } = await supabase
+        .from('facturas')
+        .select('id, monto, saldo_pendiente, estado')
+        .eq('id', pago.factura_id)
+        .single();
+      
+      if (factura) {
+        const montoFactura = Number(factura.monto || 0);
+        const saldoActual = Number(factura.saldo_pendiente || 0);
+        const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
+        await supabase
+          .from('facturas')
+          .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
+          .eq('id', factura.id);
+      }
+    } else if (esAnticipo && pago.cliente_id) {
+      const { data: cliente } = await supabase
+        .from('clientes')
+        .select('saldo_favor')
+        .eq('id', pago.cliente_id)
+        .single();
+      if (cliente) {
+        const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
+        await supabase.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
       }
     }
+    
+    mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
+    await cargarDatosAdmin();
+    await cargarFacturasSocioSeleccionado();
+  } catch (e) {
+    // 3. AVISO QUE SÍ SE VE: cartel + mensaje arriba
+    alert('No se pudo anular: ' + e.message);
+    mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
+  }
+}
 
     window.registrarGasto = async function (event) {
       event.preventDefault();
