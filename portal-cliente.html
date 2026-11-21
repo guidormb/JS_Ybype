@@ -421,14 +421,27 @@
         const nuevoSaldoFactura = saldoFactura - aAplicar;
         const nuevoEstadoFactura = nuevoSaldoFactura === 0 ? 'pagado' : 'pendiente';
         const nuevoSaldoFavor = saldoDisponible - aAplicar;
-
+// ⚠️ ADVERTENCIA ANTES DE PAGAR
+const confirmar = confirm(
+  '⚠️ ¿Usar tu saldo a favor?\n\n' +
+  'Vas a usar Gs. ' + aAplicar.toLocaleString('es-PY') + ' de tu saldo a favor\n' +
+  'Para pagar la factura ' + factura.mes + '\n\n' +
+  'Saldo actual: Gs. ' + saldoDisponible.toLocaleString('es-PY') + '\n' +
+  'Te va a quedar: Gs. ' + nuevoSaldoFavor.toLocaleString('es-PY') + '\n\n' +
+  'Esta acción descuenta de tu saldo y no se puede deshacer desde el portal.\n' +
+  '¿Querés continuar?'
+);
+if (!confirmar) {
+  aplicandoSaldo = false;
+  return;
+}
         const { data: pagoInsertado, error: errPago } = await supabase
           .from('pagos')
           .insert({
             cliente_id: clienteId,
             factura_id: factura.id,
             monto_pagado: aAplicar,
-            metodo: 'efectivo',
+            metodo: 'saldo_a_favor',
             concepto: nuevoSaldoFactura === 0
               ? 'Pago con saldo a favor - Factura ' + factura.mes
               : 'Amortizada con saldo a favor - Factura ' + factura.mes + ' (queda Gs. ' + nuevoSaldoFactura.toLocaleString('es-PY') + ')'
