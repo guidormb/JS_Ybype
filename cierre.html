@@ -94,8 +94,8 @@ const esParcial = !cierreExistente;
 const leyenda = esParcial ?
   `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>` :
   `<div class="definitivo">✅ CIERRE DEFINITIVO - Mes cerrado</div>`;
-const botonCerrar = esParcial ?
-  `<button onclick="cerrarMes(${anio}, ${mes}, ${r.cobrado_facturas}, ${r.cobrado_anticipos}, ${r.total_gastado}, ${saldo})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>` :
+    const botonCerrar = esParcial ?
+  `<button onclick="cerrarMes(${anio}, ${mes}, ${r.total_cobrado_facturas}, ${r.total_anticipos}, ${r.total_gastado}, ${r.saldo_final})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>` :
   `<div style="background:#d4edda; color:#155724; padding:12px; border-radius:8px; text-align:center; font-weight:bold; margin-top:15px">✅ Este mes ya está cerrado. No se puede volver a cerrar.</div>`;
   const saldo = Number(r.total_cobrado) - Number(r.total_gastado);
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
