@@ -1,8 +1,11 @@
-// admin-config.js
+// admin-config.js - DEFINITIVO
 const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-window.supabaseClient = supabase;
+
+// Guardamos el cliente en un nombre propio que nadie pisa
+if (!window.supabaseClient) {
+  window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
 
 let listaSociosCobro = [];
 let gastosRecientesCache = [];
