@@ -7,6 +7,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Portal del Cliente - Junta de Saneamiento</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .switch-track {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background-color: rgba(255, 255, 255, 0.3);
+      border-radius: 9999px;
+      transition: background-color 0.2s ease;
+      flex-shrink: 0;
+    }
+    .switch-input:checked + .switch-track {
+      background-color: #10b981;
+    }
+    .switch-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background-color: #ffffff;
+      border-radius: 9999px;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    .switch-input:checked + .switch-track .switch-thumb {
+      transform: translateX(20px);
+    }
+  </style>
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
@@ -95,6 +123,19 @@
           <span class="text-emerald-200 font-semibold">SALDO A FAVOR DISPONIBLE</span>
           <span id="panel-saldo-favor" class="font-extrabold text-sm text-emerald-300">Gs. 0</span>
         </div>
+
+        <div class="mt-3 pt-3 border-t border-blue-600/50 flex items-center justify-between gap-3">
+          <div class="text-left">
+            <p class="text-xs font-bold text-white">Cobro automático con saldo a favor</p>
+            <p id="lbl-estado-auto-saldo" class="text-[11px] text-emerald-200">Activado: se descuenta solo al emitirse la factura</p>
+          </div>
+          <label class="inline-flex items-center cursor-pointer" aria-label="Cobro automático con saldo a favor">
+            <input type="checkbox" id="chk-auto-saldo" checked onchange="cambiarAutoPagarSaldo(this.checked)" class="sr-only switch-input" />
+            <span class="switch-track">
+              <span class="switch-thumb"></span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <!-- RESUMEN ROJO / VERDE -->
@@ -133,6 +174,7 @@
     const WHATSAPP_JUNTA = '595981355516';
     let socioActual = null;
     let aplicandoSaldo = false;
+    let actualizandoPreferencia = false;
 
     function escapeHtml(valor) {
       return String(valor ?? '')
@@ -177,6 +219,57 @@
       btn.textContent = texto;
       btn.disabled = deshabilitado;
     }
+
+    function actualizarAutoSaldoUI(activo) {
+      const habilitado = activo !== false;
+      const chk = document.getElementById('chk-auto-saldo');
+      const lbl = document.getElementById('lbl-estado-auto-saldo');
+      if (chk) chk.checked = habilitado;
+      if (lbl) {
+        lbl.textContent = habilitado
+          ? 'Activado: se descuenta solo al emitirse la factura'
+          : 'Desactivado: elegís vos cuándo pagar con saldo';
+      }
+    }
+
+    window.cambiarAutoPagarSaldo = async function (nuevoEstado) {
+      if (!socioActual?.cliente || actualizandoPreferencia) return;
+      actualizandoPreferencia = true;
+
+      const estadoAnterior = socioActual.cliente.auto_pagar_saldo !== false;
+      const chk = document.getElementById('chk-auto-saldo');
+
+      try {
+        const supabase = window.supabaseClient;
+        const { data, error } = await supabase
+          .from('clientes')
+          .update({ auto_pagar_saldo: Boolean(nuevoEstado) })
+          .eq('id', socioActual.cliente.id)
+          .select('id, auto_pagar_saldo');
+
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('No se pudo guardar tu preferencia (revisá políticas RLS de clientes).');
+        }
+
+        socioActual.cliente.auto_pagar_saldo = Boolean(nuevoEstado);
+        actualizarAutoSaldoUI(socioActual.cliente.auto_pagar_saldo);
+        mostrarMensajeSaldo(
+          nuevoEstado
+            ? 'Cobro automático ACTIVADO: cuando se emita una nueva factura y tengas saldo a favor, se aplicará automáticamente.'
+            : 'Cobro automático DESACTIVADO: tenés la opción manual para pagar con tu saldo a favor.',
+          false
+        );
+        await cargarFacturasCliente(socioActual.cliente.id);
+      } catch (err) {
+        socioActual.cliente.auto_pagar_saldo = estadoAnterior;
+        if (chk) chk.checked = estadoAnterior;
+        actualizarAutoSaldoUI(estadoAnterior);
+        mostrarMensajeSaldo('No se pudo cambiar el botón automático: ' + err.message, true);
+      } finally {
+        actualizandoPreferencia = false;
+      }
+    };
 
     function actualizarSaldoFavorUI(saldoFavor) {
       const montoSaldo = Number(saldoFavor || 0);
@@ -370,6 +463,7 @@
       document.getElementById('lbl-nombre-usuario').textContent = persona.nombre;
       document.getElementById('user-info').classList.remove('hidden');
       actualizarSaldoFavorUI(cliente.saldo_favor);
+      actualizarAutoSaldoUI(cliente.auto_pagar_saldo !== false);
 
       const mensajeWa = encodeURIComponent(`Hola, soy ${nombreCompleto} (Cuenta N.º ${cliente.nro_cuenta}). Envío mi comprobante de pago.`);
       document.getElementById('btn-whatsapp').href = `https://wa.me/${WHATSAPP_JUNTA}?text=${mensajeWa}`;
@@ -389,7 +483,7 @@
       try {
         const { data: clienteFresca, error: errLeerCli } = await supabase
           .from('clientes')
-          .select('id, saldo_favor')
+          .select('id, saldo_favor, auto_pagar_saldo')
           .eq('id', clienteId)
           .limit(1);
         if (errLeerCli) throw errLeerCli;
@@ -421,20 +515,21 @@
         const nuevoSaldoFactura = saldoFactura - aAplicar;
         const nuevoEstadoFactura = nuevoSaldoFactura === 0 ? 'pagado' : 'pendiente';
         const nuevoSaldoFavor = saldoDisponible - aAplicar;
-// ⚠️ ADVERTENCIA ANTES DE PAGAR
-const confirmar = confirm(
-  '⚠️ ¿Usar tu saldo a favor?\n\n' +
-  'Vas a usar Gs. ' + aAplicar.toLocaleString('es-PY') + ' de tu saldo a favor\n' +
-  'Para pagar la factura ' + factura.mes + '\n\n' +
-  'Saldo actual: Gs. ' + saldoDisponible.toLocaleString('es-PY') + '\n' +
-  'Te va a quedar: Gs. ' + nuevoSaldoFavor.toLocaleString('es-PY') + '\n\n' +
-  'Esta acción descuenta de tu saldo y no se puede deshacer desde el portal.\n' +
-  '¿Querés continuar?'
-);
-if (!confirmar) {
-  aplicandoSaldo = false;
-  return;
-}
+
+        const confirmar = confirm(
+          '⚠️ ¿Usar tu saldo a favor?\n\n' +
+          'Vas a usar Gs. ' + aAplicar.toLocaleString('es-PY') + ' de tu saldo a favor\n' +
+          'Para pagar la factura ' + factura.mes + '\n\n' +
+          'Saldo actual: Gs. ' + saldoDisponible.toLocaleString('es-PY') + '\n' +
+          'Te va a quedar: Gs. ' + nuevoSaldoFavor.toLocaleString('es-PY') + '\n\n' +
+          'Esta acción descuenta de tu saldo y no se puede deshacer desde el portal.\n' +
+          '¿Querés continuar?'
+        );
+        if (!confirmar) {
+          aplicandoSaldo = false;
+          return;
+        }
+
         const { data: pagoInsertado, error: errPago } = await supabase
           .from('pagos')
           .insert({
@@ -493,15 +588,18 @@ if (!confirmar) {
 
       const { data: cliFresca } = await supabase
         .from('clientes')
-        .select('saldo_favor')
+        .select('saldo_favor, auto_pagar_saldo')
         .eq('id', clienteId)
         .limit(1);
       if (cliFresca?.[0] && socioActual?.cliente) {
         socioActual.cliente.saldo_favor = Number(cliFresca[0].saldo_favor || 0);
+        socioActual.cliente.auto_pagar_saldo = cliFresca[0].auto_pagar_saldo !== false;
         actualizarSaldoFavorUI(socioActual.cliente.saldo_favor);
+        actualizarAutoSaldoUI(socioActual.cliente.auto_pagar_saldo);
       }
 
       const saldoFavorActual = Number(socioActual?.cliente?.saldo_favor || 0);
+      const autoPagarActivo = socioActual?.cliente?.auto_pagar_saldo !== false;
 
       const r = await supabase.from('facturas').select('*').eq('cliente_id', clienteId).order('mes', { ascending: false });
       const facturas = r.data || [];
@@ -528,12 +626,15 @@ if (!confirmar) {
       contenedor.innerHTML = facturas.map((f) => {
         const esPendiente = f.estado !== 'pagado' && Number(f.saldo_pendiente || 0) > 0;
         const badge = f.estado === 'pagado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
-        const puedeUsarSaldo = esPendiente && saldoFavorActual > 0;
+        const puedeUsarSaldoManual = esPendiente && saldoFavorActual > 0 && !autoPagarActivo;
         const montoSugerido = Math.min(saldoFavorActual, Number(f.saldo_pendiente || 0));
 
-        const botonSaldoHtml = puedeUsarSaldo
-          ? '<button type="button" onclick="pagarFacturaConSaldoFavor(\'' + escapeHtml(f.id) + '\')" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">Pagar con saldo (Gs. ' + Number(montoSugerido).toLocaleString('es-PY') + ')</button>'
-          : '';
+        let accionDerechaHtml = '';
+        if (puedeUsarSaldoManual) {
+          accionDerechaHtml = '<button type="button" onclick="pagarFacturaConSaldoFavor(\'' + escapeHtml(f.id) + '\')" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">Pagar con saldo (Gs. ' + Number(montoSugerido).toLocaleString('es-PY') + ')</button>';
+        } else if (esPendiente && saldoFavorActual > 0 && autoPagarActivo) {
+          accionDerechaHtml = '<span class="inline-block text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Auto activo</span>';
+        }
 
         return (
           '<div class="border border-slate-200 rounded-xl p-3.5 flex justify-between items-center gap-2 bg-slate-50/60">'
@@ -543,7 +644,7 @@ if (!confirmar) {
           + '<p class="text-xs text-slate-500 mt-1">Monto: Gs. ' + Number(f.monto).toLocaleString('es-PY') + '</p>'
           + '<p class="text-xs font-bold text-slate-700">Pendiente: <span class="text-blue-600">Gs. ' + Number(f.saldo_pendiente).toLocaleString('es-PY') + '</span></p>'
           + '</div>'
-          + '<div class="text-right">' + botonSaldoHtml + '</div>'
+          + '<div class="text-right">' + accionDerechaHtml + '</div>'
           + '</div>'
         );
       }).join('');

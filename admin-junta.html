@@ -1200,7 +1200,12 @@
         const { error } = await supabase.from('facturas').insert(nuevas);
         if (error) throw error;
 
-        mostrarMensajeAdmin('cuotas-msg', 'Cuotas generadas: ' + nuevas.length + ' socios. Ya tenían: ' + yaTienen.size, false);
+        await cargarDatosAdmin();
+        mostrarMensajeAdmin(
+          'cuotas-msg',
+          'Cuotas generadas: ' + nuevas.length + ' socios (se aplicó saldo a favor automático donde correspondía). Ya tenían: ' + yaTienen.size,
+          false
+        );
       } catch (e) {
         mostrarMensajeAdmin('cuotas-msg', 'Error: ' + e.message, true);
       }
