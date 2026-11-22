@@ -129,23 +129,37 @@ async function cargarBalance() {
   
   const pagos = rp.data || [];
   
-  // TOTAL COBRADO = toda factura pagada, en efectivo/transferencia O con saldo a favor
-  // Si no contamos el saldo_a_favor, la plata desaparece del resumen cuando se aplica
+  // TOTAL COBRADO (FACTURAS) = toda factura pagada, en efectivo/transferencia O con saldo a favor
+  // Solo para mostrar en la tarjetita "TOTAL COBRADO (FACTURAS)"
   const totalCobradoFacturas = pagos.filter((p) => {
     const conceptoLower = String(p.concepto || '').toLowerCase();
     const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
     return !esAnticipo;
   }).reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
+  
+  // TOTAL EN EFECTIVO QUE REALMENTE ENTRÓ = facturas en efectivo + anticipos
+  // NO contamos el saldo_a_favor porque esa plata ya entró cuando se cobró el anticipo. Si lo contamos 2 veces, se duplica.
+  const totalCobradoEfectivo = pagos.filter((p) => {
+    const metodoLower = String(p.metodo || '').toLowerCase();
+    const conceptoLower = String(p.concepto || '').toLowerCase();
+    const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+    return !esUsoSaldoFavor;
+  }).reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
+  
   const totalGastado = (rg.data || []).reduce((a, g) => a + Number(g.monto || 0), 0);
   const totalAnticiposClientes = (rc.data || []).reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
-  const balanceCaja = totalCobradoFacturas - totalGastado;
-  const totalGeneralSaldos = totalCobradoFacturas + totalAnticiposClientes - totalGastado;
+  
+  // CAJA REAL = efectivo que entró - gastos. MISMA CUENTA QUE EL CIERRE.
+  const totalGeneralSaldos = totalCobradoEfectivo - totalGastado;
+  // PROPIO DE LA JUNTA = caja real - lo que se debe de anticipos. MISMO QUE "SALDO PROPIO" DEL CIERRE.
+  const balanceCaja = totalGeneralSaldos - totalAnticiposClientes;
   
   document.getElementById('total-cobrado').textContent = 'Gs. ' + totalCobradoFacturas.toLocaleString('es-PY');
   document.getElementById('total-gastado').textContent = 'Gs. ' + totalGastado.toLocaleString('es-PY');
   document.getElementById('total-anticipos').textContent = 'Gs. ' + totalAnticiposClientes.toLocaleString('es-PY');
   document.getElementById('balance-total').textContent = 'Gs. ' + balanceCaja.toLocaleString('es-PY');
   document.getElementById('total-general-saldos').textContent = 'Gs. ' + totalGeneralSaldos.toLocaleString('es-PY');
+  
   // LEYENDA DEL BALANCE
   const leyendaEl = document.getElementById('leyenda-balance');
   if (leyendaEl) {
@@ -157,7 +171,7 @@ async function cargarBalance() {
       leyendaEl.textContent = '⛔ Balance en negativo: Gs. ' + balanceCaja.toLocaleString('es-PY') + '. La Junta debe más de lo que tiene.';
       leyendaEl.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-300');
     } else if (totalAnticiposClientes > 0) {
-      leyendaEl.textContent = 'ℹ️ De los fondos en caja, Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' son anticipos de socios (plata a descontar, no ganancia).';
+      leyendaEl.textContent = 'ℹ️ De los fondos en caja, Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' son anticipos de socios (plata a descontar, no ganancia). Lo propio de la Junta es Gs. ' + balanceCaja.toLocaleString('es-PY') + '.';
       leyendaEl.classList.add('bg-amber-100', 'text-amber-900', 'border', 'border-amber-300');
     } else {
       leyendaEl.textContent = '✅ Todo el saldo en caja es propio de la Junta. No hay anticipos pendientes.';
