@@ -151,7 +151,7 @@ async function cargarBalance() {
   if (leyendaEl) {
     leyendaEl.classList.remove('hidden', 'bg-amber-100', 'text-amber-900', 'bg-red-100', 'text-red-800', 'bg-emerald-100', 'text-emerald-900', 'border', 'border-amber-300', 'border-red-300', 'border-emerald-300');
     if (balanceCaja < 0 && totalAnticiposClientes > 0) {
-      leyendaEl.textContent = '⚠️ Caja sin plata propia. En mano solo quedan Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' de anticipos de socios. Esa plata NO es de la Junta, se debe descontar en facturas.';
+      leyendaEl.textContent = '⚠️ Caja sin plata propia. En caja hay Gs. ' + totalGeneralSaldos.toLocaleString('es-PY') + ', pero se deben Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' de anticipos de socios. Faltan Gs. ' + Math.abs(balanceCaja).toLocaleString('es-PY') + ' para cubrirlos.';
       leyendaEl.classList.add('bg-amber-100', 'text-amber-900', 'border', 'border-amber-300');
     } else if (balanceCaja < 0) {
       leyendaEl.textContent = '⛔ Balance en negativo: Gs. ' + balanceCaja.toLocaleString('es-PY') + '. La Junta debe más de lo que tiene.';
