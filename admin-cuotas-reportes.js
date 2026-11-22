@@ -129,15 +129,13 @@ async function cargarBalance() {
 
   const pagos = rp.data || [];
 
-  // Solo dinero real cobrado de facturas (excluye anticipos y débitos internos de saldo a favor)
+   // TOTAL COBRADO = toda factura pagada, en efectivo/transferencia O con saldo a favor
+  // Si no contamos el saldo_a_favor, la plata desaparece del resumen cuando se aplica
   const totalCobradoFacturas = pagos.filter((p) => {
     const conceptoLower = String(p.concepto || '').toLowerCase();
-    const metodoLower = String(p.metodo || '').toLowerCase();
     const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
-    const esSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
-    return !esAnticipo && !esSaldoFavor;
+    return !esAnticipo;
   }).reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
-
   const totalGastado = (rg.data || []).reduce((a, g) => a + Number(g.monto || 0), 0);
   const totalAnticiposClientes = (rc.data || []).reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
   const balanceCaja = totalCobradoFacturas - totalGastado;
