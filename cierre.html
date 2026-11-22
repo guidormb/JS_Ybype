@@ -12,7 +12,6 @@
   const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
   const sbMenu = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 </script>
-
 <style>
   *{box-sizing:border-box}
   body{font-family:Arial, sans-serif; padding:16px; max-width:520px; margin:auto; background:#f5f5f5}
@@ -42,9 +41,7 @@
 </style>
 </head>
 <body>
-
 <h2>📊 Cierre Mensual</h2>
-
 <div class="no-print">
   <label for="mes">Mes</label>
   <select id="mes">
@@ -61,128 +58,99 @@
     <option value="11">Noviembre</option>
     <option value="12">Diciembre</option>
   </select>
-
   <label for="anio">Año</label>
   <select id="anio"></select>
-
   <button type="button" onclick="verResumen()">Ver Resumen</button>
 </div>
-
 <div id="resultado"></div>
-
 <div class="no-print" style="margin-top:20px">
   <button type="button" class="volver" onclick="location.href='admin-junta.html'">⬅ Volver al Admin</button>
 </div>
-
 <script>
 function poblarSelectorAnios() {
   const selAnio = document.getElementById('anio');
   if (!selAnio) return;
-
   const hoy = new Date();
   const anioActual = hoy.getFullYear();
   const anioInicio = 2026;
   const anioFin = Math.max(2028, anioActual + 1);
-
   selAnio.innerHTML = '';
   for (let a = anioInicio; a <= anioFin; a++) {
     const opt = document.createElement('option');
     opt.value = String(a);
     opt.textContent = String(a);
-    if (a === anioActual) {
-      opt.selected = true;
-    }
+    if (a === anioActual) opt.selected = true;
     selAnio.appendChild(opt);
   }
 }
-
-// --- NUEVO: Anticipos / Saldo de socios que TODAVIA se deben ---
-// Es el mismo número que muestra el Menú como "Anticipos / Saldo a Favor"
-// Intenta leer de clientes.saldo_a_favor, si tu tabla se llama distinto, cambiar acá.
+// MISMA FORMULA QUE EL MENU - clientes.saldo_favor
 async function obtenerAnticiposPendientes(){
   try{
-    const { data, error } = await sbMenu.from('clientes').select('saldo_a_favor');
+    const { data, error } = await sbMenu.from('clientes').select('saldo_favor');
     if(error) return 0;
-    return (data||[]).reduce((acc,c)=> acc + Number(c.saldo_a_favor||0), 0);
+    return (data||[]).reduce((acc,c)=> acc + Number(c.saldo_favor||0), 0);
   }catch(e){ return 0; }
 }
-
-// --- NUEVO: Facturas cobradas con saldo en ese mes ---
-// Busca pagos del mes donde se usó saldo. Si no encuentra la tabla, devuelve 0 y no rompe.
+// MISMA FORMULA QUE EL MENU - pagos.monto_pagado, metodo saldo_a_favor
 async function obtenerFacturasConSaldo(anio, mes){
   try{
-    const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
-    const hastaMes = mes === 12 ? 1 : mes + 1;
-    const hastaAnio = mes === 12 ? anio + 1 : anio;
-    const hasta = `${hastaAnio}-${String(hastaMes).padStart(2,'0')}-01`;
+    const ultimoDia = new Date(anio, mes, 0).getDate();
+    const fechaInicioISO = `${anio}-${String(mes).padStart(2,'0')}-01T00:00:00.000Z`;
+    const fechaFinISO = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}T23:59:59.999Z`;
     const { data, error } = await sbMenu.from('pagos')
-      .select('monto, metodo_pago, forma_pago, tipo_pago, fecha, created_at')
-      .gte('created_at', desde)
-      .lt('created_at', hasta);
+      .select('monto_pagado, factura_id, concepto, metodo, created_at')
+      .gte('created_at', fechaInicioISO)
+      .lte('created_at', fechaFinISO);
     if(error) return 0;
     return (data||[]).reduce((acc,p)=>{
-      const metodo = String(p.metodo_pago||p.forma_pago||p.tipo_pago||'').toLowerCase();
-      if(metodo.includes('saldo') || metodo.includes('anticipo')){
-        return acc + Number(p.monto||0);
+      const conceptoLower = String(p.concepto || '').toLowerCase();
+      const metodoLower = String(p.metodo || '').toLowerCase();
+      const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+      const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
+      if(esUsoSaldoFavor && !esAnticipo){
+        return acc + Number(p.monto_pagado||0);
       }
       return acc;
     }, 0);
   }catch(e){ return 0; }
 }
-
 async function verResumen(){
   const mes = Number(document.getElementById('mes').value);
   const anio = Number(document.getElementById('anio').value);
   const nombres = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
   document.getElementById('resultado').innerHTML = '<p style="text-align:center">Cargando...</p>';
-
   const { data, error } = await sbMenu.rpc('calcular_cierre', { p_anio: anio, p_mes: mes });
-
   if(error){
     document.getElementById('resultado').innerHTML = '';
     return alert('Error: ' + error.message);
   }
   const r = (data && data[0]) || { cobrado_facturas: 0, cobrado_anticipos: 0, total_cobrado: 0, total_gastado: 0, cantidad_pagos: 0, cantidad_gastos: 0 };
-
   const { data: cierreExistente } = await sbMenu.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
   const esParcial = !cierreExistente;
-
   const leyenda = esParcial ?
     `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>` :
     `<div class="definitivo">✅ CIERRE DEFINITIVO - Mes cerrado</div>`;
-
-  // --- SALDO MES ANTERIOR ---
   let mesAnt = mes - 1;
   let anioAnt = anio;
   if (mesAnt === 0) { mesAnt = 12; anioAnt = anio - 1; }
-
   const { data: cierreAnt } = await sbMenu.from('cierres_mensuales').select('saldo_final').eq('anio', anioAnt).eq('mes', mesAnt).maybeSingle();
   const saldoAnterior = Number(cierreAnt?.saldo_final || 0);
-
-  // --- NUEVOS VALORES SEPARADOS ---
   const cobradoFacturasEfectivo = Number(r.cobrado_facturas || 0);
   const cobradoAnticiposMes = Number(r.cobrado_anticipos || 0);
-  const totalCobradoEfectivo = Number(r.total_cobrado || 0); // NO se le suma el saldo, para no contar 2 veces
+  const totalCobradoEfectivo = Number(r.total_cobrado || 0);
   const totalGastado = Number(r.total_gastado || 0);
-
   const facturasConSaldo = await obtenerFacturasConSaldo(anio, mes);
   const totalFacturasCobradas = cobradoFacturasEfectivo + facturasConSaldo;
-
   const saldoFinalCaja = saldoAnterior + totalCobradoEfectivo - totalGastado;
   const anticiposPendientes = await obtenerAnticiposPendientes();
   const saldoPropio = saldoFinalCaja - anticiposPendientes;
-
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
-
   const leyendaSaldo = saldoPropio < 0
     ? `<div class="leyenda-saldo">⚠️ Caja sin plata propia. En caja hay Gs. ${fmt(saldoFinalCaja)}, pero se deben Gs. ${fmt(anticiposPendientes)} de anticipos. Faltan Gs. ${fmt(Math.abs(saldoPropio))} para cubrirlos.</div>`
     : `<div class="leyenda-saldo">ℹ️ De los fondos en caja, Gs. ${fmt(anticiposPendientes)} son anticipos de socios (plata a descontar, no ganancia). Lo propio de la Junta es Gs. ${fmt(saldoPropio)}.</div>`;
-
   const botonCerrar = esParcial ?
     `<button type="button" onclick="cerrarMes(${anio}, ${mes}, ${cobradoFacturasEfectivo}, ${cobradoAnticiposMes}, ${totalGastado}, ${saldoFinalCaja})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>` :
     `<div style="background:#d4edda; color:#155724; padding:12px; border-radius:8px; text-align:center; font-weight:bold; margin-top:15px">✅ Este mes ya está cerrado. No se puede volver a cerrar.</div>`;
-
   document.getElementById('resultado').innerHTML = `
     <div class="caja">
     ${leyenda}
@@ -208,28 +176,22 @@ async function verResumen(){
     </div>
   `;
 }
-
 async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
   const { data: sesData } = await sbMenu.auth.getSession();
   if (!sesData?.session) {
     return alert('Iniciá sesión como administrador para cerrar el mes.');
   }
-
   const fechaPermitida = new Date(anio, mes, 15);
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-
   if (hoy < fechaPermitida) {
     const nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const mesSiguiente = mes === 12 ? 'Enero' : nombres[mes + 1];
     return alert(`No se puede cerrar todavía.\n\n${nombres[mes]} ${anio} solo se puede cerrar desde el 15 de ${mesSiguiente}.`);
   }
-
   if (!confirm('¿Cerrar este mes? Después del 15 ya no se podrá anular nada de este mes.')) return;
-
   const { data: yaCerrado } = await sbMenu.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
   if (yaCerrado) return alert('Este mes ya está cerrado. No se puede volver a cerrar.');
-
   const { error } = await sbMenu.from('cierres_mensuales').insert({
     anio: anio,
     mes: mes,
@@ -239,14 +201,11 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
     total_gastado: tg,
     saldo_final: saldo
   });
-
   if (error) return alert('Error al cerrar: ' + error.message);
   alert('¡Mes cerrado y guardado!');
   verResumen();
 }
-
 poblarSelectorAnios();
 </script>
-
 </body>
 </html>
