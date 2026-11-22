@@ -330,23 +330,16 @@
 
 async function validarSocioPorCedula(cedula) {
   const supabase = window.supabaseClient;
-  
-  // Nuevo: pregunta por RPC, no lee la tabla directo
-  const { data: existe, error } = await supabase.rpc('verificar_socio_existe', {
+  const { data, error } = await supabase.rpc('obtener_datos_socio', {
     p_cedula: cedula
   });
-  
-  if (error) {
-    console.log(error);
-    throw new Error('Error al verificar. Intentá de nuevo.');
-  }
-  
-  if (!existe) {
+  if (error) throw new Error('Error al verificar. Intentá de nuevo.');
+  if (!data || !data.existe) {
+    if (data?.inactivo) throw new Error('Esta cuenta está INACTIVA. Contactá con la Junta.');
     throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la Junta.');
   }
-  
-  // Si existe, devolvemos esto para que no rompa lo demás
-  return { persona: { cedula_ruc: cedula }, cliente: null };
+  return { persona: data.persona, cliente: data.cliente };
+}
 }
 
     window.manejarActivacionCuenta = async function (event) {
