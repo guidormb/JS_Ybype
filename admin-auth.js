@@ -53,8 +53,24 @@ window.manejarLoginAdmin = async function(event) {
 };
 
 window.cerrarSesion = async function() {
-  await supabaseClient.auth.signOut();
-  location.reload();
+  // 1. No esperamos al signOut, si tarda 1.5 seg igual seguimos. Que no se cuelgue nunca.
+  try {
+    await Promise.race([
+      supabaseClient.auth.signOut(),
+      new Promise((res) => setTimeout(res, 1500))
+    ]);
+  } catch (e) {}
+  
+  // 2. Borramos la sesión a mano, por si Supabase no la borró
+  try {
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith('sb-')) localStorage.removeItem(k);
+    });
+    sessionStorage.clear();
+  } catch (e) {}
+  
+  // 3. Volvemos al login SIEMPRE, con ?logout=1 para que no use el cache
+  window.location.href = 'admin-junta.html?logout=1';
 };
 
 async function verificarSesionAdmin() {
@@ -115,4 +131,4 @@ async function cargarDatosAdmin() {
 // Al abrir la página, verifica si ya hay sesión
 document.addEventListener('DOMContentLoaded', () => {
   verificarSesionAdmin();
-});
+});   
