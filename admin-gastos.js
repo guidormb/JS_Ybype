@@ -53,7 +53,7 @@ window.registrarGasto = async function(event) {
   btn.disabled = false;
 };
 
-async function cargarGastosRecientes() {
+window.cargarGastosRecientes = async function () {
   const cont = document.getElementById('lista-gastos');
   if (!cont) return;
   // SOLO trae según filtro. Por defecto 'activo' = anulados NO aparecen, NO suman.
@@ -181,3 +181,6 @@ window.anularGastoDesdeModal = async function() {
 
 // Alias para que el HTML viejo que llama a eliminarGastoDesdeModal siga andando
 window.eliminarGastoDesdeModal = window.anularGastoDesdeModal;
+// Aseguramos que sea global
+window.cargarGastosRecientes = cargarGastosRecientes;
+window.cargarGastos = cargarGastosRecientes;
