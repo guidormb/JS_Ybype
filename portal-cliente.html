@@ -328,37 +328,26 @@
       }
     };
 
-    async function validarSocioPorCedula(cedula) {
-      const supabase = window.supabaseClient;
-      const rp = await supabase
-        .from('personas')
-        .select('id, nombre, apellido, cedula_ruc')
-        .eq('cedula_ruc', cedula)
-        .limit(1);
-
-      const persona = rp.data?.[0];
-      if (rp.error || !persona) {
-        throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la administración.');
-      }
-      const rc = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('persona_id', persona.id)
-        .limit(1);
-
-      const cliente = rc.data?.[0];
-      if (rc.error || !cliente) {
-        throw new Error('Tu cédula está registrada, pero no tenés cuenta de agua asignada.');
-      }
-
-      // BLOQUEO CUENTA INACTIVA - columna ACTIVO en clientes
-      // activo = false = Suspendida / Dada de baja. No puede crear clave ni entrar.
-      if (cliente.activo === false || cliente.activo === 0 || cliente.activo === "false") {
-        throw new Error('⛔ Esta cuenta está INACTIVA (Suspendida / Dada de baja). No podés ingresar al portal. Contactá con la Junta.');
-      }
-
-      return { persona, cliente };
-    }
+async function validarSocioPorCedula(cedula) {
+  const supabase = window.supabaseClient;
+  
+  // Nuevo: pregunta por RPC, no lee la tabla directo
+  const { data: existe, error } = await supabase.rpc('verificar_socio_existe', {
+    p_cedula: cedula
+  });
+  
+  if (error) {
+    console.log(error);
+    throw new Error('Error al verificar. Intentá de nuevo.');
+  }
+  
+  if (!existe) {
+    throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la Junta.');
+  }
+  
+  // Si existe, devolvemos esto para que no rompa lo demás
+  return { persona: { cedula_ruc: cedula }, cliente: null };
+}
 
     window.manejarActivacionCuenta = async function (event) {
       event.preventDefault();
