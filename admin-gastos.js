@@ -1,7 +1,7 @@
 // admin-gastos.js - CORREGIDO: Anular en vez de Borrar. No se pierde historia.
 // Filtro: 'activo' por defecto = no muestra anulados. 'anulado' = muestra solo anulados.
-let filtroGastosActual = 'activo';
-let gastosRecientesCache = [];
+var filtroGastosActual = typeof filtroGastosActual !== 'undefined' ? filtroGastosActual : 'activo';
+var gastosRecientesCache = typeof gastosRecientesCache !== 'undefined' ? gastosRecientesCache : [];
 
 window.cambiarFiltroGastos = function(filtro) {
   filtroGastosActual = filtro;
