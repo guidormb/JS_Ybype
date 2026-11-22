@@ -30,14 +30,12 @@ padding: 16px !important;
 <header class="bg-slate-900 text-white p-4 shadow-md no-print">
 <div class="flex justify-between items-center max-w-md mx-auto">
 <div>
-<h1 class="font-bold text-base">Junta de Saneamiento</
-h1>
+<h1 class="font-bold text-base">Junta de Saneamiento</h1>
 <p class="text-[11px] text-slate-400">Caja y Cobros - Admin</p>
 </div>
 <div id="header-acciones" class="flex gap-2 flex-wrap justify-end hidden">
 <button type="button" onclick="abrirPadron()" class="bg-amber-500 px-3 py-2 rounded-lg text-xs font-bold">📋 Padrón</button>
-<button type="button" onclick="location.href='cierre.html'" class="bg-purple-600 px-3 py-2 rounded-lg text-xs font-bold text-white">📊 Cierre Mensual</
-button>
+<button type="button" onclick="location.href='cierre.html'" class="bg-purple-600 px-3 py-2 rounded-lg text-xs font-bold text-white">📊 Cierre Mensual</button>
 <button type="button" onclick="abrirModalNuevoSocio()" class="bg-blue-600 px-3 py-2 rounded-lg text-xs font-bold">+ Nuevo Socio</button>
 <button type="button" onclick="cerrarSesion()" class="bg-red-600 px-3 py-2 rounded-lg text-xs font-bold">Salir</button>
 </div>
@@ -45,8 +43,7 @@ button>
 </header>
 
 <main class="p-4 max-w-md mx-auto w-full space-y-4 pb-24">
-<div id="box-login" class="bg-white 
-p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
+<div id="box-login" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
 <div class="text-center mb-5">
 <h2 class="text-xl font-extrabold text-slate-800">Acceso Administrador</h2>
 <p class="text-xs text-slate-500 mt-1">Solo personal autorizado.</p>
@@ -67,8 +64,7 @@ p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
 
 <div id="box-contenido" class="hidden space-y-4">
 <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-md no-print">
-<p class="text-[11px] uppercase 
-tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
+<p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
 <h3 id="balance-total" class="text-2xl font-extrabold mt-1">Gs. 0</h3>
 <p id="leyenda-balance" class="hidden text-[11px] leading-snug mt-2 p-2 rounded-lg font-bold"></p>
 <div class="grid grid-cols-2 gap-3 mt-4 text-xs">
@@ -76,8 +72,7 @@ tracking-wider text-slate-400 font-bold">Balance General - Caja</p>
 <span class="text-emerald-300 block text-[10px] font-bold">TOTAL COBRADO (FACTURAS)</span>
 <span id="total-cobrado" class="font-bold text-sm">Gs. 0</span>
 </div>
-<div class="bg-slate-800 p-3 
-rounded-xl">
+<div class="bg-slate-800 p-3 rounded-xl">
 <span class="text-red-300 block text-[10px] font-bold">TOTAL GASTADO</span>
 <span id="total-gastado" class="font-bold text-sm">Gs. 0</span>
 </div>
@@ -85,8 +80,7 @@ rounded-xl">
 <span class="text-sky-300 block text-[10px] font-bold">ANTICIPOS / SALDO A FAVOR</span>
 <span id="total-anticipos" class="font-bold text-sm">Gs. 0</span>
 </div>
-<div class="bg-slate-800 p-3 
-rounded-xl">
+<div class="bg-slate-800 p-3 rounded-xl">
 <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
 <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
 </div>
@@ -94,8 +88,7 @@ rounded-xl">
 </div>
 
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1 no-print">
-<button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo 
-flex-1">Cobrar</button>
+<button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
 <button type="button" id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
 <button type="button" id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
 <button type="button" id="tab-btn-reportes" onclick="cambiarPestanaAdmin('reportes')" class="tab-btn no-activo flex-1">PDF Cobros</button>
@@ -107,14 +100,12 @@ flex-1">Cobrar</button>
 <form onsubmit="registrarPago(event)" class="space-y-3">
 <div>
 <label for="filtro-socio-cobro" class="block text-xs font-bold text-slate-600 mb-1">Buscar Socio por nombre o cédula</label>
-<input type="text" id="filtro-socio-cobro" 
-placeholder="Ej: Juan, Benítez, 5656565..." autocomplete="off" oninput="filtrarSociosCobro()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50" />
+<input type="text" id="filtro-socio-cobro" placeholder="Ej: Juan, Benítez, 5656565..." autocomplete="off" oninput="filtrarSociosCobro()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50" />
 <p class="text-[11px] text-slate-400 mt-1">Escribí y la lista de abajo se filtra sola.</p>
 </div>
 <div>
 <label for="sel-cliente" class="block text-xs font-bold text-slate-600 mb-1">Socio / Cliente</label>
-<select id="sel-cliente" onchange="cargarFacturasSocioSeleccionado()" class="w-full p-3 border border-slate-300 rounded-xl 
-text-sm bg-slate-50">
+<select id="sel-cliente" onchange="cargarFacturasSocioSeleccionado()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
 <option value="">-- Seleccioná Socio --</option>
 </select>
 </div>
@@ -123,7 +114,6 @@ text-sm bg-slate-50">
 <div id="lista-facturas-cobro" class="space-y-2 max-h-[240px] overflow-y-auto border border-slate-300 rounded-xl p-2 bg-slate-50">
 <p class="text-xs text-slate-500 text-center py-2">-- Primero elegí Socio --</p>
 </div>
-
 <div class="mt-2 pt-2 border-t border-slate-200 bg-sky-50/70 border border-sky-200 rounded-xl p-2.5">
 <label class="flex items-center gap-2 cursor-pointer">
 <input type="checkbox" id="chk-generar-anticipo" onchange="toggleCampoAnticipo()" class="w-4 h-4 accent-sky-600" />
@@ -134,15 +124,12 @@ text-sm bg-slate-50">
 <input type="text" id="inp-monto-anticipo" placeholder="Ej: 25.000" inputmode="numeric" autocomplete="off" class="w-full p-2.5 border border-sky-300 rounded-xl text-sm bg-white font-bold" />
 </div>
 </div>
-
-<p id="info-saldo-favor" class="hidden text-xs font-bold 
-text-emerald-700 bg-emerald-50 p-2 rounded-lg mt-2"></p>
+<p id="info-saldo-favor" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg mt-2"></p>
 <p class="text-[11px] text-slate-400 mt-1">Marcá facturas para cancelar/amortizar. Podés generar un anticipo marcando la opción o entregando un monto mayor.</p>
 </div>
 <div>
 <label for="inp-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto a Pagar (Gs.) - Total que entrega el socio</label>
-<input type="text" id="inp-monto" required placeholder="Ej: 50.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 
-rounded-xl text-base bg-slate-50 font-bold" />
+<input type="text" id="inp-monto" required placeholder="Ej: 50.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
 </div>
 <div>
 <label for="sel-metodo" class="block text-xs font-bold text-slate-600 mb-1">Método de Pago</label>
@@ -155,11 +142,9 @@ rounded-xl text-base bg-slate-50 font-bold" />
 </form>
 <div id="pago-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
 </div>
-
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
 <div class="flex justify-between items-center mb-3 border-b pb-2">
-<h4 class="font-bold text-xs 
-text-slate-700 uppercase">Últimos Pagos y Anticipos</h4>
+<h4 class="font-bold text-xs text-slate-700 uppercase">Últimos Pagos y Anticipos</h4>
 <button type="button" onclick="cargarPagosRecientes()" class="text-[11px] bg-slate-100 px-2 py-1 rounded-full font-bold">Actualizar</button>
 </div>
 <div id="lista-pagos" class="space-y-3"></div>
@@ -180,8 +165,7 @@ text-slate-700 uppercase">Últimos Pagos y Anticipos</h4>
 <option value="mantenimiento">Mantenimiento</option>
 <option value="luz">Luz / ANDE</option>
 <option value="reparacion">Reparación</option>
-<option 
-value="materiales">Materiales</option>
+<option value="materiales">Materiales</option>
 <option value="otros">Otros</option>
 </select>
 </div>
@@ -193,13 +177,18 @@ value="materiales">Materiales</option>
 <label for="gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario (opcional)</label>
 <input type="text" id="gasto-proveedor" placeholder="Ej: Ferretería, Juan Pérez, ANDE" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>
-<button type="submit" id="btn-gasto" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold 
-text-sm">Registrar Gasto</button>
+<button type="submit" id="btn-gasto" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Gasto</button>
 </form>
 <div id="gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
 </div>
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-<h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Últimos Gastos</h4>
+<div class="flex justify-between items-center mb-3 border-b pb-2">
+<h4 class="font-bold text-xs text-slate-700 uppercase">Últimos Gastos</h4>
+<div class="flex gap-1 bg-slate-100 p-1 rounded-full">
+<button type="button" id="btn-gastos-activos" onclick="cambiarFiltroGastos('activo')" class="px-2 py-1 rounded-full text-[11px] font-bold bg-white text-blue-600 shadow-sm">Activos</button>
+<button type="button" id="btn-gastos-anulados" onclick="cambiarFiltroGastos('anulado')" class="px-2 py-1 rounded-full text-[11px] font-bold text-slate-500">Anulados</button>
+</div>
+</div>
 <div id="lista-gastos" class="space-y-3"></div>
 </div>
 </section>
@@ -210,8 +199,7 @@ text-sm">Registrar Gasto</button>
 <form onsubmit="generarCuotasMasivas(event)" class="space-y-3">
 <div>
 <label for="inp-mes-cuota" class="block text-xs font-bold text-slate-600 mb-1">Mes a Generar (YYYY-MM)</label>
-<input type="month" id="inp-mes-cuota" required 
-class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+<input type="month" id="inp-mes-cuota" required class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>
 <div>
 <label for="inp-monto-cuota" class="block text-xs font-bold text-slate-600 mb-1">Monto de Cuota (Gs.)</label>
@@ -224,21 +212,16 @@ class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </section>
 
 <section id="seccion-reportes" class="hidden space-y-4">
-<div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3 
-no-print">
+<div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3 no-print">
 <h4 class="font-bold text-sm text-slate-800">Reporte PDF de Cobranzas</h4>
-
 <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
 <button type="button" id="modo-rep-mes" onclick="cambiarModoReporte('mes')" class="py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm">Mensual</button>
-<button type="button" id="modo-rep-rango" onclick="cambiarModoReporte('rango')" class="py-2 text-xs font-bold rounded-lg text-slate-500">Rango 
-de Fechas</button>
+<button type="button" id="modo-rep-rango" onclick="cambiarModoReporte('rango')" class="py-2 text-xs font-bold rounded-lg text-slate-500">Rango de Fechas</button>
 </div>
-
 <div id="filtro-rep-mes">
 <label for="rep-mes-input" class="block text-xs font-bold text-slate-600 mb-1">Seleccioná Mes y Año</label>
 <input type="month" id="rep-mes-input" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>
-
 <div id="filtro-rep-rango" class="hidden grid grid-cols-2 gap-2">
 <div>
 <label for="rep-fecha-desde" class="block text-xs font-bold text-slate-600 mb-1">Desde</label>
@@ -249,30 +232,24 @@ de Fechas</button>
 <input type="date" id="rep-fecha-hasta" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>
 </div>
-
 <div class="flex gap-2">
 <button type="button" id="btn-generar-reporte" onclick="generarReporteCobranzas()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">Consultar Cobros</button>
 <button type="button" id="btn-imprimir-reporte" onclick="window.print()" class="hidden bg-slate-900 text-white px-4 py-3 rounded-xl font-bold text-sm">📄 PDF</button>
 </div>
-<div id="reporte-msg" class="p-3 rounded-xl text-xs text-center 
-hidden font-medium"></div>
+<div id="reporte-msg" class="p-3 rounded-xl text-xs text-center hidden font-medium"></div>
 </div>
-
 <div id="area-impresion-reporte" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
 <div class="border-b pb-3 text-center">
 <h3 class="font-extrabold text-base text-slate-900">JUNTA DE SANEAMIENTO JSYBYPE</h3>
 <p id="rep-titulo-periodo" class="text-xs font-bold text-blue-700 mt-0.5 uppercase">Reporte de Cobranzas</p>
-<p id="rep-fecha-emision" 
-class="text-[11px] text-slate-500 mt-0.5"></p>
+<p id="rep-fecha-emision" class="text-[11px] text-slate-500 mt-0.5"></p>
 </div>
-
 <div class="grid grid-cols-3 gap-2 text-center text-xs">
 <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
 <span class="block text-[10px] font-bold text-emerald-700">FACTURAS</span>
 <span id="rep-total-facturas" class="font-extrabold text-emerald-900">Gs. 0</span>
 </div>
-<div class="bg-sky-50 border 
-border-sky-200 p-2.5 rounded-xl">
+<div class="bg-sky-50 border border-sky-200 p-2.5 rounded-xl">
 <span class="block text-[10px] font-bold text-sky-700">ANTICIPOS</span>
 <span id="rep-total-anticipos" class="font-extrabold text-sky-900">Gs. 0</span>
 </div>
@@ -281,7 +258,6 @@ border-sky-200 p-2.5 rounded-xl">
 <span id="rep-total-general" class="font-extrabold">Gs. 0</span>
 </div>
 </div>
-
 <div id="rep-tabla-contenedor" class="overflow-x-auto"></div>
 </div>
 </section>
@@ -300,8 +276,7 @@ border-sky-200 p-2.5 rounded-xl">
 <input type="text" id="ns-cedula" required placeholder="Cédula *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
 <input type="text" id="ns-telefono" required placeholder="Teléfono / WhatsApp *" inputmode="tel" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
 <input type="text" id="ns-direccion" placeholder="Dirección / Compañía" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
-<input type="text" id="ns-cuenta" required placeholder="Nro. Cuenta *" inputmode="numeric" class="w-full p-3 border rounded-xl 
-text-sm bg-slate-50" />
+<input type="text" id="ns-cuenta" required placeholder="Nro. Cuenta *" inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50" />
 <button type="submit" id="btn-ns-guardar" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Socio</button>
 </form>
 <div id="ns-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
@@ -331,8 +306,7 @@ text-sm bg-slate-50" />
 </select>
 </div>
 <div>
-<label for="edit-gasto-monto" class="block text-xs font-bold 
-text-slate-600 mb-1">Monto (Gs.)</label>
+<label for="edit-gasto-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
 <input type="text" id="edit-gasto-monto" required inputmode="numeric" class="w-full p-3 border rounded-xl text-sm bg-slate-50 font-bold" />
 </div>
 <div>
@@ -345,8 +319,12 @@ text-slate-600 mb-1">Monto (Gs.)</label>
 </div>
 <button type="submit" id="btn-edit-gasto-guardar" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Cambios</button>
 </form>
-<button type="button" onclick="eliminarGastoDesdeModal()" 
-class="w-full mt-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-sm">Eliminar este gasto</button>
+<div class="mt-4 pt-3 border-t border-slate-200">
+<label for="edit-gasto-motivo-anulacion" class="block text-xs font-bold text-slate-600 mb-1">Motivo de anulación (obligatorio para anular)</label>
+<input type="text" id="edit-gasto-motivo-anulacion" placeholder="Ej: cargado por error, duplicado" class="w-full p-3 border rounded-xl text-sm bg-red-50" />
+<button type="button" onclick="anularGastoDesdeModal()" class="w-full mt-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-sm">⛔ Anular este gasto (queda en historia)</button>
+<p class="text-[11px] text-slate-400 mt-1 text-center">No se borra. Queda guardado como ANULADO y deja de contar en el balance.</p>
+</div>
 <div id="edit-gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
 </div>
 </div>
@@ -358,6 +336,6 @@ class="w-full mt-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold text-sm">Eli
 <script src="admin-cobros.js"></script>
 <script src="admin-gastos.js"></script>
 <script src="admin-cuotas-reportes.js"></script>
- <script src="admin-init.js"></script>
+<script src="admin-init.js"></script>
 </body>
 </html>
