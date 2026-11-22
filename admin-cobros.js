@@ -224,6 +224,13 @@ async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) 
   // BLOQUEO ANTICIPO CUENTA INACTIVA
   const { data: cliAnt } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
   if (cliAnt && (cliAnt.estado === false || cliAnt.estado === "false")) {
+      // DEBUG - ver qué trae la base
+  const { data: cliAnt } = await supabaseClient.from('clientes').select('*').eq('id', clienteId).single();
+  alert('DEBUG Cta 51 - estado en base: ' + JSON.stringify(cliAnt));
+  if (cliAnt && (cliAnt.estado === false || cliAnt.estado === "false")) {
+    alert('⛔ Esta cuenta está INACTIVA. No se puede generar anticipo.');
+    throw new Error('Cuenta inactiva - anticipo bloqueado');
+  }
     alert('⛔ Esta cuenta está INACTIVA. No se puede generar anticipo.');
     throw new Error('Cuenta inactiva - anticipo bloqueado');
   }
