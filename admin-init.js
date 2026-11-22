@@ -35,7 +35,4 @@ if (typeof window.cargarGastosRecientes === 'undefined') {
   window.cargarGastos = window.cargarGastosRecientes;
 }
 
-// Alias global por si algún archivo viejo la llama sin window.
-var cargarGastosRecientes = window.cargarGastosRecientes;
-
 verificarSesionAdmin();

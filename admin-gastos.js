@@ -1,6 +1,6 @@
 // admin-gastos.js - FINAL - Sin prompt, con window.supabaseClient
 var filtroGastosActual = 'activo';
-var gastosRecientesCache = [];
+window.gastosRecientesCache = window.gastosRecientesCache || [];
 
 function getSB() { return window.supabaseClient || supabaseClient; }
 
