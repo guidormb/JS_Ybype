@@ -24,10 +24,12 @@ function calcularDiasVencidaFactura(mesStr) {
   };
 }
 
-// Helper: detecta si una cuenta está inactiva en cualquier formato
-function esCuentaInactiva(estado) {
-  if (estado === false || estado === 0) return true;
-  const est = String(estado ?? '').toLowerCase().trim();
+// Helper: detecta si una cuenta está inactiva
+// En Supabase la columna se llama ACTIVO, no estado. activo=false = inactivo
+function esCuentaInactiva(cliente) {
+  if (!cliente) return false;
+  if (cliente.activo === false || cliente.activo === 0 || cliente.activo === "false") return true;
+  const est = String(cliente.estado ?? '').toLowerCase().trim();
   return est === 'false' || est === '0' || est === 'inactivo' || est === 'inactiva' || est === 'suspendido' || est === 'suspendida' || est === 'baja' || est === 'dado de baja';
 }
 
@@ -45,9 +47,9 @@ window.cargarFacturasSocioSeleccionado = async function () {
 
   const socio = listaSociosCobro.find((s) => String(s.id) === String(clienteId));
 
-  // BLOQUEO VISUAL CUENTA INACTIVA
-  const { data: cliEst2 } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
-  if (cliEst2 && esCuentaInactiva(cliEst2.estado)) {
+  // BLOQUEO VISUAL CUENTA INACTIVA - usa columna ACTIVO
+  const { data: cliEst2 } = await supabaseClient.from('clientes').select('activo, estado').eq('id', clienteId).single();
+  if (cliEst2 && esCuentaInactiva(cliEst2)) {
     cont.innerHTML = '<p class="text-xs text-red-700 text-center py-2 font-bold bg-red-50 border border-red-300 rounded-xl">⛔ CUENTA INACTIVA - Suspendida / Dada de baja<br>No se puede cobrar ni generar anticipo.</p>';
     document.getElementById('inp-monto').value = '';
     document.getElementById('btn-pagar').disabled = true;
@@ -231,9 +233,9 @@ window.usarTotalSeleccionado = function () {
 async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) {
   if (!montoAnticipo || montoAnticipo <= 0) return;
 
-  // BLOQUEO ANTICIPO CUENTA INACTIVA
-  const { data: cliAnt } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
-  if (cliAnt && esCuentaInactiva(cliAnt.estado)) {
+  // BLOQUEO ANTICIPO CUENTA INACTIVA - usa columna ACTIVO
+  const { data: cliAnt } = await supabaseClient.from('clientes').select('activo, estado').eq('id', clienteId).single();
+  if (cliAnt && esCuentaInactiva(cliAnt)) {
     alert('⛔ Esta cuenta está INACTIVA. No se puede generar anticipo.');
     throw new Error('Cuenta inactiva - anticipo bloqueado');
   }
@@ -265,10 +267,10 @@ window.registrarPago = async function (event) {
   const quiereAnticipo = Boolean(document.getElementById('chk-generar-anticipo')?.checked);
   const montoAnticipoManual = limpiarGuaraniesInput(document.getElementById('inp-monto-anticipo')?.value);
 
-  // BLOQUEO CUENTA INACTIVA - ANTES DE CUALQUIER RETURN
+  // BLOQUEO CUENTA INACTIVA - ANTES DE CUALQUIER RETURN - usa columna ACTIVO
   if (clienteId) {
-    const { data: cliEstado } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
-    if (cliEstado && esCuentaInactiva(cliEstado.estado)) {
+    const { data: cliEstado } = await supabaseClient.from('clientes').select('activo, estado').eq('id', clienteId).single();
+    if (cliEstado && esCuentaInactiva(cliEstado)) {
       mostrarMensajeAdmin('pago-msg', '⛔ Esta cuenta está INACTIVA (Suspendida / Dada de baja). No se puede cobrar ni generar anticipo.', true);
       return;
     }
