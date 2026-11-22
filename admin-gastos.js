@@ -138,3 +138,10 @@ var cambiarFiltroGastos = window.cambiarFiltroGastos;
 var cargarGastosRecientes = window.cargarGastosRecientes;
 var abrirEditarGasto = window.abrirEditarGasto;
 var cerrarModalEditarGasto = window.cerrarModalEditarGasto;
+window.probarGasto = async function() {
+  alert('registrar: ' + typeof window.registrarGasto + '\nsupabase: ' + typeof window.supabaseClient);
+  try {
+    var res = await window.supabaseClient.from('gastos').insert({ descripcion: 'PRUEBA CELULAR', categoria: 'otros', monto: 1000, fecha: '2026-11-22', estado: 'activo' }).select();
+    alert('Respuesta: ' + JSON.stringify(res));
+  } catch (e) { alert('ERROR: ' + e.message); }
+};
