@@ -1,4 +1,11 @@
-// admin-cobros.js
+// admin-cobros.js - VERSIÓN FINAL PULIDA
+// Bloqueo total para cuentas INACTIVAS (clientes.activo = false)
+// - No cobra, no genera anticipo, no aplica saldo a favor
+
+// ============================================================
+// HELPERS
+// ============================================================
+
 function calcularDiasVencidaFactura(mesStr) {
   if (!mesStr || !/^\d{4}-\d{2}$/.test(String(mesStr).trim())) {
     return { fechaVencimiento: null, diasVencida: 0, vencidaMas15Dias: false };
@@ -7,7 +14,7 @@ function calcularDiasVencidaFactura(mesStr) {
   const anio = Number(anioStr);
   const mesNum = Number(mesNumStr);
 
-  // Criterio estándar: vence el día 1 del mes siguiente al período facturado
+  // Vence el día 1 del mes siguiente al período facturado
   const fechaVencimiento = new Date(anio, mesNum, 1);
   fechaVencimiento.setHours(0, 0, 0, 0);
 
@@ -25,69 +32,118 @@ function calcularDiasVencidaFactura(mesStr) {
 }
 
 // Helper: detecta si una cuenta está inactiva
-// En Supabase la columna se llama ACTIVO, no estado. activo=false = inactivo
+// En Supabase la columna es SOLO 'activo'. NO existe 'estado' en clientes.
+// activo = false = inactivo. Si no lo encontramos o hay error, BLOQUEAMOS.
 function esCuentaInactiva(cliente) {
-  if (!cliente) return false;
-  if (cliente.activo === false || cliente.activo === 0 || cliente.activo === "false") return true;
-  const est = String(cliente.estado ?? '').toLowerCase().trim();
-  return est === 'false' || est === '0' || est === 'inactivo' || est === 'inactiva' || est === 'suspendido' || est === 'suspendida' || est === 'baja' || est === 'dado de baja';
+  if (!cliente) return true;
+  return cliente.activo === false || cliente.activo === 0 || cliente.activo === "false" || cliente.activo === "0";
 }
 
+// Verificación fresca contra Supabase, siempre antes de cobrar / anticipar
+async function verificarClienteActivo(clienteId) {
+  if (!clienteId) return false;
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .select('activo')
+      .eq('id', clienteId)
+      .single();
+    if (error || !data) {
+      console.log('Error verificando activo:', error?.message);
+      return false;
+    }
+    return !esCuentaInactiva(data);
+  } catch (e) {
+    console.log('Error verificarClienteActivo:', e.message);
+    return false;
+  }
+}
+
+function bloquearUIClienteInactivo() {
+  const cont = document.getElementById('lista-facturas-cobro');
+  if (cont) cont.innerHTML = '<p class="text-xs text-red-700 text-center py-2 font-bold bg-red-50 border border-red-300 rounded-xl">⛔ CUENTA INACTIVA - Suspendida / Dada de baja<br>No se puede cobrar ni generar anticipo.</p>';
+  const inpMonto = document.getElementById('inp-monto');
+  if (inpMonto) inpMonto.value = '';
+  const btnPagar = document.getElementById('btn-pagar');
+  if (btnPagar) btnPagar.disabled = true;
+  const chkAnt = document.getElementById('chk-generar-anticipo');
+  if (chkAnt) { chkAnt.checked = false; chkAnt.disabled = true; }
+  const inpAnt = document.getElementById('inp-monto-anticipo');
+  if (inpAnt) { inpAnt.value = ''; inpAnt.disabled = true; }
+}
+
+function desbloquearUIClienteActivo() {
+  const btnPagar = document.getElementById('btn-pagar');
+  if (btnPagar) btnPagar.disabled = false;
+  const chkAnt = document.getElementById('chk-generar-anticipo');
+  if (chkAnt) chkAnt.disabled = false;
+  const inpAnt = document.getElementById('inp-monto-anticipo');
+  if (inpAnt) inpAnt.disabled = false;
+}
+
+// ============================================================
+// CARGAR FACTURAS DEL SOCIO SELECCIONADO
+// ============================================================
+
 window.cargarFacturasSocioSeleccionado = async function () {
-  const clienteId = document.getElementById('sel-cliente').value;
+  const clienteId = document.getElementById('sel-cliente')?.value;
   const cont = document.getElementById('lista-facturas-cobro');
   const infoSaldo = document.getElementById('info-saldo-favor');
+  if (!cont) return;
   cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
-  infoSaldo.classList.add('hidden');
+  infoSaldo?.classList.add('hidden');
 
   if (!clienteId) {
     cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">-- Primero elegí Socio --</p>';
     return;
   }
 
-  const socio = listaSociosCobro.find((s) => String(s.id) === String(clienteId));
+  const socio = (typeof listaSociosCobro !== 'undefined' ? listaSociosCobro : []).find((s) => String(s.id) === String(clienteId));
 
-  // BLOQUEO VISUAL CUENTA INACTIVA - usa columna ACTIVO
-  const { data: cliEst2 } = await supabaseClient.from('clientes').select('activo, estado').eq('id', clienteId).single();
-  if (cliEst2 && esCuentaInactiva(cliEst2)) {
-    cont.innerHTML = '<p class="text-xs text-red-700 text-center py-2 font-bold bg-red-50 border border-red-300 rounded-xl">⛔ CUENTA INACTIVA - Suspendida / Dada de baja<br>No se puede cobrar ni generar anticipo.</p>';
-    document.getElementById('inp-monto').value = '';
-    document.getElementById('btn-pagar').disabled = true;
+  // BLOQUEO CUENTA INACTIVA - ANTES DE MOSTRAR NADA
+  const estaActivo = await verificarClienteActivo(clienteId);
+  if (!estaActivo) {
+    bloquearUIClienteInactivo();
     return;
   }
-  document.getElementById('btn-pagar').disabled = false;
+  desbloquearUIClienteActivo();
 
   const saldoFavorSocio = Number(socio?.saldo_favor || 0);
-  if (saldoFavorSocio > 0) {
+  if (saldoFavorSocio > 0 && infoSaldo) {
     infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + saldoFavorSocio.toLocaleString('es-PY');
     infoSaldo.classList.remove('hidden');
   }
 
-  const r = await supabaseClient
+  const { data: facturas, error } = await supabaseClient
     .from('facturas')
-    .select('*')
+    .select('id, cliente_id, mes, monto, saldo_pendiente, estado')
     .eq('cliente_id', clienteId)
     .neq('estado', 'pagado')
     .order('mes', { ascending: true });
 
-  const facturas = r.data || [];
-  if (facturas.length === 0) {
+  if (error) {
+    console.log('Error facturas:', error);
+    cont.innerHTML = '<p class="text-xs text-red-600 text-center py-2">Error Supabase: ' + escapeHtml(error.message) + '</p>';
+    return;
+  }
+
+  const lista = facturas || [];
+  if (lista.length === 0) {
     cont.innerHTML = '<p class="text-xs text-emerald-700 text-center py-2 font-bold">Sin facturas pendientes - Al día ✓ (Podés generar un anticipo)</p>';
-    document.getElementById('inp-monto').value = '';
+    const inp = document.getElementById('inp-monto');
+    if (inp) inp.value = '';
     return;
   }
 
   const facturaElegibleVencida = saldoFavorSocio > 0
-    ? facturas.find((f) => Number(f.saldo_pendiente || 0) > 0 && calcularDiasVencidaFactura(f.mes).vencidaMas15Dias)
+    ? lista.find((f) => Number(f.saldo_pendiente || 0) > 0 && calcularDiasVencidaFactura(f.mes).vencidaMas15Dias)
     : null;
 
   let alertaVencidaHtml = '';
   if (facturaElegibleVencida) {
     const infoVenc = calcularDiasVencidaFactura(facturaElegibleVencida.mes);
     const montoAplicable = Math.min(saldoFavorSocio, Number(facturaElegibleVencida.saldo_pendiente || 0));
-    const fechaVencStr = infoVenc.fechaVencimiento
-      ? infoVenc.fechaVencimiento.toLocaleDateString('es-PY')
-      : '-';
+    const fechaVencStr = infoVenc.fechaVencimiento ? infoVenc.fechaVencimiento.toLocaleDateString('es-PY') : '-';
 
     alertaVencidaHtml =
       '<div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 mb-2">'
@@ -99,7 +155,7 @@ window.cargarFacturasSocioSeleccionado = async function () {
       + '</div>';
   }
 
-  cont.innerHTML = alertaVencidaHtml + facturas.map((f) => {
+  cont.innerHTML = alertaVencidaHtml + lista.map((f) => {
     const infoVenc = calcularDiasVencidaFactura(f.mes);
     const badgeVenc = infoVenc.vencidaMas15Dias
       ? '<span class="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-1 rounded-full">+15D VENCIDA</span>'
@@ -121,10 +177,21 @@ window.cargarFacturasSocioSeleccionado = async function () {
   actualizarTotalSeleccionado();
 };
 
+// ============================================================
+// APLICAR SALDO A FACTURA VENCIDA +15 DÍAS
+// ============================================================
+
 window.aplicarSaldoFacturaVencida15Dias = async function (clienteId, facturaId) {
   if (!clienteId || !facturaId) return;
 
   try {
+    // Candado 1: inactivo no aplica saldo
+    if (!(await verificarClienteActivo(clienteId))) {
+      mostrarMensajeAdmin('pago-msg', '⛔ Esta cuenta está INACTIVA. No se puede aplicar saldo a favor.', true);
+      bloquearUIClienteInactivo();
+      return;
+    }
+
     const { data: cli, error: errCliLeer } = await supabaseClient
       .from('clientes')
       .select('id, saldo_favor, nro_cuenta, personas(nombre, apellido)')
@@ -134,7 +201,7 @@ window.aplicarSaldoFacturaVencida15Dias = async function (clienteId, facturaId) 
 
     const { data: fac, error: errFacLeer } = await supabaseClient
       .from('facturas')
-      .select('*')
+      .select('id, cliente_id, mes, monto, saldo_pendiente, estado')
       .eq('id', facturaId)
       .single();
     if (errFacLeer) throw errFacLeer;
@@ -148,12 +215,10 @@ window.aplicarSaldoFacturaVencida15Dias = async function (clienteId, facturaId) 
       await cargarFacturasSocioSeleccionado();
       return;
     }
-
     if (!infoVenc.vencidaMas15Dias) {
       mostrarMensajeAdmin('pago-msg', 'Esta factura aún no supera los 15 días de vencimiento bajo el criterio estándar.', true);
       return;
     }
-
     if (saldoFavorActual <= 0) {
       mostrarMensajeAdmin('pago-msg', 'El socio no cuenta con saldo a favor disponible.', true);
       return;
@@ -200,18 +265,17 @@ window.aplicarSaldoFacturaVencida15Dias = async function (clienteId, facturaId) 
       .eq('id', clienteId);
     if (errCliUpd) throw errCliUpd;
 
-    mostrarMensajeAdmin(
-      'pago-msg',
-      'Se aplicaron Gs. ' + montoAplicar.toLocaleString('es-PY') + ' de saldo a favor a la factura ' + fac.mes + ' (+15 días vencida).',
-      false
-    );
-
+    mostrarMensajeAdmin('pago-msg', 'Se aplicaron Gs. ' + montoAplicar.toLocaleString('es-PY') + ' de saldo a favor a la factura ' + fac.mes + ' (+15 días vencida).', false);
     await cargarDatosAdmin();
     await cargarFacturasSocioSeleccionado();
   } catch (e) {
     mostrarMensajeAdmin('pago-msg', 'Error al aplicar saldo a factura vencida: ' + e.message, true);
   }
 };
+
+// ============================================================
+// TOTAL SELECCIONADO
+// ============================================================
 
 window.actualizarTotalSeleccionado = function () {
   let total = 0;
@@ -227,15 +291,19 @@ window.usarTotalSeleccionado = function () {
   document.querySelectorAll('.chk-factura:checked').forEach((c) => {
     total += Number(c.dataset.saldo || 0);
   });
-  document.getElementById('inp-monto').value = total ? total.toLocaleString('es-PY') : '';
+  const inp = document.getElementById('inp-monto');
+  if (inp) inp.value = total ? total.toLocaleString('es-PY') : '';
 };
+
+// ============================================================
+// ANTICIPO - BLOQUEADO PARA INACTIVOS
+// ============================================================
 
 async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) {
   if (!montoAnticipo || montoAnticipo <= 0) return;
 
-  // BLOQUEO ANTICIPO CUENTA INACTIVA - usa columna ACTIVO
-  const { data: cliAnt } = await supabaseClient.from('clientes').select('activo, estado').eq('id', clienteId).single();
-  if (cliAnt && esCuentaInactiva(cliAnt)) {
+  // CANDADO ANTICIPO: si es inactivo, no se crea nada
+  if (!(await verificarClienteActivo(clienteId))) {
     alert('⛔ Esta cuenta está INACTIVA. No se puede generar anticipo.');
     throw new Error('Cuenta inactiva - anticipo bloqueado');
   }
@@ -258,20 +326,24 @@ async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) 
   if (errCli) throw errCli;
 }
 
+// ============================================================
+// REGISTRAR PAGO
+// ============================================================
+
 window.registrarPago = async function (event) {
   event.preventDefault();
-  const clienteId = document.getElementById('sel-cliente').value;
-  const montoTotal = limpiarGuaraniesInput(document.getElementById('inp-monto').value);
-  const metodo = document.getElementById('sel-metodo').value;
+  const clienteId = document.getElementById('sel-cliente')?.value;
+  const montoTotal = limpiarGuaraniesInput(document.getElementById('inp-monto')?.value);
+  const metodo = document.getElementById('sel-metodo')?.value;
   const checks = Array.from(document.querySelectorAll('.chk-factura:checked'));
   const quiereAnticipo = Boolean(document.getElementById('chk-generar-anticipo')?.checked);
   const montoAnticipoManual = limpiarGuaraniesInput(document.getElementById('inp-monto-anticipo')?.value);
 
-  // BLOQUEO CUENTA INACTIVA - ANTES DE CUALQUIER RETURN - usa columna ACTIVO
+  // BLOQUEO INACTIVO - ANTES DE CUALQUIER RETURN
   if (clienteId) {
-    const { data: cliEstado } = await supabaseClient.from('clientes').select('activo, estado').eq('id', clienteId).single();
-    if (cliEstado && esCuentaInactiva(cliEstado)) {
+    if (!(await verificarClienteActivo(clienteId))) {
       mostrarMensajeAdmin('pago-msg', '⛔ Esta cuenta está INACTIVA (Suspendida / Dada de baja). No se puede cobrar ni generar anticipo.', true);
+      bloquearUIClienteInactivo();
       return;
     }
   }
@@ -289,18 +361,14 @@ window.registrarPago = async function (event) {
     if (checks.length === 0) {
       const montoA = montoAnticipoManual > 0 ? montoAnticipoManual : montoTotal;
       await crearDocumentoAnticipo(clienteId, montoA, metodo, 'Anticipo directo');
-      mostrarMensajeAdmin(
-        'pago-msg',
-        '¡Anticipo registrado! El monto de Gs. ' + montoA.toLocaleString('es-PY') + ' quedó como anticipo a favor del cliente.',
-        false
-      );
+      mostrarMensajeAdmin('pago-msg', '¡Anticipo registrado! El monto de Gs. ' + montoA.toLocaleString('es-PY') + ' quedó como anticipo a favor del cliente.', false);
     } else {
       let totalFacturasMarcadas = 0;
       const facturasData = [];
 
       for (let i = 0; i < checks.length; i++) {
         const facturaId = checks[i].value;
-        const { data: factura } = await supabaseClient.from('facturas').select('*').eq('id', facturaId).single();
+        const { data: factura } = await supabaseClient.from('facturas').select('id, cliente_id, mes, monto, saldo_pendiente, estado').eq('id', facturaId).single();
         if (factura) {
           facturasData.push(factura);
           totalFacturasMarcadas += Number(factura.saldo_pendiente || 0);
@@ -349,7 +417,6 @@ window.registrarPago = async function (event) {
         } else {
           detalle.push(factura.mes + ': Gs. ' + aPagar.toLocaleString('es-PY') + ' (queda Gs. ' + nuevoSaldo.toLocaleString('es-PY') + ')');
         }
-
         montoRestante -= aPagar;
       }
 
@@ -358,26 +425,20 @@ window.registrarPago = async function (event) {
       }
 
       const partesMensaje = ['¡Pago registrado!'];
-      if (facturasCanceladas.length > 0) {
-        partesMensaje.push('Factura / deuda cancelada: ' + facturasCanceladas.join(', ') + '.');
-      }
-      if (detalle.length > 0) {
-        partesMensaje.push(detalle.join(' | ') + '.');
-      }
-      if (anticipoGenerado > 0) {
-        partesMensaje.push('El monto de Gs. ' + anticipoGenerado.toLocaleString('es-PY') + ' quedó como anticipo a favor del cliente.');
-      }
-
+      if (facturasCanceladas.length > 0) partesMensaje.push('Factura / deuda cancelada: ' + facturasCanceladas.join(', ') + '.');
+      if (detalle.length > 0) partesMensaje.push(detalle.join(' | ') + '.');
+      if (anticipoGenerado > 0) partesMensaje.push('El monto de Gs. ' + anticipoGenerado.toLocaleString('es-PY') + ' quedó como anticipo a favor del cliente.');
       mostrarMensajeAdmin('pago-msg', partesMensaje.join(' '), false);
     }
 
     document.getElementById('inp-monto').value = '';
-    document.getElementById('filtro-socio-cobro').value = '';
+    const filtro = document.getElementById('filtro-socio-cobro');
+    if (filtro) filtro.value = '';
     if (document.getElementById('chk-generar-anticipo')) {
       document.getElementById('chk-generar-anticipo').checked = false;
-      toggleCampoAnticipo();
+      if (typeof toggleCampoAnticipo === 'function') toggleCampoAnticipo();
     }
-    filtrarSociosCobro();
+    if (typeof filtrarSociosCobro === 'function') filtrarSociosCobro();
     await cargarDatosAdmin();
     await cargarFacturasSocioSeleccionado();
   } catch (e) {
@@ -388,23 +449,35 @@ window.registrarPago = async function (event) {
   btn.disabled = false;
 };
 
+// ============================================================
+// PAGOS RECIENTES + ANULAR
+// ============================================================
+
 async function cargarPagosRecientes() {
   const cont = document.getElementById('lista-pagos');
-  const r = await supabaseClient
+  if (!cont) return;
+  const { data: pagos, error } = await supabaseClient
     .from('pagos')
-    .select('*, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
+    .select('id, cliente_id, factura_id, monto_pagado, metodo, concepto, created_at, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const pagos = r.data || [];
-  pagosRecientesCache = pagos;
+  if (error) {
+    console.log('Error pagos recientes:', error);
+    cont.innerHTML = '<p class="text-xs text-red-600 text-center">Error: ' + escapeHtml(error.message) + '</p>';
+    return;
+  }
 
-  if (pagos.length === 0) {
+  const lista = pagos || [];
+  if (typeof pagosRecientesCache !== 'undefined') pagosRecientesCache = lista;
+  else window.pagosRecientesCache = lista;
+
+  if (lista.length === 0) {
     cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aún.</p>';
     return;
   }
 
-  cont.innerHTML = pagos.map((p) => {
+  cont.innerHTML = lista.map((p) => {
     const c = p.clientes || {};
     const per = c.personas || {};
     const fechaMostrar = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '';
@@ -429,7 +502,8 @@ async function cargarPagosRecientes() {
 
   cont.querySelectorAll('.btn-borrar-pago').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const pago = pagosRecientesCache.find((item) => String(item.id) === String(btn.dataset.id));
+      const cache = (typeof pagosRecientesCache !== 'undefined' ? pagosRecientesCache : window.pagosRecientesCache) || [];
+      const pago = cache.find((item) => String(item.id) === String(btn.dataset.id));
       if (!pago) return;
       eliminarCobranza(pago);
     });
@@ -458,14 +532,13 @@ async function eliminarCobranza(pago) {
     if (pago.factura_id) {
       const { data: factura } = await supabaseClient
         .from('facturas')
-        .select('id, monto, saldo_pendiente, estado')
+        .select('id, saldo_pendiente, estado')
         .eq('id', pago.factura_id)
         .single();
 
       if (factura) {
-        const montoFactura = Number(factura.monto || 0);
         const saldoActual = Number(factura.saldo_pendiente || 0);
-        const nuevoSaldo = Math.min(montoFactura, saldoActual + monto);
+        const nuevoSaldo = saldoActual + monto;
         await supabaseClient
           .from('facturas')
           .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
