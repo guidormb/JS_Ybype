@@ -146,6 +146,24 @@ async function cargarBalance() {
   document.getElementById('total-anticipos').textContent = 'Gs. ' + totalAnticiposClientes.toLocaleString('es-PY');
   document.getElementById('balance-total').textContent = 'Gs. ' + balanceCaja.toLocaleString('es-PY');
   document.getElementById('total-general-saldos').textContent = 'Gs. ' + totalGeneralSaldos.toLocaleString('es-PY');
+    // LEYENDA DEL BALANCE
+  const leyendaEl = document.getElementById('leyenda-balance');
+  if (leyendaEl) {
+    leyendaEl.classList.remove('hidden', 'bg-amber-100', 'text-amber-900', 'bg-red-100', 'text-red-800', 'bg-emerald-100', 'text-emerald-900', 'border', 'border-amber-300', 'border-red-300', 'border-emerald-300');
+    if (balanceCaja < 0 && totalAnticiposClientes > 0) {
+      leyendaEl.textContent = '⚠️ Caja sin plata propia. En mano solo quedan Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' de anticipos de socios. Esa plata NO es de la Junta, se debe descontar en facturas.';
+      leyendaEl.classList.add('bg-amber-100', 'text-amber-900', 'border', 'border-amber-300');
+    } else if (balanceCaja < 0) {
+      leyendaEl.textContent = '⛔ Balance en negativo: Gs. ' + balanceCaja.toLocaleString('es-PY') + '. La Junta debe más de lo que tiene.';
+      leyendaEl.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-300');
+    } else if (totalAnticiposClientes > 0) {
+      leyendaEl.textContent = 'ℹ️ De los fondos en caja, Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' son anticipos de socios (plata a descontar, no ganancia).';
+      leyendaEl.classList.add('bg-amber-100', 'text-amber-900', 'border', 'border-amber-300');
+    } else {
+      leyendaEl.textContent = '✅ Todo el saldo en caja es propio de la Junta. No hay anticipos pendientes.';
+      leyendaEl.classList.add('bg-emerald-100', 'text-emerald-900', 'border', 'border-emerald-300');
+    }
+  }
 }
 
 window.generarCuotasMasivas = async function (event) {
