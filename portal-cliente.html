@@ -337,9 +337,9 @@
         .limit(1);
 
       const persona = rp.data?.[0];
-if (rp.error || !persona) {
-  throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la administración.');
-}
+      if (rp.error || !persona) {
+        throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la administración.');
+      }
       const rc = await supabase
         .from('clientes')
         .select('*')
@@ -349,6 +349,12 @@ if (rp.error || !persona) {
       const cliente = rc.data?.[0];
       if (rc.error || !cliente) {
         throw new Error('Tu cédula está registrada, pero no tenés cuenta de agua asignada.');
+      }
+
+      // BLOQUEO CUENTA INACTIVA - columna ACTIVO en clientes
+      // activo = false = Suspendida / Dada de baja. No puede crear clave ni entrar.
+      if (cliente.activo === false || cliente.activo === 0 || cliente.activo === "false") {
+        throw new Error('⛔ Esta cuenta está INACTIVA (Suspendida / Dada de baja). No podés ingresar al portal. Contactá con la Junta.');
       }
 
       return { persona, cliente };
@@ -382,6 +388,7 @@ if (rp.error || !persona) {
       setBotonEstado(btn, 'Creando cuenta...', true);
       try {
         const supabase = window.supabaseClient;
+        // Acá ya frena si es inactiva, antes de crear el usuario en Auth
         await validarSocioPorCedula(cedula);
         const emailFicticio = obtenerEmailInterno(cedula);
         const r = await supabase.auth.signUp({
@@ -422,6 +429,8 @@ if (rp.error || !persona) {
         if (!cedula || !password) {
           throw new Error('Completá tu cédula y contraseña.');
         }
+        // Primero verificar si está inactiva, antes de loguear en Auth
+        await validarSocioPorCedula(cedula);
         const emailFicticio = obtenerEmailInterno(cedula);
         const supabase = window.supabaseClient;
         const r = await supabase.auth.signInWithPassword({ email: emailFicticio, password });
@@ -431,6 +440,8 @@ if (rp.error || !persona) {
         await cargarDatosPortalCliente(cedula);
         setBotonEstado(btn, textoOriginal, false);
       } catch (err) {
+        // Si era inactiva o falló, asegurar que no quede sesión abierta
+        try { await window.supabaseClient.auth.signOut(); } catch (_e) {}
         mostrarMensajeAuth(err.message, true);
         setBotonEstado(btn, textoOriginal, false);
       }
@@ -476,10 +487,13 @@ if (rp.error || !persona) {
       try {
         const { data: clienteFresca, error: errLeerCli } = await supabase
           .from('clientes')
-          .select('id, saldo_favor')
+          .select('id, saldo_favor, activo')
           .eq('id', clienteId)
           .limit(1);
         if (errLeerCli) throw errLeerCli;
+        if (clienteFresca?.[0]?.activo === false) {
+          throw new Error('⛔ Esta cuenta está INACTIVA. No podés usar saldo a favor.');
+        }
         const saldoDisponible = Number(clienteFresca?.at(0)?.saldo_favor || 0);
 
         const { data: facturaFresca, error: errLeerFac } = await supabase
