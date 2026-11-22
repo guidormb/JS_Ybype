@@ -337,10 +337,9 @@
         .limit(1);
 
       const persona = rp.data?.[0];
-      if (rp.error || !persona) {
-        throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la administración.');
-      }
-
+if (rp.error || !persona) {
+  throw new Error('Esta cédula no figura en el padrón de socios. Contactá con la administración.');
+}
       const rc = await supabase
         .from('clientes')
         .select('*')

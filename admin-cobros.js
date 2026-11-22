@@ -37,6 +37,15 @@ window.cargarFacturasSocioSeleccionado = async function () {
   }
 
   const socio = listaSociosCobro.find((s) => String(s.id) === String(clienteId));
+  // BLOQUEO VISUAL CUENTA INACTIVA
+const { data: cliEst2 } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
+if (cliEst2 && (cliEst2.estado === false || cliEst2.estado === "false")) {
+  cont.innerHTML = '<p class="text-xs text-red-700 text-center py-2 font-bold bg-red-50 border border-red-300 rounded-xl">⛔ CUENTA INACTIVA - Suspendida / Dada de baja<br>No se puede cobrar ni generar anticipo.</p>';
+  document.getElementById('inp-monto').value = '';
+  document.getElementById('btn-pagar').disabled = true;
+  return;
+}
+document.getElementById('btn-pagar').disabled = false;
   const saldoFavorSocio = Number(socio?.saldo_favor || 0);
   if (saldoFavorSocio > 0) {
     infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + saldoFavorSocio.toLocaleString('es-PY');
@@ -212,7 +221,12 @@ window.usarTotalSeleccionado = function () {
 
 async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) {
   if (!montoAnticipo || montoAnticipo <= 0) return;
-
+  // BLOQUEO ANTICIPO CUENTA INACTIVA
+  const { data: cliAnt } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
+  if (cliAnt && (cliAnt.estado === false || cliAnt.estado === "false")) {
+    alert('⛔ Esta cuenta está INACTIVA. No se puede generar anticipo.');
+    throw new Error('Cuenta inactiva - anticipo bloqueado');
+  }
   const { error: errPago } = await supabaseClient.from('pagos').insert({
     cliente_id: clienteId,
     factura_id: null,
@@ -243,6 +257,12 @@ window.registrarPago = async function (event) {
   if (!clienteId || !montoTotal || montoTotal <= 0) {
     mostrarMensajeAdmin('pago-msg', 'Elegí un socio y un monto válido.', true);
     return;
+    // BLOQUEO CUENTA INACTIVA
+const { data: cliEstado } = await supabaseClient.from('clientes').select('estado').eq('id', clienteId).single();
+if (cliEstado && (cliEstado.estado === false || cliEstado.estado === "false")) {
+  mostrarMensajeAdmin('pago-msg', '⛔ Esta cuenta está INACTIVA (Suspendida / Dada de baja). No se puede cobrar ni generar anticipo.', true);
+  return;
+}
   }
 
   const btn = document.getElementById('btn-pagar');
@@ -355,7 +375,7 @@ window.registrarPago = async function (event) {
 async function cargarPagosRecientes() {
   const cont = document.getElementById('lista-pagos');
   const r = await supabaseClient
-    .from('pagos')
+    .from('pagos')   
     .select('*, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
     .order('created_at', { ascending: false })
     .limit(20);
