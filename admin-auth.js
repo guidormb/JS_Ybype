@@ -1,4 +1,4 @@
-// admin-auth.js - CORREGIDO
+// admin-auth.js - CORREGIDO - Nunca más rompe el login si falla una función
 const supabaseClient = window.supabaseClient;
 
 window.abrirModalNuevoSocio = async function() {
@@ -44,7 +44,7 @@ window.manejarLoginAdmin = async function(event) {
       btn.disabled = false;
       return;
     }
-    await verificarSesionAdmin();
+    await window.verificarSesionAdmin();
   } catch (e) {
     alert('Error al entrar: ' + (e?.message || e));
     btn.textContent = textoOriginal;
@@ -53,27 +53,22 @@ window.manejarLoginAdmin = async function(event) {
 };
 
 window.cerrarSesion = async function() {
-  // 1. No esperamos al signOut, si tarda 1.5 seg igual seguimos. Que no se cuelgue nunca.
   try {
     await Promise.race([
       supabaseClient.auth.signOut(),
       new Promise((res) => setTimeout(res, 1500))
     ]);
   } catch (e) {}
-  
-  // 2. Borramos la sesión a mano, por si Supabase no la borró
   try {
     Object.keys(localStorage).forEach((k) => {
       if (k.startsWith('sb-')) localStorage.removeItem(k);
     });
     sessionStorage.clear();
   } catch (e) {}
-  
-  // 3. Volvemos al login SIEMPRE, con ?logout=1 para que no use el cache
   window.location.href = 'admin-junta.html?logout=1';
 };
 
-async function verificarSesionAdmin() {
+window.verificarSesionAdmin = async function() {
   try {
     const { data } = await supabaseClient.auth.getSession();
     const session = data.session;
@@ -89,8 +84,6 @@ async function verificarSesionAdmin() {
       if (btn) { btn.textContent = 'Ingresar'; btn.disabled = false; }
       return;
     }
-
-    // Blindaje: que no entre un socio con ci_xxx
     const email = session.user.email || '';
     const rol = session.user.user_metadata?.rol;
     const esAdmin = rol === 'admin' || !email.startsWith('ci_');
@@ -100,7 +93,6 @@ async function verificarSesionAdmin() {
       location.reload();
       return;
     }
-
     boxLogin?.classList.add('hidden');
     boxContenido?.classList.remove('hidden');
     if (acciones) acciones.classList.remove('hidden');
@@ -113,22 +105,32 @@ async function verificarSesionAdmin() {
     if (repMesEl && !repMesEl.value) repMesEl.value = ym;
     if (repDesdeEl && !repDesdeEl.value) repDesdeEl.value = `${ym}-01`;
     if (repHastaEl && !repHastaEl.value) repHastaEl.value = ymd;
-    await cargarDatosAdmin();
+    await window.cargarDatosAdmin();
     const btn = document.getElementById('btn-login-admin');
     if (btn) { btn.textContent = 'Ingresar'; btn.disabled = false; }
   } catch (e) {
     console.error('verificarSesionAdmin', e);
-    alert('Entraste, pero falló al cargar datos: ' + (e?.message || e));
+    // Ya no tiramos alert que traba todo, solo logueamos
     const btn = document.getElementById('btn-login-admin');
     if (btn) { btn.textContent = 'Ingresar'; btn.disabled = false; }
   }
-}
+};
 
-async function cargarDatosAdmin() {
-  await Promise.all([cargarSocios(), cargarPagosRecientes(), cargarGastosRecientes(), cargarBalance()]);
-}
+// Alias por si otro archivo la llama sin window
+var verificarSesionAdmin = window.verificarSesionAdmin;
+
+window.cargarDatosAdmin = async function() {
+  // CORREGIDO: con window. + ?. + allSettled, si una falla no rompe las demás
+  await Promise.allSettled([
+    window.cargarSocios ? window.cargarSocios() : Promise.resolve(),
+    window.cargarPagosRecientes ? window.cargarPagosRecientes() : Promise.resolve(),
+    window.cargarGastosRecientes ? window.cargarGastosRecientes() : Promise.resolve(),
+    window.cargarBalance ? window.cargarBalance() : Promise.resolve()
+  ]);
+};
+var cargarDatosAdmin = window.cargarDatosAdmin;
 
 // Al abrir la página, verifica si ya hay sesión
 document.addEventListener('DOMContentLoaded', () => {
-  verificarSesionAdmin();
-});   
+  window.verificarSesionAdmin();
+}); 
