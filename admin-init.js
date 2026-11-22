@@ -24,7 +24,6 @@ if (typeof window.cargarGastosRecientes === 'undefined') {
           '<p class="text-[11px] text-slate-500">' + escapeHtml(g.categoria || '') + ' - ' + escapeHtml(g.fecha || '') + '</p></div>' +
           '<div class="flex flex-col items-end gap-1"><span class="text-xs font-bold text-red-600">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span>' +
           '<div class="flex gap-1">' +
-          '<button type="button" onclick="window.abrirEditarGasto(\'' + g.id + '\', \'' + escapeHtml(g.descripcion || '') + '\', \'' + escapeHtml(g.categoria || 'otros') + '\', ' + g.monto + ', \'' + escapeHtml(g.proveedor_beneficiario || '') + '\', \'' + escapeHtml(g.fecha || '') + '\')" class="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Editar</button>' +
           '<button type="button" onclick="window.anularGasto(\'' + g.id + '\', \'' + escapeHtml(g.descripcion || '') + '\')" class="text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button>' +
           '</div></div></div>';
       }).join('');

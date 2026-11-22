@@ -46,7 +46,7 @@ window.cargarGastosRecientes = async function () {
   if (!cont) return;
   var r = await getSB().from('gastos').select('*').eq('estado', filtroGastosActual).order('created_at', { ascending: false }).limit(20);
   var gastos = r.data || [];
-  gastosRecientesCache = gastos;
+  window.gastosRecientesCache = gastos;
   if (gastos.length === 0) { cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin gastos ' + (filtroGastosActual === 'anulado' ? 'anulados.' : 'activos.') + '</p>'; return; }
   cont.innerHTML = gastos.map(function (g) {
     return '<div class="flex justify-between items-start gap-2 border-b pb-2 ' + (g.estado === 'anulado' ? 'opacity-70 bg-red-50 rounded-lg p-2' : '') + '">'
@@ -56,16 +56,19 @@ window.cargarGastosRecientes = async function () {
     + '</div><div class="flex flex-col items-end gap-1">'
     + '<span class="text-xs font-bold ' + (g.estado === 'anulado' ? 'text-slate-500 line-through' : 'text-red-600') + '">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span>'
     + (g.estado === 'anulado' ? '' : '<div class="flex gap-1">'
-      + '<button type="button" data-accion="editar" data-id="' + g.id + '" class="btn-gasto-accion text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Editar</button>'
       + '<button type="button" data-accion="anular" data-id="' + g.id + '" class="btn-gasto-accion text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button></div>')
     + '</div></div>';
   }).join('');
   cont.querySelectorAll('.btn-gasto-accion').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var gasto = gastosRecientesCache.find(function (item) { return String(item.id) === String(btn.dataset.id); });
+      var gasto = window.gastosRecientesCache.find(function (item) { return String(item.id) === String(btn.dataset.id); });
       if (!gasto) return;
-      // Ambos abren el modal, ahí escribís el motivo y anulás. Sin prompt.
+      // Solo anular. Abre el modal, ahí escribís el motivo y anulás. Sin prompt.
       window.abrirEditarGasto(gasto.id, gasto.descripcion || '', gasto.categoria || 'otros', gasto.monto, gasto.proveedor_beneficiario || '', gasto.fecha || '');
+      setTimeout(function(){
+        var inp = document.getElementById('edit-gasto-motivo-anulacion');
+        if (inp) inp.focus();
+      }, 100);
     });
   });
 };
@@ -88,30 +91,17 @@ window.cerrarModalEditarGasto = function () { document.getElementById('modal-edi
 
 window.guardarEdicionGasto = async function (event) {
   if (event) event.preventDefault();
-  var id = document.getElementById('edit-gasto-id').value;
-  var descripcion = document.getElementById('edit-gasto-descripcion').value.trim();
-  var categoria = document.getElementById('edit-gasto-categoria').value;
-  var monto = limpiarGuaraniesInput(document.getElementById('edit-gasto-monto').value);
-  var proveedor = document.getElementById('edit-gasto-proveedor').value.trim();
-  var fecha = document.getElementById('edit-gasto-fecha').value;
-  if (!descripcion || !monto || monto <= 0) { mostrarMensajeAdmin('edit-gasto-msg', 'Completá descripción y monto válido.', true); return false; }
-  var btn = document.getElementById('btn-edit-gasto-guardar');
-  btn.textContent = 'Guardando...'; btn.disabled = true;
-  var res = await getSB().from('gastos').update({ descripcion: descripcion, categoria: categoria, monto: monto, proveedor_beneficiario: proveedor || null, fecha: fecha }).eq('id', id).eq('estado', 'activo');
-  console.log('Res editar gasto:', res);
-  if (res.error) { mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + res.error.message, true); alert('Error: ' + res.error.message); btn.textContent = 'Guardar Cambios'; btn.disabled = false; return false; }
-  btn.textContent = 'Guardar Cambios'; btn.disabled = false;
-  window.cerrarModalEditarGasto();
-  mostrarMensajeAdmin('gasto-msg', '¡Gasto actualizado!', false);
-  await window.cargarDatosAdmin();
+  // Ya no se permite editar gastos (protección por trigger en Supabase).
+  // Si te equivocaste en un gasto, anulalo con motivo y cargalo de nuevo.
+  mostrarMensajeAdmin('edit-gasto-msg', 'No se puede editar un gasto. Anulalo con motivo y cargalo de nuevo.', true);
   return false;
 };
 
 // Ahora anular = abrir modal, no prompt
 window.anularGasto = function (id, descripcion) {
-  var g = gastosRecientesCache.find(function (x) { return String(x.id) === String(id); });
+  var g = window.gastosRecientesCache.find(function (x) { return String(x.id) === String(id); });
   if (g) window.abrirEditarGasto(g.id, g.descripcion || '', g.categoria || 'otros', g.monto, g.proveedor_beneficiario || '', g.fecha || '');
-  else alert('Abrí el gasto con Editar y abajo escribí el motivo para anular.');
+  else alert('Abrí el gasto con Anular y abajo escribí el motivo para anular.');
 };
 
 window.anularGastoDesdeModal = async function () {
@@ -121,8 +111,11 @@ window.anularGastoDesdeModal = async function () {
   var motivo = motivoInput ? motivoInput.value.trim() : '';
   if (!motivo) { mostrarMensajeAdmin('edit-gasto-msg', 'Escribí el motivo de anulación.', true); return; }
   if (!confirm('¿Seguro querés ANULAR?\n' + desc)) return;
+  var btnAnular = document.getElementById('btn-edit-gasto-anular');
+  if (btnAnular) { btnAnular.textContent = 'Anulando...'; btnAnular.disabled = true; }
   var res = await getSB().from('gastos').update({ estado: 'anulado', motivo_anulacion: motivo, anulado_en: new Date().toISOString() }).eq('id', id).eq('estado', 'activo');
   console.log('Res anular:', res);
+  if (btnAnular) { btnAnular.textContent = 'Anular Gasto'; btnAnular.disabled = false; }
   if (res.error) { mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + res.error.message, true); alert('Error: ' + res.error.message); return; }
   window.cerrarModalEditarGasto();
   mostrarMensajeAdmin('gasto-msg', 'Gasto anulado. Queda en historia, no suma en balance.', false);
@@ -138,10 +131,3 @@ var cambiarFiltroGastos = window.cambiarFiltroGastos;
 var cargarGastosRecientes = window.cargarGastosRecientes;
 var abrirEditarGasto = window.abrirEditarGasto;
 var cerrarModalEditarGasto = window.cerrarModalEditarGasto;
-window.probarGasto = async function() {
-  alert('registrar: ' + typeof window.registrarGasto + '\nsupabase: ' + typeof window.supabaseClient);
-  try {
-    var res = await window.supabaseClient.from('gastos').insert({ descripcion: 'PRUEBA CELULAR', categoria: 'otros', monto: 1000, fecha: '2026-11-22', estado: 'activo' }).select();
-    alert('Respuesta: ' + JSON.stringify(res));
-  } catch (e) { alert('ERROR: ' + e.message); }
-};

@@ -123,7 +123,7 @@ window.generarReporteCobranzas = async function() {
 async function cargarBalance() {
   const [rp, rg, rc] = await Promise.all([
     supabaseClient.from('pagos').select('monto_pagado, factura_id, concepto, metodo'),
-    supabaseClient.from('gastos').select('monto'),
+    supabaseClient.from('gastos').select('monto, estado').eq('estado', 'activo'),
     supabaseClient.from('clientes').select('saldo_favor')
   ]);
   
