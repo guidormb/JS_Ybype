@@ -10,7 +10,16 @@
 <script>
   const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
-  const sbMenu = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function getSB() {
+    if (window.supabaseClient) return window.supabaseClient;
+    if (!window.__sbCierre && window.supabase?.createClient) {
+      window.__sbCierre = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    return window.__sbCierre;
+  }
+
+  const sbMenu = getSB();
 </script>
 <style>
   *{box-sizing:border-box}
@@ -42,6 +51,7 @@
 </head>
 <body>
 <h2>📊 Cierre Mensual</h2>
+<div id="estado-sesion-cierre" class="no-print"></div>
 <div class="no-print">
   <label for="mes">Mes</label>
   <select id="mes">
@@ -83,27 +93,52 @@ function poblarSelectorAnios() {
     selAnio.appendChild(opt);
   }
 }
+
+async function verificarEstadoSesionCierre() {
+  try {
+    const sb = getSB();
+    if (!sb?.auth) return;
+    const { data } = await sb.auth.getSession();
+    const user = data?.session?.user || null;
+    const badge = document.getElementById('estado-sesion-cierre');
+    if (!badge) return;
+
+    if (user) {
+      badge.textContent = 'Sesión activa: ' + (user.email || 'Admin');
+      badge.className = 'text-center text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 rounded-lg p-2 mb-3';
+      badge.style.cssText = 'background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
+    } else {
+      badge.textContent = 'Sin sesión activa: podés ver resúmenes, pero para Cerrar Mes debés iniciar sesión como Admin.';
+      badge.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
+    }
+  } catch (e) {
+    console.error('verificarEstadoSesionCierre:', e);
+  }
+}
+
 // MISMA FORMULA QUE EL MENU - clientes.saldo_favor
 async function obtenerAnticiposPendientes(){
   try{
-    const { data, error } = await sbMenu.from('clientes').select('saldo_favor');
+    const { data, error } = await getSB().from('clientes').select('saldo_favor');
     if(error) return 0;
     return (data||[]).reduce((acc,c)=> acc + Number(c.saldo_favor||0), 0);
   }catch(e){ return 0; }
 }
-// MISMA FORMULA QUE EL MENU - pagos.monto_pagado, metodo saldo_a_favor
+
+// MISMA FORMULA QUE EL MENU - pagos.monto_pagado, metodo saldo_a_favor (excluyendo anulados)
 async function obtenerFacturasConSaldo(anio, mes){
   try{
     const ultimoDia = new Date(anio, mes, 0).getDate();
     const fechaInicioISO = `${anio}-${String(mes).padStart(2,'0')}-01T00:00:00.000Z`;
     const fechaFinISO = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}T23:59:59.999Z`;
-   const { data, error } = await sbMenu.from('pagos')
-  .select('monto_pagado, factura_id, concepto, metodo, estado, created_at')
-  .neq('estado', 'anulado')
-  .gte('created_at', fechaInicioISO)
-  .lte('created_at', fechaFinISO);
+    const { data, error } = await getSB().from('pagos')
+      .select('monto_pagado, factura_id, concepto, metodo, estado, created_at')
+      .neq('estado', 'anulado')
+      .gte('created_at', fechaInicioISO)
+      .lte('created_at', fechaFinISO);
     if(error) return 0;
     return (data||[]).reduce((acc,p)=>{
+      if(p.estado === 'anulado') return acc;
       const conceptoLower = String(p.concepto || '').toLowerCase();
       const metodoLower = String(p.metodo || '').toLowerCase();
       const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
@@ -115,18 +150,20 @@ async function obtenerFacturasConSaldo(anio, mes){
     }, 0);
   }catch(e){ return 0; }
 }
+
 async function verResumen(){
+  const sb = getSB();
   const mes = Number(document.getElementById('mes').value);
   const anio = Number(document.getElementById('anio').value);
   const nombres = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   document.getElementById('resultado').innerHTML = '<p style="text-align:center">Cargando...</p>';
-  const { data, error } = await sbMenu.rpc('calcular_cierre', { p_anio: anio, p_mes: mes });
+  const { data, error } = await sb.rpc('calcular_cierre', { p_anio: anio, p_mes: mes });
   if(error){
     document.getElementById('resultado').innerHTML = '';
     return alert('Error: ' + error.message);
   }
   const r = (data && data[0]) || { cobrado_facturas: 0, cobrado_anticipos: 0, total_cobrado: 0, total_gastado: 0, cantidad_pagos: 0, cantidad_gastos: 0 };
-  const { data: cierreExistente } = await sbMenu.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
+  const { data: cierreExistente } = await sb.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
   const esParcial = !cierreExistente;
   const leyenda = esParcial ?
     `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>` :
@@ -134,7 +171,7 @@ async function verResumen(){
   let mesAnt = mes - 1;
   let anioAnt = anio;
   if (mesAnt === 0) { mesAnt = 12; anioAnt = anio - 1; }
-  const { data: cierreAnt } = await sbMenu.from('cierres_mensuales').select('saldo_final').eq('anio', anioAnt).eq('mes', mesAnt).maybeSingle();
+  const { data: cierreAnt } = await sb.from('cierres_mensuales').select('saldo_final').eq('anio', anioAnt).eq('mes', mesAnt).maybeSingle();
   const saldoAnterior = Number(cierreAnt?.saldo_final || 0);
   const cobradoFacturasEfectivo = Number(r.cobrado_facturas || 0);
   const cobradoAnticiposMes = Number(r.cobrado_anticipos || 0);
@@ -177,8 +214,10 @@ async function verResumen(){
     </div>
   `;
 }
+
 async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
-  const { data: sesData } = await sbMenu.auth.getSession();
+  const sb = getSB();
+  const { data: sesData } = await sb.auth.getSession();
   if (!sesData?.session) {
     return alert('Iniciá sesión como administrador para cerrar el mes.');
   }
@@ -191,9 +230,9 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
     return alert(`No se puede cerrar todavía.\n\n${nombres[mes]} ${anio} solo se puede cerrar desde el 15 de ${mesSiguiente}.`);
   }
   if (!confirm('¿Cerrar este mes? Después del 15 ya no se podrá anular nada de este mes.')) return;
-  const { data: yaCerrado } = await sbMenu.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
+  const { data: yaCerrado } = await sb.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
   if (yaCerrado) return alert('Este mes ya está cerrado. No se puede volver a cerrar.');
-  const { error } = await sbMenu.from('cierres_mensuales').insert({
+  const { error } = await sb.from('cierres_mensuales').insert({
     anio: anio,
     mes: mes,
     fecha_cierre: new Date().toISOString().split('T')[0],
@@ -206,7 +245,9 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
   alert('¡Mes cerrado y guardado!');
   verResumen();
 }
+
 poblarSelectorAnios();
+verificarEstadoSesionCierre();
 </script>
 </body>
 </html>
