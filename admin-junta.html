@@ -76,10 +76,11 @@ padding: 16px !important;
 <span class="text-red-300 block text-[10px] font-bold">TOTAL GASTADO</span>
 <span id="total-gastado" class="font-bold text-sm">Gs. 0</span>
 </div>
-<div class="bg-slate-800 p-3 rounded-xl">
-<span class="text-sky-300 block text-[10px] font-bold">ANTICIPOS / SALDO A FAVOR</span>
-<span id="total-anticipos" class="font-bold text-sm">Gs. 0</span>
-</div>
+<button type="button" onclick="abrirListaAnticipos()" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-700 transition text-left w-full p-3 rounded-xl cursor-pointer">
+  <span class="text-sky-300 block text-[10px] font-bold">ANTICIPOS / SALDO A FAVOR</span>
+  <span id="total-anticipos" class="font-bold text-sm text-white block">Gs. 0</span>
+  <span class="text-[10px] font-bold text-sky-300 block mt-1">👁️ Ver lista →</span>
+</button>
 <div class="bg-slate-800 p-3 rounded-xl">
 <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
 <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
@@ -365,5 +366,23 @@ padding: 16px !important;
 <script src="admin-gastos.js"></script>
 <script src="admin-cuotas-reportes.js"></script>
 <script src="admin-init.js"></script>
+<!-- MODAL LISTA DE ANTICIPOS -->
+<div id="modal-anticipos" class="hidden fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this) cerrarListaAnticipos()">
+  <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85vh] flex flex-col overflow-hidden">
+    <div class="flex justify-between items-start p-4 border-b">
+      <div>
+        <h3 class="font-extrabold text-sm">Anticipos / Saldo a favor</h3>
+        <p id="modal-anticipos-total" class="text-xs text-slate-500 mt-0.5">Total: Gs. 0</p>
+      </div>
+      <button type="button" onclick="cerrarListaAnticipos()" class="bg-slate-100 w-8 h-8 rounded-full font-bold">✕</button>
+    </div>
+    <div id="modal-anticipos-lista" class="p-4 overflow-y-auto space-y-2">
+      <p class="text-xs text-slate-500 text-center py-4">Cargando...</p>
+    </div>
+    <div class="p-3 border-t bg-slate-50">
+      <button type="button" onclick="cerrarListaAnticipos()" class="w-full bg-slate-900 text-white text-sm font-bold py-2.5 rounded-xl">Cerrar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

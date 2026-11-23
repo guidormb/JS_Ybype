@@ -692,3 +692,56 @@ async function eliminarCobranza(pago) {
     mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
   }
 }
+// ============================================================
+// MODAL LISTA DE ANTICIPOS / SALDO A FAVOR
+// ============================================================
+
+async function abrirListaAnticipos() {
+  const modal = document.getElementById('modal-anticipos');
+  const cont = document.getElementById('modal-anticipos-lista');
+  const totalEl = document.getElementById('modal-anticipos-total');
+  if (!modal || !cont) return;
+  
+  modal.classList.remove('hidden');
+  cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Cargando...</p>';
+  
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .select('id, nro_cuenta, saldo_favor, activo, personas(nombre, apellido)')
+      .gt('saldo_favor', 0)
+      .order('saldo_favor', { ascending: false });
+    
+    if (error) throw error;
+    
+    const lista = data || [];
+    const total = lista.reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
+    if (totalEl) totalEl.textContent = 'Total: Gs. ' + total.toLocaleString('es-PY') + ' · ' + lista.length + ' socio(s)';
+    
+    if (lista.length === 0) {
+      cont.innerHTML = '<p class="text-xs text-emerald-700 font-bold text-center py-6 bg-emerald-50 rounded-xl">✅ Nadie tiene saldo a favor.<br>Todo en 0.</p>';
+      return;
+    }
+    
+    cont.innerHTML = lista.map((c) => {
+      const per = c.personas || {};
+      const nombre = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || ('Cta ' + (c.nro_cuenta || ''));
+      const inactivo = c.activo === false;
+      return (
+        '<div class="flex justify-between items-center gap-2 border rounded-xl p-3 ' + (inactivo ? 'bg-red-50 border-red-200' : 'bg-white') + '">' +
+        '<div class="flex-1">' +
+        '<p class="text-xs font-bold">' + escapeHtml(nombre) + '</p>' +
+        '<p class="text-[11px] text-slate-500">Cta ' + escapeHtml(c.nro_cuenta || '') + (inactivo ? ' · ⛔ INACTIVA' : '') + '</p>' +
+        '</div>' +
+        '<p class="text-xs font-extrabold text-sky-700 whitespace-nowrap">Gs. ' + Number(c.saldo_favor || 0).toLocaleString('es-PY') + '</p>' +
+        '</div>'
+      );
+    }).join('');
+  } catch (e) {
+    cont.innerHTML = '<p class="text-xs text-red-600 text-center py-4">Error: ' + escapeHtml(e.message) + '</p>';
+  }
+}
+
+function cerrarListaAnticipos() {
+  document.getElementById('modal-anticipos')?.classList.add('hidden');
+}
