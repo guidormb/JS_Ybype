@@ -97,10 +97,11 @@ async function obtenerFacturasConSaldo(anio, mes){
     const ultimoDia = new Date(anio, mes, 0).getDate();
     const fechaInicioISO = `${anio}-${String(mes).padStart(2,'0')}-01T00:00:00.000Z`;
     const fechaFinISO = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}T23:59:59.999Z`;
-    const { data, error } = await sbMenu.from('pagos')
-      .select('monto_pagado, factura_id, concepto, metodo, created_at')
-      .gte('created_at', fechaInicioISO)
-      .lte('created_at', fechaFinISO);
+   const { data, error } = await sbMenu.from('pagos')
+  .select('monto_pagado, factura_id, concepto, metodo, estado, created_at')
+  .neq('estado', 'anulado')
+  .gte('created_at', fechaInicioISO)
+  .lte('created_at', fechaFinISO);
     if(error) return 0;
     return (data||[]).reduce((acc,p)=>{
       const conceptoLower = String(p.concepto || '').toLowerCase();

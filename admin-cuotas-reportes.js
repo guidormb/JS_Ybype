@@ -45,13 +45,14 @@ window.generarReporteCobranzas = async function() {
   btnConsultar.textContent = 'Consultando...';
   btnConsultar.disabled = true;
   
-  try {
-    const { data, error } = await supabaseClient
-      .from('pagos')
-      .select('id, created_at, monto_pagado, metodo, concepto, factura_id, clientes(nro_cuenta, personas(nombre, apellido, cedula_ruc))')
-      .gte('created_at', fechaInicioISO)
-      .lte('created_at', fechaFinISO)
-      .order('created_at', { ascending: true });
+ const { data, error } = await supabaseClient
+  .from('pagos')
+  .select('id, created_at, monto_pagado, metodo, concepto, factura_id, estado, clientes(nro_cuenta, personas(nombre, apellido, cedula_ruc))')
+  .neq('estado', 'anulado')
+  .gte('created_at', fechaInicioISO)
+  .lte('created_at', fechaFinISO)
+  .order('created_at', { ascending: true });
+
     
     if (error) throw error;
     
@@ -117,61 +118,88 @@ window.generarReporteCobranzas = async function() {
   } finally {
     btnConsultar.textContent = 'Consultar Cobros';
     btnConsultar.disabled = false;
-  }
+  
 };
 
 async function cargarBalance() {
   const [rp, rg, rc] = await Promise.all([
-    supabaseClient.from('pagos').select('monto_pagado, factura_id, concepto, metodo'),
-    supabaseClient.from('gastos').select('monto, estado').eq('estado', 'activo'),
-    supabaseClient.from('clientes').select('saldo_favor')
+    supabaseClient
+      .from('pagos')
+      .select('monto_pagado, factura_id, concepto, metodo, estado')
+      .neq('estado', 'anulado'),
+    supabaseClient
+      .from('gastos')
+      .select('monto, estado')
+      .eq('estado', 'activo'),
+    supabaseClient
+      .from('clientes')
+      .select('saldo_favor')
   ]);
-  
-  const pagos = rp.data || [];
-  
-  // TOTAL COBRADO (FACTURAS) = toda factura pagada, en efectivo/transferencia O con saldo a favor
-  // Solo para mostrar en la tarjetita "TOTAL COBRADO (FACTURAS)"
-  const totalCobradoFacturas = pagos.filter((p) => {
-    const conceptoLower = String(p.concepto || '').toLowerCase();
-    const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
-    return !esAnticipo;
-  }).reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
-  
-  // TOTAL EN EFECTIVO QUE REALMENTE ENTRÓ = facturas en efectivo + anticipos
-  // NO contamos el saldo_a_favor porque esa plata ya entró cuando se cobró el anticipo. Si lo contamos 2 veces, se duplica.
-  const totalCobradoEfectivo = pagos.filter((p) => {
-    const metodoLower = String(p.metodo || '').toLowerCase();
-    const conceptoLower = String(p.concepto || '').toLowerCase();
-    const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
-    return !esUsoSaldoFavor;
-  }).reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
-  
+
+  const pagos = (rp.data || []).filter((p) => p.estado !== 'anulado');
+
+  // TOTAL COBRADO (FACTURAS) = pagos asociados a factura que no son anticipo
+  const totalCobradoFacturas = pagos
+    .filter((p) => {
+      const conceptoLower = String(p.concepto || '').toLowerCase();
+      const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
+      return !esAnticipo;
+    })
+    .reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
+
+  // TOTAL EN EFECTIVO / INGRESO REAL = excluye movimientos internos con saldo_a_favor
+  const totalCobradoEfectivo = pagos
+    .filter((p) => {
+      const metodoLower = String(p.metodo || '').toLowerCase();
+      const conceptoLower = String(p.concepto || '').toLowerCase();
+      const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+      return !esUsoSaldoFavor;
+    })
+    .reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
+
   const totalGastado = (rg.data || []).reduce((a, g) => a + Number(g.monto || 0), 0);
   const totalAnticiposClientes = (rc.data || []).reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
-  
-  // CAJA REAL = efectivo que entró - gastos. MISMA CUENTA QUE EL CIERRE.
+
+  // CAJA REAL = ingreso efectivo - gastos activos
   const totalGeneralSaldos = totalCobradoEfectivo - totalGastado;
-  // PROPIO DE LA JUNTA = caja real - lo que se debe de anticipos. MISMO QUE "SALDO PROPIO" DEL CIERRE.
+  // PROPIO DE LA JUNTA = caja real - anticipos pendientes de clientes
   const balanceCaja = totalGeneralSaldos - totalAnticiposClientes;
-  
-  document.getElementById('total-cobrado').textContent = 'Gs. ' + totalCobradoFacturas.toLocaleString('es-PY');
-  document.getElementById('total-gastado').textContent = 'Gs. ' + totalGastado.toLocaleString('es-PY');
-  document.getElementById('total-anticipos').textContent = 'Gs. ' + totalAnticiposClientes.toLocaleString('es-PY');
-  document.getElementById('balance-total').textContent = 'Gs. ' + balanceCaja.toLocaleString('es-PY');
-  document.getElementById('total-general-saldos').textContent = 'Gs. ' + totalGeneralSaldos.toLocaleString('es-PY');
-  
-  // LEYENDA DEL BALANCE
+
+  const setTexto = (id, valor) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = 'Gs. ' + Number(valor || 0).toLocaleString('es-PY');
+  };
+
+  setTexto('total-cobrado', totalCobradoFacturas);
+  setTexto('total-gastado', totalGastado);
+  setTexto('total-anticipos', totalAnticiposClientes);
+  setTexto('balance-total', balanceCaja);
+  setTexto('total-general-saldos', totalGeneralSaldos);
+
   const leyendaEl = document.getElementById('leyenda-balance');
   if (leyendaEl) {
-    leyendaEl.classList.remove('hidden', 'bg-amber-100', 'text-amber-900', 'bg-red-100', 'text-red-800', 'bg-emerald-100', 'text-emerald-900', 'border', 'border-amber-300', 'border-red-300', 'border-emerald-300');
+    leyendaEl.classList.remove(
+      'hidden', 'bg-amber-100', 'text-amber-900',
+      'bg-red-100', 'text-red-800',
+      'bg-emerald-100', 'text-emerald-900',
+      'border', 'border-amber-300', 'border-red-300', 'border-emerald-300'
+    );
     if (balanceCaja < 0 && totalAnticiposClientes > 0) {
-      leyendaEl.textContent = '⚠️ Caja sin plata propia. En caja hay Gs. ' + totalGeneralSaldos.toLocaleString('es-PY') + ', pero se deben Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' de anticipos de socios. Faltan Gs. ' + Math.abs(balanceCaja).toLocaleString('es-PY') + ' para cubrirlos.';
+      leyendaEl.textContent =
+        '⚠️ Caja sin plata propia. En caja hay Gs. ' + totalGeneralSaldos.toLocaleString('es-PY') +
+        ', pero se deben Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') +
+        ' de anticipos de socios. Faltan Gs. ' + Math.abs(balanceCaja).toLocaleString('es-PY') + ' para cubrirlos.';
       leyendaEl.classList.add('bg-amber-100', 'text-amber-900', 'border', 'border-amber-300');
     } else if (balanceCaja < 0) {
-      leyendaEl.textContent = '⛔ Balance en negativo: Gs. ' + balanceCaja.toLocaleString('es-PY') + '. La Junta debe más de lo que tiene.';
+      leyendaEl.textContent =
+        '⛔ Balance en negativo: Gs. ' + balanceCaja.toLocaleString('es-PY') +
+        '. La Junta debe más de lo que tiene.';
       leyendaEl.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-300');
     } else if (totalAnticiposClientes > 0) {
-      leyendaEl.textContent = 'ℹ️ De los fondos en caja, Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') + ' son anticipos de socios (plata a descontar, no ganancia). Lo propio de la Junta es Gs. ' + balanceCaja.toLocaleString('es-PY') + '.';
+      leyendaEl.textContent =
+        'ℹ️ De los fondos en caja, Gs. ' + totalAnticiposClientes.toLocaleString('es-PY') +
+        ' son anticipos de socios (plata a descontar, no ganancia). Lo propio de la Junta es Gs. ' +
+        balanceCaja.toLocaleString('es-PY') + '.';
       leyendaEl.classList.add('bg-amber-100', 'text-amber-900', 'border', 'border-amber-300');
     } else {
       leyendaEl.textContent = '✅ Todo el saldo en caja es propio de la Junta. No hay anticipos pendientes.';

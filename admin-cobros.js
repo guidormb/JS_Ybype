@@ -1,10 +1,21 @@
-// admin-cobros.js - VERSIÓN FINAL PULIDA
+// admin-cobros.js - VERSIÓN FINAL PULIDA + ANULACIÓN LÓGICA EN PAGOS + CANDADO ANTICIPO
 // Bloqueo total para cuentas INACTIVAS (clientes.activo = false)
 // - No cobra, no genera anticipo, no aplica saldo a favor
 
 // ============================================================
 // HELPERS
 // ============================================================
+
+function obtenerFechaHoyLocal() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Asuncion',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date()).split('-');
+
+  return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 0, 0, 0, 0);
+}
 
 function calcularDiasVencidaFactura(mesStr) {
   if (!mesStr || !/^\d{4}-\d{2}$/.test(String(mesStr).trim())) {
@@ -15,11 +26,8 @@ function calcularDiasVencidaFactura(mesStr) {
   const mesNum = Number(mesNumStr);
 
   // Vence el día 1 del mes siguiente al período facturado
-  const fechaVencimiento = new Date(anio, mesNum, 1);
-  fechaVencimiento.setHours(0, 0, 0, 0);
-
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const fechaVencimiento = new Date(anio, mesNum, 1, 0, 0, 0, 0);
+  const hoy = obtenerFechaHoyLocal();
 
   const msPorDia = 1000 * 60 * 60 * 24;
   const diasVencida = Math.floor((hoy.getTime() - fechaVencimiento.getTime()) / msPorDia);
@@ -98,8 +106,6 @@ window.cargarFacturasSocioSeleccionado = async function () {
     return;
   }
 
-  const socio = (typeof listaSociosCobro !== 'undefined' ? listaSociosCobro : []).find((s) => String(s.id) === String(clienteId));
-
   // BLOQUEO CUENTA INACTIVA - ANTES DE MOSTRAR NADA
   const estaActivo = await verificarClienteActivo(clienteId);
   if (!estaActivo) {
@@ -108,7 +114,15 @@ window.cargarFacturasSocioSeleccionado = async function () {
   }
   desbloquearUIClienteActivo();
 
-  const saldoFavorSocio = Number(socio?.saldo_favor || 0);
+  const { data: cliFresh } = await supabaseClient
+    .from('clientes')
+    .select('saldo_favor')
+    .eq('id', clienteId)
+    .single();
+
+  const socioFallback = (typeof listaSociosCobro !== 'undefined' ? listaSociosCobro : []).find((s) => String(s.id) === String(clienteId));
+  const saldoFavorSocio = Number(cliFresh?.saldo_favor ?? socioFallback?.saldo_favor ?? 0);
+
   if (saldoFavorSocio > 0 && infoSaldo) {
     infoSaldo.textContent = 'Este socio tiene Saldo a Favor: Gs. ' + saldoFavorSocio.toLocaleString('es-PY');
     infoSaldo.classList.remove('hidden');
@@ -247,6 +261,7 @@ window.aplicarSaldoFacturaVencida15Dias = async function (clienteId, facturaId) 
       factura_id: fac.id,
       monto_pagado: montoAplicar,
       metodo: 'saldo_a_favor',
+      estado: 'activo',
       concepto: nuevoSaldoFactura === 0
         ? 'Aplicación de saldo a favor por factura vencida (+15 días) - Factura ' + fac.mes
         : 'Amortización con saldo a favor por factura vencida (+15 días) - Factura ' + fac.mes + ' (queda Gs. ' + nuevoSaldoFactura.toLocaleString('es-PY') + ')'
@@ -313,6 +328,7 @@ async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) 
     factura_id: null,
     monto_pagado: montoAnticipo,
     metodo,
+    estado: 'activo',
     concepto: 'Anticipo - ' + (motivo || 'Saldo a favor del cliente')
   });
   if (errPago) throw errPago;
@@ -403,6 +419,7 @@ window.registrarPago = async function (event) {
           factura_id: factura.id,
           monto_pagado: aPagar,
           metodo,
+          estado: 'activo',
           concepto: nuevoSaldo === 0
             ? 'Factura / deuda cancelada (' + factura.mes + ')'
             : 'Amortización factura ' + factura.mes + ' - Queda Gs. ' + nuevoSaldo.toLocaleString('es-PY')
@@ -450,7 +467,7 @@ window.registrarPago = async function (event) {
 };
 
 // ============================================================
-// PAGOS RECIENTES + ANULAR
+// PAGOS RECIENTES + ANULAR (BORRADO LÓGICO CON HISTORIAL)
 // ============================================================
 
 async function cargarPagosRecientes() {
@@ -458,7 +475,7 @@ async function cargarPagosRecientes() {
   if (!cont) return;
   const { data: pagos, error } = await supabaseClient
     .from('pagos')
-    .select('id, cliente_id, factura_id, monto_pagado, metodo, concepto, created_at, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
+    .select('id, cliente_id, factura_id, monto_pagado, metodo, concepto, estado, motivo_anulacion, anulado_en, created_at, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -481,20 +498,26 @@ async function cargarPagosRecientes() {
     const c = p.clientes || {};
     const per = c.personas || {};
     const fechaMostrar = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '';
-    const esAnticipo = !p.factura_id || String(p.concepto || '').toLowerCase().includes('anticipo');
+    const metodoLower = String(p.metodo || '').toLowerCase();
+    const conceptoLower = String(p.concepto || '').toLowerCase();
+    const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+    const esAnticipo = !p.factura_id || (!esUsoSaldoFavor && conceptoLower.includes('anticipo'));
+    const estaAnulado = p.estado === 'anulado';
+
     const etiquetaTipo = esAnticipo
       ? '<span class="ml-1 text-[10px] font-bold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">ANTICIPO</span>'
       : '<span class="ml-1 text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">COBRO</span>';
 
     return (
-      '<div class="flex justify-between items-start gap-2 border-b pb-2">'
+      '<div class="flex justify-between items-start gap-2 border-b pb-2 ' + (estaAnulado ? 'opacity-70 bg-red-50 rounded-lg p-2' : '') + '">'
       + '<div class="flex-1">'
       + '<p class="text-xs font-bold">' + escapeHtml((per.nombre || '') + ' ' + (per.apellido || '')) + ' - Cta ' + escapeHtml(c.nro_cuenta || '') + etiquetaTipo + '</p>'
       + '<p class="text-[11px] text-slate-500">' + escapeHtml(fechaMostrar) + ' - ' + escapeHtml(p.metodo || '') + ' - ' + escapeHtml(p.concepto || '') + '</p>'
+      + (estaAnulado ? '<p class="text-[11px] font-bold text-red-600 mt-1">⛔ ANULADO: ' + escapeHtml(p.motivo_anulacion || 'sin motivo') + '</p>' : '')
       + '</div>'
       + '<div class="flex flex-col items-end gap-1">'
-      + '<span class="text-xs font-bold text-emerald-600">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span>'
-      + '<button type="button" data-id="' + escapeHtml(p.id) + '" class="btn-borrar-pago text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button>'
+      + '<span class="text-xs font-bold ' + (estaAnulado ? 'text-slate-500 line-through' : 'text-emerald-600') + '">Gs. ' + Number(p.monto_pagado).toLocaleString('es-PY') + '</span>'
+      + (estaAnulado ? '' : '<button type="button" data-id="' + escapeHtml(p.id) + '" class="btn-borrar-pago text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button>')
       + '</div>'
       + '</div>'
     );
@@ -511,24 +534,76 @@ async function cargarPagosRecientes() {
 }
 
 async function eliminarCobranza(pago) {
+  if (!pago || pago.estado === 'anulado') {
+    alert('Este movimiento ya se encuentra anulado.');
+    return;
+  }
+
   const per = pago.clientes?.personas || {};
   const nombreSocio = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || 'Socio';
   const monto = Number(pago.monto_pagado || 0);
-  const esAnticipo = !pago.factura_id || String(pago.concepto || '').toLowerCase().includes('anticipo');
-
-  const ok = confirm(
-    '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n'
-    + 'Socio: ' + nombreSocio + '\n'
-    + 'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n'
-    + 'Concepto: ' + (pago.concepto || '') + '\n\n'
-    + 'Se revertirá el saldo de la factura o el anticipo si corresponde.'
-  );
-  if (!ok) return;
+  const metodo = String(pago.metodo || '').toLowerCase();
+  const conceptoLower = String(pago.concepto || '').toLowerCase();
+  const esUsoSaldoFavor = metodo === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+  const esAnticipo = !pago.factura_id || (!esUsoSaldoFavor && conceptoLower.includes('anticipo'));
 
   try {
-    const { error } = await supabaseClient.from('pagos').delete().eq('id', pago.id);
-    if (error) throw error;
+    // 1. Candado: no permitir anular un anticipo si ya fue consumido / aplicado a facturas
+    if (esAnticipo && pago.cliente_id) {
+      const { data: cliActual, error: errCliChk } = await supabaseClient
+        .from('clientes')
+        .select('saldo_favor')
+        .eq('id', pago.cliente_id)
+        .single();
+      if (errCliChk) throw errCliChk;
 
+      const saldoFavorDisponible = Number(cliActual?.saldo_favor || 0);
+      if (saldoFavorDisponible < monto) {
+        const msgBloqueo =
+          'No podés anular este anticipo de Gs. ' + monto.toLocaleString('es-PY') +
+          ' porque el socio solo tiene Gs. ' + saldoFavorDisponible.toLocaleString('es-PY') +
+          ' de saldo a favor disponible (ya fue aplicado a una factura). ' +
+          'Primero anulá la cobranza con saldo a favor aplicada a la factura.';
+        alert(msgBloqueo);
+        mostrarMensajeAdmin('pago-msg', msgBloqueo, true);
+        return;
+      }
+    }
+
+    const ok = confirm(
+      '¿Anular este ' + (esAnticipo ? 'anticipo' : 'cobro') + '?\n'
+      + 'Socio: ' + nombreSocio + '\n'
+      + 'Monto: Gs. ' + monto.toLocaleString('es-PY') + '\n'
+      + 'Concepto: ' + (pago.concepto || '') + '\n\n'
+      + 'Quedará guardado como ANULADO en el historial y se revertirán los saldos.'
+    );
+    if (!ok) return;
+
+    const motivoIngresado = prompt('Motivo de anulación (obligatorio):', '');
+    if (motivoIngresado === null) return;
+    const motivo = motivoIngresado.trim();
+    if (!motivo) {
+      alert('Tenés que escribir un motivo para anular.');
+      return;
+    }
+
+    // 2. Marcar pago como ANULADO (no se borra físicamente, queda en historial)
+    const { data: updPago, error: errUpdPago } = await supabaseClient
+      .from('pagos')
+      .update({
+        estado: 'anulado',
+        motivo_anulacion: motivo,
+        anulado_en: new Date().toISOString()
+      })
+      .eq('id', pago.id)
+      .eq('estado', 'activo')
+      .select();
+    if (errUpdPago) throw errUpdPago;
+    if (!updPago || updPago.length === 0) {
+      throw new Error('No se pudo anular el movimiento (puede que ya esté anulado o en un mes cerrado).');
+    }
+
+    // 3. Si estaba asociado a una factura, devolver saldo pendiente a la factura
     if (pago.factura_id) {
       const { data: factura } = await supabaseClient
         .from('facturas')
@@ -544,7 +619,24 @@ async function eliminarCobranza(pago) {
           .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
           .eq('id', factura.id);
       }
+
+      // Si el pago de la factura se hizo con saldo_a_favor, reintegrar ese saldo al cliente
+      if (esUsoSaldoFavor && pago.cliente_id) {
+        const { data: cliente } = await supabaseClient
+          .from('clientes')
+          .select('saldo_favor')
+          .eq('id', pago.cliente_id)
+          .single();
+        if (cliente) {
+          const nuevoSaldoFavor = Number(cliente.saldo_favor || 0) + monto;
+          await supabaseClient
+            .from('clientes')
+            .update({ saldo_favor: nuevoSaldoFavor })
+            .eq('id', pago.cliente_id);
+        }
+      }
     } else if (esAnticipo && pago.cliente_id) {
+      // 4. Si es un anticipo directo no consumido, descontar del saldo_favor del cliente
       const { data: cliente } = await supabaseClient
         .from('clientes')
         .select('saldo_favor')
@@ -552,7 +644,10 @@ async function eliminarCobranza(pago) {
         .single();
       if (cliente) {
         const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
-        await supabaseClient.from('clientes').update({ saldo_favor: nuevoSaldoFavor }).eq('id', pago.cliente_id);
+        await supabaseClient
+          .from('clientes')
+          .update({ saldo_favor: nuevoSaldoFavor })
+          .eq('id', pago.cliente_id);
       }
     }
 
