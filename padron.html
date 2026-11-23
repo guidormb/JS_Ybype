@@ -74,7 +74,7 @@
   <input id="direccion" placeholder="Ej: Ybypé 1ra. Línea" />
 
   <label for="cuenta">Nro. Cuenta *</label>
-  <input id="cuenta" placeholder="Ej: 001" inputmode="numeric" maxlength="3" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+<input id="cuenta" placeholder="Automático - Se genera solo" readonly style="background:#e2e8f0;color:#475569;font-weight:800;cursor:not-allowed" />
 
   <label for="medidor">Nro. Medidor (opcional - a futuro)</label>
   <input id="medidor" placeholder="Dejar vacío si no tiene" />
@@ -121,7 +121,18 @@ function escapeHtml(valor) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
+async function generarSiguienteNroCuenta() {
+  const input = document.getElementById('cuenta');
+  if (!input) return;
+  // Si estamos editando, NO tocar el número que ya tiene
+  if (editandoClienteId) return;
+  const { data } = await db.from('clientes').select('nro_cuenta').order('nro_cuenta', { ascending: false }).limit(1);
+  let siguiente = 1;
+  if (data && data.length > 0) {
+    siguiente = (parseInt(data[0].nro_cuenta, 10) || 0) + 1;
+  }
+  input.value = String(siguiente).padStart(3, '0');
+}
 async function verificarSesionPadron() {
   const { data } = await db.auth.getSession();
   const session = data.session;
@@ -141,6 +152,7 @@ async function verificarSesionPadron() {
   document.getElementById('contenidoPadron').classList.remove('hidden');
   actualizarContador();
   cargarListaPadron();
+  generarSiguienteNroCuenta();
 }
 
 function irACaja() {
@@ -303,6 +315,7 @@ function cancelar() {
   document.getElementById('btnSalir').style.display = '';
   document.getElementById('btnGuardar').style.display = 'none';
   document.getElementById('btnCancelar').style.display = 'none';
+  generarSiguienteNroCuenta();
 }
 
 async function guardar() {
