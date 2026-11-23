@@ -177,6 +177,34 @@ padding: 16px !important;
 <label for="gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario (opcional)</label>
 <input type="text" id="gasto-proveedor" placeholder="Ej: Ferretería, Juan Pérez, ANDE" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<div>
+<label for="gasto-fecha" class="block text-xs font-bold text-slate-600 mb-1">Fecha de Factura / Gasto</label>
+<input type="date" id="gasto-fecha" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+</div>
+<div>
+<label for="gasto-medio-pago" class="block text-xs font-bold text-slate-600 mb-1">Medio de Pago</label>
+<select id="gasto-medio-pago" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+<option value="efectivo" selected>Efectivo</option>
+<option value="transferencia">Transferencia</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<div>
+<label for="gasto-tipo-comprobante" class="block text-xs font-bold text-slate-600 mb-1">Tipo de Comprobante</label>
+<select id="gasto-tipo-comprobante" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+<option value="Factura">Factura</option>
+<option value="Recibo">Recibo</option>
+<option value="Boleta">Boleta</option>
+<option value="Sin comprobante">Sin comprobante</option>
+</select>
+</div>
+<div>
+<label for="gasto-nro-comprobante" class="block text-xs font-bold text-slate-600 mb-1">Nro. de Factura / Comprobante (opcional)</label>
+<input type="text" id="gasto-nro-comprobante" placeholder="Ej: 001-001-0001234" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+</div>
+</div>
 <button type="submit" id="btn-gasto" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-bold text-sm">Registrar Gasto</button>
 </form>
 <div id="gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>

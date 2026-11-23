@@ -617,20 +617,27 @@ async function eliminarCobranza(pago) {
       throw new Error('No se pudo anular el movimiento (puede que ya esté anulado o en un mes cerrado).');
     }
 
-    // 3. Si estaba asociado a una factura, devolver saldo pendiente a la factura
+    // 3. Si estaba asociado a una factura, devolver saldo pendiente sin superar el monto original
     if (pago.factura_id) {
       const { data: factura } = await supabaseClient
         .from('facturas')
-        .select('id, saldo_pendiente, estado')
+        .select('id, monto, saldo_pendiente, estado')
         .eq('id', pago.factura_id)
         .single();
 
       if (factura) {
+        const montoOriginal = Number(factura.monto || 0);
         const saldoActual = Number(factura.saldo_pendiente || 0);
-        const nuevoSaldo = saldoActual + monto;
+        const nuevoSaldo = montoOriginal > 0
+          ? Math.min(montoOriginal, saldoActual + monto)
+          : saldoActual + monto;
+
         await supabaseClient
           .from('facturas')
-          .update({ saldo_pendiente: nuevoSaldo, estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado' })
+          .update({
+            saldo_pendiente: nuevoSaldo,
+            estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado'
+          })
           .eq('id', factura.id);
       }
 
