@@ -548,22 +548,36 @@ async function eliminarCobranza(pago) {
   const esAnticipo = !pago.factura_id || (!esUsoSaldoFavor && conceptoLower.includes('anticipo'));
 
   try {
-    // 1. Candado: no permitir anular un anticipo si ya fue consumido / aplicado a facturas
+    // 1. CANDADO NUEVO - TU IDEA: Bloquear + avisar a qué factura se usó + NO anular nada
+    // Si el anticipo ya se usó para amortizar una factura, no se puede anular el anticipo primero.
+    // Primero hay que anular la cobranza con saldo a favor de esa factura, después volver acá.
+    // Bloquea aunque el saldo alcance, porque si no la factura quedaría pagada con plata que ya no existe.
     if (esAnticipo && pago.cliente_id) {
-      const { data: cliActual, error: errCliChk } = await supabaseClient
-        .from('clientes')
-        .select('saldo_favor')
-        .eq('id', pago.cliente_id)
-        .single();
-      if (errCliChk) throw errCliChk;
+      const { data: consumos, error: errConsumos } = await supabaseClient
+        .from('pagos')
+        .select('id, monto_pagado, concepto, created_at, facturas(mes, saldo_pendiente)')
+        .eq('cliente_id', pago.cliente_id)
+        .eq('metodo', 'saldo_a_favor')
+        .eq('estado', 'activo')
+        .order('created_at', { ascending: true });
+      if (errConsumos) throw errConsumos;
 
-      const saldoFavorDisponible = Number(cliActual?.saldo_favor || 0);
-      if (saldoFavorDisponible < monto) {
+      if (consumos && consumos.length > 0) {
+        const detalle = consumos.map((c) => {
+          const mes = c.facturas?.mes || 'sin mes';
+          const fecha = c.created_at ? new Date(c.created_at).toLocaleDateString('es-PY') : '';
+          return '• Factura ' + mes + ' - Gs. ' + Number(c.monto_pagado || 0).toLocaleString('es-PY') + ' (' + fecha + ')';
+        }).join('\n');
+
         const msgBloqueo =
-          'No podés anular este anticipo de Gs. ' + monto.toLocaleString('es-PY') +
-          ' porque el socio solo tiene Gs. ' + saldoFavorDisponible.toLocaleString('es-PY') +
-          ' de saldo a favor disponible (ya fue aplicado a una factura). ' +
-          'Primero anulá la cobranza con saldo a favor aplicada a la factura.';
+          '⛔ NO SE PUEDE ANULAR ESTE ANTICIPO\n\n'
+          + 'Socio: ' + nombreSocio + '\n'
+          + 'Anticipo: Gs. ' + monto.toLocaleString('es-PY') + '\n\n'
+          + 'Este anticipo se usó para amortizar:\n' + detalle + '\n\n'
+          + 'ATENCIÓN: Anulá PRIMERO la cobranza con saldo a favor de esa factura.\n'
+          + 'Después volvé acá y anulá el anticipo.\n\n'
+          + 'No se anuló nada.';
+
         alert(msgBloqueo);
         mostrarMensajeAdmin('pago-msg', msgBloqueo, true);
         return;
@@ -654,6 +668,18 @@ async function eliminarCobranza(pago) {
     mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
     await cargarDatosAdmin();
     await cargarFacturasSocioSeleccionado();
+
+    // 5. Aviso para no dejar huérfano: si anulaste un consumo, todavía falta anular el anticipo
+    if (esUsoSaldoFavor && pago.cliente_id) {
+      const { data: cliDespues } = await supabaseClient
+        .from('clientes')
+        .select('saldo_favor')
+        .eq('id', pago.cliente_id)
+        .single();
+      if (Number(cliDespues?.saldo_favor || 0) > 0) {
+        alert('Listo. El saldo volvió a Gs. ' + Number(cliDespues.saldo_favor).toLocaleString('es-PY') + '.\n\nAhora anulá el ANTICIPO original de ' + nombreSocio + ' para dejar todo en 0.');
+      }
+    }
   } catch (e) {
     alert('No se pudo anular: ' + e.message);
     mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
