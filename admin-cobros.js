@@ -745,3 +745,54 @@ async function abrirListaAnticipos() {
 function cerrarListaAnticipos() {
   document.getElementById('modal-anticipos')?.classList.add('hidden');
 }
+// ============================================================
+// NRO. CUENTA AUTOMÁTICO - 001, 002, 003...
+// ============================================================
+
+async function generarSiguienteNroCuenta() {
+  try {
+    const { data } = await supabaseClient
+      .from('clientes')
+      .select('nro_cuenta')
+      .order('nro_cuenta', { ascending: false })
+      .limit(1);
+    
+    let ultimo = 0;
+    if (data && data.length > 0) {
+      ultimo = parseInt(String(data[0].nro_cuenta).replace(/\D/g, '')) || 0;
+    }
+    const siguiente = String(ultimo + 1).padStart(3, '0');
+    const inp = document.getElementById('ns-cuenta');
+    if (inp) inp.value = siguiente;
+    return siguiente;
+  } catch (e) {
+    return '001';
+  }
+}
+// ============================================================
+// ENGANCHE AUTOMÁTICO - Sin tocar el guardado viejo
+// ============================================================
+
+// 1. Cuando se toca cualquier botón "Nuevo Socio" -> genera el 005
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const texto = (btn.textContent || '').toLowerCase();
+  if (texto.includes('nuevo socio') || texto.includes('+ socio') || btn.id === 'btn-nuevo-socio') {
+    // Esperamos un poquito a que abra el modal
+    setTimeout(() => generarSiguienteNroCuenta(), 100);
+  }
+});
+
+// 2. Cuando se toca "Guardar Socio" -> asegura que el número esté puesto
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('#btn-ns-guardar');
+  if (!btn) return;
+  const inp = document.getElementById('ns-cuenta');
+  if (inp && !inp.value) {
+    await generarSiguienteNroCuenta();
+  }
+});
+
+// 3. Si el campo está vacío al abrir, lo llena
+setTimeout(() => generarSiguienteNroCuenta(), 500);
