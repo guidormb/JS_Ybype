@@ -116,12 +116,28 @@ async function verificarEstadoSesionCierre() {
   }
 }
 
-// MISMA FORMULA QUE EL MENU - clientes.saldo_favor
-async function obtenerAnticiposPendientes(){
+// Anticipos pendientes AL CIERRE de ese mes: cobrados hasta fin de mes - usados hasta fin de mes
+async function obtenerAnticiposPendientes(anio, mes){
   try{
-    const { data, error } = await getSB().from('clientes').select('saldo_favor');
+    const ultimoDia = new Date(anio, mes, 0).getDate();
+    const fechaFinISO = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}T23:59:59.999Z`;
+    const { data, error } = await getSB().from('pagos')
+      .select('monto_pagado, factura_id, concepto, metodo, estado, created_at')
+      .neq('estado', 'anulado')
+      .lte('created_at', fechaFinISO);
     if(error) return 0;
-    return (data||[]).reduce((acc,c)=> acc + Number(c.saldo_favor||0), 0);
+    let cobrados = 0;
+    let usados = 0;
+    (data||[]).forEach(p => {
+      if(p.estado === 'anulado') return;
+      const conceptoLower = String(p.concepto || '').toLowerCase();
+      const metodoLower = String(p.metodo || '').toLowerCase();
+      const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
+      const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+      if(esAnticipo) cobrados += Number(p.monto_pagado||0);
+      if(esUsoSaldoFavor && !esAnticipo) usados += Number(p.monto_pagado||0);
+    });
+    return Math.max(0, cobrados - usados);
   }catch(e){ return 0; }
 }
 
@@ -180,7 +196,7 @@ async function verResumen(){
   const facturasConSaldo = await obtenerFacturasConSaldo(anio, mes);
   const totalFacturasCobradas = cobradoFacturasEfectivo + facturasConSaldo;
   const saldoFinalCaja = saldoAnterior + totalCobradoEfectivo - totalGastado;
-  const anticiposPendientes = await obtenerAnticiposPendientes();
+  const anticiposPendientes = await obtenerAnticiposPendientes(anio, mes);
   const saldoPropio = saldoFinalCaja - anticiposPendientes;
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
   const leyendaSaldo = saldoPropio < 0
