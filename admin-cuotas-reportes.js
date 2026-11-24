@@ -7,11 +7,11 @@ window.generarReporteCobranzas = async function() {
   msgEl.classList.add('hidden');
   areaEl.classList.add('hidden');
   btnImprimir.classList.add('hidden');
-
+  
   let fechaInicioISO = '';
   let fechaFinISO = '';
   let tituloPeriodo = '';
-
+  
   if (modoReporteActual === 'mes') {
     const valorMes = document.getElementById('rep-mes-input').value;
     if (!valorMes) {
@@ -41,10 +41,10 @@ window.generarReporteCobranzas = async function() {
     fechaFinISO = `${hasta}T23:59:59.999Z`;
     tituloPeriodo = `Cobros del ${desde.split('-').reverse().join('/')} al ${hasta.split('-').reverse().join('/')}`;
   }
-
+  
   btnConsultar.textContent = 'Consultando...';
   btnConsultar.disabled = true;
-
+  
   try {
     const { data, error } = await supabaseClient
       .from('pagos')
@@ -53,35 +53,34 @@ window.generarReporteCobranzas = async function() {
       .gte('created_at', fechaInicioISO)
       .lte('created_at', fechaFinISO)
       .order('created_at', { ascending: true });
-
+    
     if (error) throw error;
-
+    
     const lista = data || [];
     let totalFacturas = 0;
     let totalAnticipos = 0;
-
+    
     lista.forEach((p) => {
       const monto = Number(p.monto_pagado || 0);
       const conceptoLower = String(p.concepto || '').toLowerCase();
       const metodoLower = String(p.metodo || '').toLowerCase();
       const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
       const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
-
-      // No sumamos movimientos internos de saldo_a_favor al efectivo cobrado para no duplicar ingresos
+      
       if (!esUsoSaldoFavor) {
         if (esAnticipo) totalAnticipos += monto;
         else totalFacturas += monto;
       }
     });
-
+    
     const totalGeneral = totalFacturas + totalAnticipos;
-
+    
     document.getElementById('rep-titulo-periodo').textContent = tituloPeriodo;
     document.getElementById('rep-fecha-emision').textContent = 'Emitido: ' + new Date().toLocaleDateString('es-PY') + ' | Movimientos: ' + lista.length;
     document.getElementById('rep-total-facturas').textContent = 'Gs. ' + totalFacturas.toLocaleString('es-PY');
     document.getElementById('rep-total-anticipos').textContent = 'Gs. ' + totalAnticipos.toLocaleString('es-PY');
     document.getElementById('rep-total-general').textContent = 'Gs. ' + totalGeneral.toLocaleString('es-PY');
-
+    
     const tablaCont = document.getElementById('rep-tabla-contenedor');
     if (lista.length === 0) {
       tablaCont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No se encontraron cobranzas en este período.</p>';
@@ -95,7 +94,7 @@ window.generarReporteCobranzas = async function() {
         const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
         const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
         const tipo = esUsoSaldoFavor ? 'Débito Saldo' : (esAnticipo ? 'Anticipo' : 'Factura');
-
+        
         return '<tr class="border-b border-slate-200">' +
           '<td class="py-2 pr-2 whitespace-nowrap">' + escapeHtml(fecha) + '</td>' +
           '<td class="py-2 pr-2 font-bold">' + escapeHtml(c.nro_cuenta || '-') + '</td>' +
@@ -104,13 +103,13 @@ window.generarReporteCobranzas = async function() {
           '<td class="py-2 text-right font-bold whitespace-nowrap">Gs. ' + Number(p.monto_pagado || 0).toLocaleString('es-PY') + '</td>' +
           '</tr>';
       }).join('');
-
+      
       tablaCont.innerHTML = '<table class="w-full text-[11px] text-left border-collapse">' +
         '<thead><tr class="border-b-2 border-slate-300 text-slate-600 uppercase"><th class="py-2 pr-2">Fecha</th><th class="py-2 pr-2">Cta</th><th class="py-2 pr-2">Socio</th><th class="py-2 pr-2">Detalle</th><th class="py-2 text-right">Monto</th></tr></thead>' +
         '<tbody>' + filasHtml + '</tbody>' +
         '<tfoot><tr class="border-t-2 border-slate-400 font-extrabold text-slate-900"><td colspan="4" class="py-2 text-right pr-2">TOTAL EFECTIVO INGRESADO:</td><td class="py-2 text-right whitespace-nowrap">Gs. ' + totalGeneral.toLocaleString('es-PY') + '</td></tr></tfoot></table>';
     }
-
+    
     areaEl.classList.remove('hidden');
     if (lista.length > 0) btnImprimir.classList.remove('hidden');
   } catch (e) {
@@ -123,23 +122,26 @@ window.generarReporteCobranzas = async function() {
 
 async function cargarBalance() {
   try {
-    const [rp, rg, rc] = await Promise.all([
+    const [rp, rg, rc, rd] = await Promise.all([
       supabaseClient
-        .from('pagos')
-        .select('monto_pagado, factura_id, concepto, metodo, estado')
-        .neq('estado', 'anulado'),
+      .from('pagos')
+      .select('monto_pagado, factura_id, concepto, metodo, estado')
+      .neq('estado', 'anulado'),
       supabaseClient
-        .from('gastos')
-        .select('monto, estado')
-        .eq('estado', 'activo'),
+      .from('gastos')
+      .select('monto, estado')
+      .eq('estado', 'activo'),
       supabaseClient
-        .from('clientes')
-        .select('saldo_favor')
+      .from('clientes')
+      .select('saldo_favor'),
+      supabaseClient
+      .from('donaciones')
+      .select('monto, estado')
+      .eq('estado', 'activo')
     ]);
-
+    
     const pagos = (rp.data || []).filter((p) => p.estado !== 'anulado');
-
-    // TOTAL COBRADO (FACTURAS) = pagos asociados a factura que no son anticipo
+    
     const totalCobradoFacturas = pagos
       .filter((p) => {
         const conceptoLower = String(p.concepto || '').toLowerCase();
@@ -147,8 +149,7 @@ async function cargarBalance() {
         return !esAnticipo;
       })
       .reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
-
-    // TOTAL EN EFECTIVO / INGRESO REAL = excluye movimientos internos con saldo_a_favor
+    
     const totalCobradoEfectivo = pagos
       .filter((p) => {
         const metodoLower = String(p.metodo || '').toLowerCase();
@@ -157,26 +158,28 @@ async function cargarBalance() {
         return !esUsoSaldoFavor;
       })
       .reduce((a, p) => a + Number(p.monto_pagado || 0), 0);
-
+    
     const totalGastado = (rg.data || []).reduce((a, g) => a + Number(g.monto || 0), 0);
     const totalAnticiposClientes = (rc.data || []).reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
-
-    // CAJA REAL = ingreso efectivo - gastos activos
-    const totalGeneralSaldos = totalCobradoEfectivo - totalGastado;
+    const totalDonaciones = (rd.data || []).reduce((a, d) => a + Number(d.monto || 0), 0);
+    
+    // CAJA REAL = ingreso efectivo + donaciones - gastos activos
+    const totalGeneralSaldos = totalCobradoEfectivo + totalDonaciones - totalGastado;
     // PROPIO DE LA JUNTA = caja real - anticipos pendientes de clientes
     const balanceCaja = totalGeneralSaldos - totalAnticiposClientes;
-
+    
     const setTexto = (id, valor) => {
       const el = document.getElementById(id);
       if (el) el.textContent = 'Gs. ' + Number(valor || 0).toLocaleString('es-PY');
     };
-
+    
     setTexto('total-cobrado', totalCobradoFacturas);
     setTexto('total-gastado', totalGastado);
     setTexto('total-anticipos', totalAnticiposClientes);
+    setTexto('total-donaciones', totalDonaciones);
     setTexto('balance-total', balanceCaja);
     setTexto('total-general-saldos', totalGeneralSaldos);
-
+    
     const leyendaEl = document.getElementById('leyenda-balance');
     if (leyendaEl) {
       leyendaEl.classList.remove(
@@ -226,19 +229,19 @@ window.generarCuotasMasivas = async function(event) {
   try {
     const { data: clientes } = await supabaseClient.from('clientes').select('id').eq('activo', true);
     if (!clientes || clientes.length === 0) throw new Error('No hay socios activos.');
-
+    
     const { data: existentes } = await supabaseClient.from('facturas').select('cliente_id').eq('mes', mes);
     const yaTienen = new Set((existentes || []).map((f) => f.cliente_id));
-
+    
     const nuevas = clientes
       .filter((c) => !yaTienen.has(c.id))
       .map((c) => ({ cliente_id: c.id, mes, monto, saldo_pendiente: monto, estado: 'pendiente' }));
-
+    
     if (nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
-
+    
     const { error } = await supabaseClient.from('facturas').insert(nuevas);
     if (error) throw error;
-
+    
     await cargarDatosAdmin();
     mostrarMensajeAdmin(
       'cuotas-msg',
