@@ -6,6 +6,8 @@
 // HELPERS
 // ============================================================
 
+let filtroPagosActual = 'activo';
+
 function obtenerFechaHoyLocal() {
   const partes = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Asuncion',
@@ -468,14 +470,34 @@ window.registrarPago = async function (event) {
 
 // ============================================================
 // PAGOS RECIENTES + ANULAR (BORRADO LÓGICO CON HISTORIAL)
+// IGUAL QUE GASTOS: FILTRO ACTIVOS / ANULADOS
 // ============================================================
+
+window.cambiarFiltroPagos = async function (nuevoFiltro) {
+  filtroPagosActual = nuevoFiltro;
+
+  const btnActivos = document.getElementById('btn-pagos-activos');
+  const btnAnulados = document.getElementById('btn-pagos-anulados');
+  if (btnActivos && btnAnulados) {
+    if (nuevoFiltro === 'activo') {
+      btnActivos.className = 'px-2 py-1 rounded-full text-[11px] font-bold bg-white text-emerald-600 shadow-sm';
+      btnAnulados.className = 'px-2 py-1 rounded-full text-[11px] font-bold text-slate-500';
+    } else {
+      btnActivos.className = 'px-2 py-1 rounded-full text-[11px] font-bold text-slate-500';
+      btnAnulados.className = 'px-2 py-1 rounded-full text-[11px] font-bold bg-white text-red-600 shadow-sm';
+    }
+  }
+  await cargarPagosRecientes();
+};
 
 async function cargarPagosRecientes() {
   const cont = document.getElementById('lista-pagos');
   if (!cont) return;
+  cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
   const { data: pagos, error } = await supabaseClient
     .from('pagos')
-    .select('id, cliente_id, factura_id, monto_pagado, metodo, concepto, estado, motivo_anulacion, anulado_en, created_at, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido))')
+    .select('id, cliente_id, factura_id, monto_pagado, metodo, concepto, estado, motivo_anulacion, anulado_en, created_at, clientes(nro_cuenta, saldo_favor, personas(nombre, apellido, cedula_ruc))')
+    .eq('estado', filtroPagosActual)
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -490,7 +512,11 @@ async function cargarPagosRecientes() {
   else window.pagosRecientesCache = lista;
 
   if (lista.length === 0) {
-    cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aún.</p>';
+    if (filtroPagosActual === 'anulado') {
+      cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Sin pagos anulados.</p>';
+    } else {
+      cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin pagos aún.</p>';
+    }
     return;
   }
 
@@ -675,6 +701,7 @@ async function eliminarCobranza(pago) {
     mostrarMensajeAdmin('pago-msg', (esAnticipo ? 'Anticipo anulado' : 'Cobranza anulada') + ' y saldos actualizados.', false);
     await cargarDatosAdmin();
     await cargarFacturasSocioSeleccionado();
+    await cargarPagosRecientes();
 
     // 5. Aviso para no dejar huérfano: si anulaste un consumo, todavía falta anular el anticipo
     if (esUsoSaldoFavor && pago.cliente_id) {
