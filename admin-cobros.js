@@ -708,7 +708,7 @@ async function abrirListaAnticipos() {
   try {
     const { data, error } = await supabaseClient
       .from('clientes')
-      .select('id, nro_cuenta, saldo_favor, activo, personas(nombre, apellido)')
+      .select('id, nro_cuenta, saldo_favor, activo, personas(nombre, apellido, cedula_ruc)')
       .gt('saldo_favor', 0)
       .order('saldo_favor', { ascending: false });
     
@@ -726,12 +726,13 @@ async function abrirListaAnticipos() {
     cont.innerHTML = lista.map((c) => {
       const per = c.personas || {};
       const nombre = ((per.nombre || '') + ' ' + (per.apellido || '')).trim() || ('Cta ' + (c.nro_cuenta || ''));
+      const cedula = per.cedula_ruc ? String(per.cedula_ruc) : '-';
       const inactivo = c.activo === false;
       return (
         '<div class="flex justify-between items-center gap-2 border rounded-xl p-3 ' + (inactivo ? 'bg-red-50 border-red-200' : 'bg-white') + '">' +
         '<div class="flex-1">' +
         '<p class="text-xs font-bold">' + escapeHtml(nombre) + '</p>' +
-        '<p class="text-[11px] text-slate-500">Cta ' + escapeHtml(c.nro_cuenta || '') + (inactivo ? ' · ⛔ INACTIVA' : '') + '</p>' +
+        '<p class="text-[11px] text-slate-500">Cta ' + escapeHtml(c.nro_cuenta || '') + ' · CI ' + escapeHtml(cedula) + (inactivo ? ' · ⛔ INACTIVA' : '') + '</p>' +
         '</div>' +
         '<p class="text-xs font-extrabold text-sky-700 whitespace-nowrap">Gs. ' + Number(c.saldo_favor || 0).toLocaleString('es-PY') + '</p>' +
         '</div>'
