@@ -21,6 +21,53 @@ function inicializarFechaGastoDefault() {
   }
 }
 
+// Formatea 13 dígitos como XXX-XXX-XXXXXXX (3-3-7)
+function formatearNumeroFactura13(valor) {
+  var digitos = String(valor || '').replace(/\D/g, '').slice(0, 13);
+  var p1 = digitos.slice(0, 3);
+  var p2 = digitos.slice(3, 6);
+  var p3 = digitos.slice(6, 13);
+
+  var out = p1;
+  if (digitos.length > 3) out += '-' + p2;
+  if (digitos.length > 6) out += '-' + p3;
+  return out;
+}
+
+function esFormatoFacturaValido13(valor) {
+  return /^\d{3}-\d{3}-\d{7}$/.test(String(valor || '').trim());
+}
+
+function configurarValidacionFacturaGasto() {
+  var inpNro = document.getElementById('gasto-nro-comprobante');
+  var selTipo = document.getElementById('gasto-tipo-comprobante');
+  if (!inpNro) return;
+
+  function actualizarPlaceholderYFormato() {
+    var esFactura = !selTipo || selTipo.value === 'Factura';
+    inpNro.placeholder = esFactura ? '001-001-0001111 (13 números)' : 'Ej: Recibo 0045 o s/n';
+    if (esFactura && inpNro.value.trim() !== '') {
+      inpNro.value = formatearNumeroFactura13(inpNro.value);
+    }
+  }
+
+  inpNro.addEventListener('input', function () {
+    var esFactura = !selTipo || selTipo.value === 'Factura';
+    if (esFactura) {
+      var cursorAlFinal = inpNro.selectionStart === inpNro.value.length;
+      inpNro.value = formatearNumeroFactura13(inpNro.value);
+      if (cursorAlFinal) {
+        inpNro.setSelectionRange(inpNro.value.length, inpNro.value.length);
+      }
+    }
+  });
+
+  if (selTipo) {
+    selTipo.addEventListener('change', actualizarPlaceholderYFormato);
+  }
+  actualizarPlaceholderYFormato();
+}
+
 window.cambiarFiltroGastos = function (filtro) {
   filtroGastosActual = filtro;
   var btnAct = document.getElementById('btn-gastos-activos');
@@ -45,7 +92,6 @@ window.registrarGasto = async function (event) {
   var medioPagoEl = document.getElementById('gasto-medio-pago');
   var medioPago = medioPagoEl ? medioPagoEl.value : 'efectivo';
 
-  console.log('Registrar gasto:', descripcion, categoria, monto, fecha, tipoComprobante, nroComprobante, medioPago);
   if (!descripcion || !monto || monto <= 0) {
     mostrarMensajeAdmin('gasto-msg', 'Completá concepto y monto válido.', true);
     return false;
@@ -53,6 +99,29 @@ window.registrarGasto = async function (event) {
   if (!fecha) {
     mostrarMensajeAdmin('gasto-msg', 'Seleccioná la fecha de la factura o gasto.', true);
     return false;
+  }
+
+  // Validación de número de factura (formato 001-001-0001111 = 13 números)
+  if (tipoComprobante === 'Factura') {
+    if (!nroComprobante) {
+      mostrarMensajeAdmin('gasto-msg', 'Ingresá el número de factura con formato 001-001-0001111 (13 números).', true);
+      if (nroComprobanteEl) nroComprobanteEl.focus();
+      return false;
+    }
+    var nroFormateado = formatearNumeroFactura13(nroComprobante);
+    if (nroComprobanteEl) nroComprobanteEl.value = nroFormateado;
+    nroComprobante = nroFormateado;
+
+    if (!esFormatoFacturaValido13(nroComprobante)) {
+      var cantDigitos = nroComprobante.replace(/\D/g, '').length;
+      mostrarMensajeAdmin(
+        'gasto-msg',
+        'Número de factura inválido (' + cantDigitos + '/13 números). Usá el formato 001-001-0001111.',
+        true
+      );
+      if (nroComprobanteEl) nroComprobanteEl.focus();
+      return false;
+    }
   }
 
   var btn = document.getElementById('btn-gasto');
@@ -72,7 +141,6 @@ window.registrarGasto = async function (event) {
     };
 
     var res = await getSB().from('gastos').insert(payload).select();
-    console.log('Res insert gasto:', res);
     if (res.error) throw res.error;
 
     mostrarMensajeAdmin('gasto-msg', '¡Gasto registrado!', false);
@@ -97,6 +165,7 @@ window.registrarGasto = async function (event) {
 
 window.cargarGastosRecientes = async function () {
   inicializarFechaGastoDefault();
+  configurarValidacionFacturaGasto();
   var cont = document.getElementById('lista-gastos');
   if (!cont) return;
   var r = await getSB().from('gastos').select('*').eq('estado', filtroGastosActual).order('created_at', { ascending: false }).limit(20);
@@ -179,7 +248,6 @@ window.anularGastoDesdeModal = async function () {
   var btnAnular = document.getElementById('btn-edit-gasto-anular');
   if (btnAnular) { btnAnular.textContent = 'Anulando...'; btnAnular.disabled = true; }
   var res = await getSB().from('gastos').update({ estado: 'anulado', motivo_anulacion: motivo, anulado_en: new Date().toISOString() }).eq('id', id).eq('estado', 'activo');
-  console.log('Res anular:', res);
   if (btnAnular) { btnAnular.textContent = 'Anular Gasto'; btnAnular.disabled = false; }
   if (res.error) { mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + res.error.message, true); alert('Error: ' + res.error.message); return; }
   window.cerrarModalEditarGasto();
@@ -197,7 +265,11 @@ var abrirEditarGasto = window.abrirEditarGasto;
 var cerrarModalEditarGasto = window.cerrarModalEditarGasto;
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', inicializarFechaGastoDefault);
+  document.addEventListener('DOMContentLoaded', function () {
+    inicializarFechaGastoDefault();
+    configurarValidacionFacturaGasto();
+  });
 } else {
   inicializarFechaGastoDefault();
+  configurarValidacionFacturaGasto();
 }
