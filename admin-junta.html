@@ -81,6 +81,11 @@ padding: 16px !important;
   <span id="total-anticipos" class="font-bold text-sm text-white block">Gs. 0</span>
   <span class="text-[10px] font-bold text-sky-300 block mt-1">👁️ Ver lista →</span>
 </button>
+<button type="button" onclick="abrirModalDonacion()" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-700 transition text-left w-full p-3 rounded-xl cursor-pointer">
+  <span class="text-emerald-300 block text-[10px] font-bold">💰 DONACIONES RECIBIDAS</span>
+  <span id="total-donaciones" class="font-bold text-sm text-white block">Gs. 0</span>
+  <span class="text-[10px] font-bold text-emerald-300 block mt-1">+ Registrar donación →</span>
+</button>
 <div class="bg-slate-800 p-3 rounded-xl">
 <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
 <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
@@ -368,6 +373,7 @@ padding: 16px !important;
 <script src="admin-cobros.js"></script>
 <script src="admin-gastos.js"></script>
 <script src="admin-cuotas-reportes.js"></script>
+<script src="admin-donaciones.js"></script>
 <script src="admin-init.js"></script>
 <!-- MODAL LISTA DE ANTICIPOS -->
 <div id="modal-anticipos" class="hidden fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this) cerrarListaAnticipos()">
@@ -385,6 +391,46 @@ padding: 16px !important;
     <div class="p-3 border-t bg-slate-50">
       <button type="button" onclick="cerrarListaAnticipos()" class="w-full bg-slate-900 text-white text-sm font-bold py-2.5 rounded-xl">Cerrar</button>
     </div>
+  </div>
+</div>
+<!-- MODAL DONACIÓN -->
+<div id="modal-donacion" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5">
+    <div class="flex justify-between items-center mb-4">
+      <h4 class="font-bold text-sm">💰 Registrar Donación / Aporte</h4>
+      <button type="button" onclick="cerrarModalDonacion()" class="text-slate-400 text-xl leading-none">×</button>
+    </div>
+    <form onsubmit="registrarDonacion(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Tipo de Donación</label>
+        <select id="don-tipo" onchange="toggleDonSocio()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+          <option value="particular_socio">Donación particular de socio</option>
+          <option value="municipalidad">Donación de la Municipalidad</option>
+          <option value="gobernacion">Donación de la Gobernación</option>
+          <option value="otros">Otros</option>
+        </select>
+      </div>
+      <div id="box-don-socio">
+        <label class="block text-xs font-bold text-slate-600 mb-1">Socio que dona</label>
+        <select id="don-cliente" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
+          <option value="">-- Seleccioná Socio --</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">¿De quién / Institución? (si es Municipalidad, Gobernación u Otros)</label>
+        <input type="text" id="don-origen" placeholder="Ej: Municipalidad de Ybycuí, Juan Pérez" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
+        <input type="text" id="don-monto" required placeholder="Ej: 500.000" inputmode="numeric" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Concepto / Motivo (opcional)</label>
+        <input type="text" id="don-concepto" placeholder="Ej: Para reparación de bomba, Donación para caños" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
+      </div>
+      <button type="submit" id="btn-don-guardar" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Donación en Caja</button>
+    </form>
+    <div id="don-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
   </div>
 </div>
 </body>
