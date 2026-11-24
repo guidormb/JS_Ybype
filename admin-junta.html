@@ -186,6 +186,16 @@ padding: 16px !important;
 <label for="gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario (opcional)</label>
 <input type="text" id="gasto-proveedor" placeholder="Ej: Ferretería, Juan Pérez, ANDE" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+  <div>
+    <label for="gasto-ruc" class="block text-xs font-bold text-slate-600 mb-1">RUC Proveedor / Persona (opcional si no es factura)</label>
+    <input type="text" id="gasto-ruc" placeholder="Ej: 80012345-7" class="w-full p-2.5 border rounded-lg text-sm">
+  </div>
+  <div>
+    <label for="gasto-timbrado" class="block text-xs font-bold text-slate-600 mb-1">Timbrado (Factura)</label>
+    <input type="text" id="gasto-timbrado" maxlength="8" inputmode="numeric" placeholder="Ej: 12345678" class="w-full p-2.5 border rounded-lg text-sm">
+  </div>
+</div>
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 <div>
 <label for="gasto-fecha" class="block text-xs font-bold text-slate-600 mb-1">Fecha de Factura / Gasto</label>

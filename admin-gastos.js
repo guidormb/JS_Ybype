@@ -38,9 +38,22 @@ function esFormatoFacturaValido13(valor) {
   return /^\d{3}-\d{3}-\d{7}$/.test(String(valor || '').trim());
 }
 
+function normalizarTimbrado(valor) {
+  return String(valor || '').replace(/\D/g, '').slice(0, 8);
+}
+
+function normalizarRuc(valor) {
+  return String(valor || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function normalizarTexto(valor) {
+  return String(valor || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 function configurarValidacionFacturaGasto() {
   var inpNro = document.getElementById('gasto-nro-comprobante');
   var selTipo = document.getElementById('gasto-tipo-comprobante');
+  var inpTimbrado = document.getElementById('gasto-timbrado');
   if (!inpNro) return;
 
   function actualizarPlaceholderYFormato() {
@@ -48,6 +61,9 @@ function configurarValidacionFacturaGasto() {
     inpNro.placeholder = esFactura ? '001-001-0001111 (13 números)' : 'Ej: Recibo 0045 o s/n';
     if (esFactura && inpNro.value.trim() !== '') {
       inpNro.value = formatearNumeroFactura13(inpNro.value);
+    }
+    if (inpTimbrado) {
+      inpTimbrado.placeholder = esFactura ? 'Ej: 12345678' : 'Opcional';
     }
   }
 
@@ -62,10 +78,102 @@ function configurarValidacionFacturaGasto() {
     }
   });
 
+  if (inpTimbrado) {
+    inpTimbrado.addEventListener('input', function () {
+      inpTimbrado.value = normalizarTimbrado(inpTimbrado.value);
+    });
+  }
+
   if (selTipo) {
     selTipo.addEventListener('change', actualizarPlaceholderYFormato);
   }
   actualizarPlaceholderYFormato();
+}
+
+async function buscarPersonaIdPorRuc(ruc) {
+  if (!ruc) return null;
+  try {
+    var res = await getSB()
+      .from('personas')
+      .select('id, cedula_ruc')
+      .eq('cedula_ruc', ruc)
+      .limit(1)
+      .maybeSingle();
+    return (res && res.data && res.data.id) ? res.data.id : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Verifica:
+// 1) Si el timbrado ya está asignado a otro RUC en gastos activos
+// 2) Si ya existe una factura activa duplicada (mismo RUC/Proveedor + Timbrado + Nro. Factura)
+async function validarFiscalFacturaActiva(ruc, proveedor, timbrado, nroComprobante) {
+  var rucNorm = normalizarRuc(ruc);
+  var provNorm = normalizarTexto(proveedor);
+
+  // Control 1: Timbrado único por RUC en facturas activas
+  if (rucNorm && timbrado) {
+    var resTimb = await getSB()
+      .from('gastos')
+      .select('id, ruc, proveedor_beneficiario, descripcion, timbrado')
+      .eq('tipo_comprobante', 'Factura')
+      .eq('timbrado', timbrado)
+      .neq('estado', 'anulado')
+      .not('ruc', 'is', null);
+
+    if (!resTimb.error && Array.isArray(resTimb.data)) {
+      var conflictoTimbrado = resTimb.data.find(function (row) {
+        var rowRuc = normalizarRuc(row.ruc);
+        return rowRuc && rowRuc !== rucNorm;
+      });
+      if (conflictoTimbrado) {
+        return {
+          bloqueado: true,
+          mensaje: 'Timbrado #' + timbrado + ' ya figura con RUC ' + normalizarRuc(conflictoTimbrado.ruc) + ' (' + (conflictoTimbrado.proveedor_beneficiario || conflictoTimbrado.descripcion || 'otro proveedor') + '). Un timbrado es único por RUC.'
+        };
+      }
+    }
+  }
+
+  // Control 2: Factura duplicada activa (mismo Nro. Comprobante + Timbrado + RUC/Proveedor)
+  var q = await getSB()
+    .from('gastos')
+    .select('id, descripcion, fecha, ruc, timbrado, nro_comprobante, proveedor_beneficiario, estado')
+    .eq('tipo_comprobante', 'Factura')
+    .eq('nro_comprobante', nroComprobante)
+    .eq('timbrado', timbrado)
+    .neq('estado', 'anulado');
+
+  if (q.error) {
+    console.warn('No se pudo verificar duplicado de factura:', q.error.message);
+    return { bloqueado: false };
+  }
+
+  var candidatos = q.data || [];
+  if (candidatos.length === 0) return { bloqueado: false };
+
+  var duplicada = candidatos.find(function (item) {
+    var itemRuc = normalizarRuc(item.ruc);
+    var itemProv = normalizarTexto(item.proveedor_beneficiario);
+
+    if (rucNorm && itemRuc) {
+      return rucNorm === itemRuc;
+    }
+    if (!rucNorm && !itemRuc && provNorm && itemProv) {
+      return provNorm === itemProv;
+    }
+    return false;
+  });
+
+  if (duplicada) {
+    return {
+      bloqueado: true,
+      mensaje: 'Factura duplicada: ya existe un gasto activo con Factura #' + nroComprobante + ' y Timbrado #' + timbrado + (rucNorm ? ' (RUC ' + rucNorm + ')' : '') + ' - ' + (duplicada.descripcion || 'sin descripción') + '.'
+    };
+  }
+
+  return { bloqueado: false };
 }
 
 window.cambiarFiltroGastos = function (filtro) {
@@ -83,6 +191,10 @@ window.registrarGasto = async function (event) {
   var categoria = document.getElementById('gasto-categoria').value;
   var monto = limpiarGuaraniesInput(document.getElementById('gasto-monto').value);
   var proveedor = document.getElementById('gasto-proveedor').value.trim();
+  var rucEl = document.getElementById('gasto-ruc');
+  var ruc = rucEl ? normalizarRuc(rucEl.value) : '';
+  var timbradoEl = document.getElementById('gasto-timbrado');
+  var timbrado = timbradoEl ? normalizarTimbrado(timbradoEl.value) : '';
   var fechaEl = document.getElementById('gasto-fecha');
   var fecha = (fechaEl && fechaEl.value) ? fechaEl.value : obtenerHoyISO();
   var tipoComprobanteEl = document.getElementById('gasto-tipo-comprobante');
@@ -101,7 +213,6 @@ window.registrarGasto = async function (event) {
     return false;
   }
 
-  // Validación de número de factura (formato 001-001-0001111 = 13 números)
   if (tipoComprobante === 'Factura') {
     if (!nroComprobante) {
       mostrarMensajeAdmin('gasto-msg', 'Ingresá el número de factura con formato 001-001-0001111 (13 números).', true);
@@ -122,17 +233,34 @@ window.registrarGasto = async function (event) {
       if (nroComprobanteEl) nroComprobanteEl.focus();
       return false;
     }
+
+    if (!timbrado || timbrado.length < 7) {
+      mostrarMensajeAdmin('gasto-msg', 'Ingresá un número de timbrado válido (7 a 8 números) para la factura.', true);
+      if (timbradoEl) timbradoEl.focus();
+      return false;
+    }
+
+    var validacionFiscal = await validarFiscalFacturaActiva(ruc, proveedor, timbrado, nroComprobante);
+    if (validacionFiscal.bloqueado) {
+      mostrarMensajeAdmin('gasto-msg', validacionFiscal.mensaje, true);
+      return false;
+    }
   }
 
   var btn = document.getElementById('btn-gasto');
   btn.textContent = 'Registrando...';
   btn.disabled = true;
   try {
+    var personaId = await buscarPersonaIdPorRuc(ruc);
+
     var payload = {
       descripcion: descripcion,
       categoria: categoria,
       monto: monto,
       proveedor_beneficiario: proveedor || null,
+      ruc: ruc || null,
+      timbrado: timbrado || null,
+      persona_id: personaId,
       fecha: fecha,
       tipo_comprobante: tipoComprobante || null,
       nro_comprobante: nroComprobante || null,
@@ -147,6 +275,8 @@ window.registrarGasto = async function (event) {
     document.getElementById('gasto-concepto').value = '';
     document.getElementById('gasto-monto').value = '';
     document.getElementById('gasto-proveedor').value = '';
+    if (rucEl) rucEl.value = '';
+    if (timbradoEl) timbradoEl.value = '';
     if (nroComprobanteEl) nroComprobanteEl.value = '';
     if (tipoComprobanteEl) tipoComprobanteEl.value = 'Factura';
     if (medioPagoEl) medioPagoEl.value = 'efectivo';
@@ -179,6 +309,8 @@ window.cargarGastosRecientes = async function () {
     var compInfo = [];
     if (g.tipo_comprobante) compInfo.push(g.tipo_comprobante + (g.nro_comprobante ? ' #' + g.nro_comprobante : ''));
     else if (g.nro_comprobante) compInfo.push('Comp. #' + g.nro_comprobante);
+    if (g.timbrado) compInfo.push('Timb. ' + g.timbrado);
+    if (g.ruc) compInfo.push('RUC ' + g.ruc);
     if (g.medio_pago) compInfo.push(g.medio_pago);
 
     var lineaMeta = (g.categoria || '')
