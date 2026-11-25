@@ -120,6 +120,33 @@ window.generarReporteCobranzas = async function() {
   }
 };
 
+window.cargarTotalPorCobrar = async function() {
+  const { data, error } = await supabaseClient
+    .from('facturas')
+    .select('saldo_pendiente, cliente_id')
+    .eq('estado', 'pendiente')
+    .gt('saldo_pendiente', 0);
+  
+  if (error) {
+    console.log('Error por cobrar:', error.message);
+    return;
+  }
+  
+  const lista = data || [];
+  const total = lista.reduce((a, f) => a + Number(f.saldo_pendiente || 0), 0);
+  const sociosUnicos = new Set(lista.map(f => f.cliente_id)).size;
+  
+  const elTotal = document.getElementById('total-por-cobrar');
+  if (elTotal) elTotal.textContent = 'Gs. ' + total.toLocaleString('es-PY');
+  
+  const elSocios = document.getElementById('socios-con-deuda');
+  if (elSocios) elSocios.textContent = sociosUnicos + ' socios con deuda';
+};
+
+window.irAPadron = function() {
+  if (typeof abrirPadron === 'function') abrirPadron();
+};
+
 async function cargarBalance() {
   try {
     const [rp, rg, rc, rd] = await Promise.all([
@@ -179,6 +206,7 @@ async function cargarBalance() {
     setTexto('total-donaciones', totalDonaciones);
     setTexto('balance-total', balanceCaja);
     setTexto('total-general-saldos', totalGeneralSaldos);
+    await cargarTotalPorCobrar();
     
     const leyendaEl = document.getElementById('leyenda-balance');
     if (leyendaEl) {
