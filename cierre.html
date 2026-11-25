@@ -261,24 +261,17 @@ async function verResumen() {
     ${leyenda}
       <h3 style="text-align:center; margin:0">JUNTA JSYBYPE</h3>
       <p style="text-align:center; margin:4px 0 12px"><b>CIERRE ${nombres[mes].toUpperCase()} ${anio}</b></p>
-      <div class="fila"><span>Saldo mes anterior:</span><b>Gs. ${fmt(saldoAnterior)}</b></div>
+      <div class="fila">
+      <span>Saldo mes anterior:
+      </span><b>Gs. ${fmt(saldoAnterior)}</b></div>
       <div class="fila sub"><span>Cobrado Facturas en efectivo:</span><b>Gs. ${fmt(cobradoFacturasEfectivo)}</b></div>
       <div class="fila sub"><span>Cobrado Facturas con saldo:</span><b>Gs. ${fmt(facturasConSaldo)}</b></div>
-      <div class="fila"><span>Total Facturas Cobradas:</span><b>Gs. ${fmt(totalFacturasCobradas)}</b></div>
-     <div className="flex justify-between">
-  <span>Cobrado Anticipos del mes (bruto):</span>
-  <span>Gs. {anticipos_bruto.toLocaleString('es-PY')}</span>
-</div>
-
-<div className="flex justify-between text-red-600">
-  <span>Menos Anticipos usados para pagar facturas:</span>
-  <span>- Gs. {anticipos_usados.toLocaleString('es-PY')}</span>
-</div>
-
-<div className="flex justify-between font-bold border-t pt-1">
-  <span>Saldo de Anticipos que queda:</span>
-  <span>Gs. {(anticipos_bruto - anticipos_usados).toLocaleString('es-PY')}</span>
-</div>
+      <div class="fila"><span>Total Facturas Cobradas:</span><b>Gs. ${fmt(totalFacturasCobradas)}</b></div><div class="fila">
+    <span>Cobrado Anticipos del mes <small><i>(Bruto)</i></small>:</span>
+     <b>Gs. ${fmt(cobradoAnticiposMes)}</b></div>
+<div class="fila"><span>Menos Anticipos usados para pagar facturas:</span><b>- Gs. ${fmt(cobradoAnticiposMes - anticiposPendientes)}</b></div>
+<div class="fila destacada">
+<span>Saldo de Anticipos que queda:</span><b>Gs. ${fmt(anticiposPendientes)}</b></div>
       <div class="fila"><span>Donaciones recibidas del mes:</span><b>Gs. ${fmt(totalDonaciones)}</b></div>
       <div class="fila"><span>Total Cobrado en EFECTIVO:</span><b>Gs. ${fmt(totalCobradoEfectivo)}</b></div>
       <div class="fila"><span>Total Gastado:</span><b>Gs. ${fmt(totalGastado)}</b></div>
