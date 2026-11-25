@@ -59,11 +59,13 @@ window.listarDonaciones = async function() {
       (d.origen || d.tipo || '-');
     const fecha = d.created_at ? new Date(d.created_at).toLocaleDateString('es-PY') : (d.fecha || '-');
     const esAnulado = d.estado === 'anulado';
+    const motivo = d.motivo_anulacion ? '<p class="text-[11px] text-red-600 bg-red-50 px-2 py-1 rounded-lg mt-1">⛔ Motivo: ' + escapeHtml(d.motivo_anulacion) + '</p>' : '';
     return '<div class="flex justify-between items-start gap-2 border-b border-slate-100 py-2">' +
       '<div class="flex-1">' +
       '<p class="text-xs font-bold ' + (esAnulado ? 'text-slate-400 line-through' : 'text-slate-800') + '">' + escapeHtml(quien) + '</p>' +
       '<p class="text-[11px] text-slate-500">' + escapeHtml(fecha) + ' • ' + escapeHtml(d.concepto || 'Sin concepto') + '</p>' +
       (esAnulado ? '<span class="inline-block mt-1 text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">ANULADA</span>' : '<span class="inline-block mt-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">ACTIVA</span>') +
+      motivo +
       '</div>' +
       '<div class="text-right shrink-0">' +
       '<p class="text-sm font-bold ' + (esAnulado ? 'text-slate-400 line-through' : 'text-emerald-600') + '">Gs. ' + Number(d.monto || 0).toLocaleString('es-PY') + '</p>' +
@@ -74,8 +76,10 @@ window.listarDonaciones = async function() {
 };
 
 window.anularDonacion = async function(id) {
-  if (!confirm('¿Anular esta donación? Ya no va a sumar en Caja.')) return;
-  const { error } = await supabaseClient.from('donaciones').update({ estado: 'anulado' }).eq('id', id);
+  const motivo = prompt('¿Por qué anulás esta donación? (obligatorio)\nEj: cargado por error, duplicado, no se recibió');
+  if (!motivo || !motivo.trim()) { alert('Tenés que poner un motivo para anular.'); return; }
+  if (!confirm('¿Anular esta donación? Ya no va a sumar en Caja.\nMotivo: ' + motivo.trim())) return;
+  const { error } = await supabaseClient.from('donaciones').update({ estado: 'anulado', motivo_anulacion: motivo.trim() }).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   await listarDonaciones();
   await cargarDatosAdmin();
