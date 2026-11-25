@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v73';
+const CACHE_VERSION = 'v74';
 const CACHE_NAME = `jsybype-cache-${CACHE_VERSION}`;
 
 const urlsToCache = [
