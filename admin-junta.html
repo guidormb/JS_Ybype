@@ -90,22 +90,22 @@ padding: 16px !important;
 <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
 <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
 </div>
-  <!-- ACÁ VA, ADENTRO DE LA GRILLA - LÍNEA NUEVA -->
-  <div class="bg-red-500/10 border border-red-400/20 p-3 rounded-xl">
-    <span class="text-red-300 block text-[10px] font-bold">💳 TOTAL POR COBRAR</span>
-    <span id="total-por-cobrar" class="font-bold text-sm text-red-200 block">Gs. 0</span>
-    <span id="socios-con-deuda" class="text-[10px] text-red-300/80 block">0 socios con deuda</span>
-    <button onclick="irAPadron()" class="text-[10px] font-bold text-red-200 underline mt-1">👁️ Ver padrón →</button>
-  </div> <!-- este cierra la grilla -->
-  </div> <!-- este cierra la tarjeta oscura -->
-  <div class="h-4"></div>
+<div class="bg-red-500/10 border border-red-400/20 p-3 rounded-xl">
+  <span class="text-red-300 block text-[10px] font-bold">💳 TOTAL POR COBRAR</span>
+  <span id="total-por-cobrar" class="font-bold text-sm text-red-200 block">Gs. 0</span>
+  <span id="socios-con-deuda" class="text-[10px] text-red-300/80 block">0 socios con deuda</span>
+  <button type="button" onclick="irAPadron()" class="text-[10px] font-bold text-red-200 underline mt-1">👁️ Ver padrón →</button>
+</div>
+</div>
+</div>
+
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1 no-print">
 <button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
 <button type="button" id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
 <button type="button" id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
 <button type="button" id="tab-btn-reportes" onclick="cambiarPestanaAdmin('reportes')" class="tab-btn no-activo flex-1">PDF Cobros</button>
-
 </div>
+
 <section id="seccion-cobrar" class="space-y-4 no-print">
 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
 <h4 class="font-bold text-sm text-slate-800 mb-4">Registrar Pago</h4>
@@ -126,7 +126,7 @@ padding: 16px !important;
 <div id="lista-facturas-cobro" class="space-y-2 max-h-[240px] overflow-y-auto border border-slate-300 rounded-xl p-2 bg-slate-50">
 <p class="text-xs text-slate-500 text-center py-2">-- Primero elegí Socio --</p>
 </div>
-<div class="mt-2 pt-2 border-t border-slate-200 bg-sky-50/70 border border-sky-200 rounded-xl p-2.5">
+<div class="mt-2 bg-sky-50/70 border border-sky-200 rounded-xl p-2.5">
 <label class="flex items-center gap-2 cursor-pointer">
 <input type="checkbox" id="chk-generar-anticipo" onchange="toggleCampoAnticipo()" class="w-4 h-4 accent-sky-600" />
 <span class="text-xs font-bold text-sky-900">Generar anticipo / saldo a favor</span>
@@ -381,6 +381,7 @@ padding: 16px !important;
 <div id="edit-gasto-msg" class="mt-3 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
 </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="admin-config.js"></script>
 <script src="admin-utils.js"></script>
@@ -391,6 +392,7 @@ padding: 16px !important;
 <script src="admin-cuotas-reportes.js"></script>
 <script src="admin-donaciones.js"></script>
 <script src="admin-init.js"></script>
+
 <!-- MODAL LISTA DE ANTICIPOS -->
 <div id="modal-anticipos" class="hidden fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this) cerrarListaAnticipos()">
   <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85vh] flex flex-col overflow-hidden">
@@ -409,6 +411,7 @@ padding: 16px !important;
     </div>
   </div>
 </div>
+
 <!-- MODAL DONACIÓN -->
 <div id="modal-donacion" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
   <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
