@@ -90,25 +90,20 @@ padding: 16px !important;
 <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
 <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
 </div>
-</div>
-</div>
+  <!-- ACÁ VA, ADENTRO DE LA GRILLA - LÍNEA NUEVA -->
+  <div class="bg-red-500/10 border border-red-400/20 p-3 rounded-xl">
+    <span class="text-red-300 block text-[10px] font-bold">💳 TOTAL POR COBRAR</span>
+    <span id="total-por-cobrar" class="font-bold text-sm text-red-200 block">Gs. 0</span>
+    <span id="socios-con-deuda" class="text-[10px] text-red-300/80 block">0 socios con deuda</span>
+    <button onclick="irAPadron()" class="text-[10px] font-bold text-red-200 underline mt-1">👁️ Ver padrón →</button>
+  </div> <!-- este cierra la grilla -->
+  </div> <!-- este cierra la tarjeta oscura -->
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1 no-print">
 <button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
 <button type="button" id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
 <button type="button" id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
 <button type="button" id="tab-btn-reportes" onclick="cambiarPestanaAdmin('reportes')" class="tab-btn no-activo flex-1">PDF Cobros</button>
-<div class="bg-slate-800 p-3 rounded-xl">
-  <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
-  <span id="total-general-saldos" class="font-bold text-sm">Gs. 0</span>
-</div>
-<!-- ACÁ VA, ADENTRO DE LA GRILLA - LÍNEA NUEVA -->
-<div class="bg-red-500/10 border border-red-400/20 p-3 rounded-xl">
-  <span class="text-red-300 block text-[10px] font-bold">💳 TOTAL POR COBRAR</span>
-  <span id="total-por-cobrar" class="font-bold text-sm text-red-200 block">Gs. 0</span>
-  <span id="socios-con-deuda" class="text-[10px] text-red-300/80 block">0 socios con deuda</span>
-  <button onclick="irAPadron()" class="text-[10px] font-bold text-red-200 underline mt-1">👁️ Ver padrón →</button>
-</div> <!-- este cierra la grilla -->
-</div> <!-- este cierra la tarjeta oscura -->
+
 </div>
 <section id="seccion-cobrar" class="space-y-4 no-print">
 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
