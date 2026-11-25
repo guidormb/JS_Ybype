@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Padrón de Proveedores - Junta JS_Ybypé</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-4">
+  <div class="max-w-5xl mx-auto space-y-4">
+    <div class="bg-slate-900 text-white rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-lg font-extrabold text-sky-400">🏭 Padrón de Proveedores</h1>
+        <p class="text-xs text-slate-300">Datos del proveedor, RUC, timbrado vigente y fecha de fin de vigencia</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          onclick="nuevoProveedorForm()"
+          class="px-3 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white"
+        >
+          + Nuevo
+        </button>
+        <a
+          href="./admin-junta.html"
+          class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-700 hover:bg-slate-600 text-white"
+        >
+          ← Volver a Caja
+        </a>
+      </div>
+    </div>
+
+    <div id="prov-sin-acceso" class="hidden bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl p-5 text-sm">
+      <p class="font-bold">Acceso restringido a Administración</p>
+      <p class="text-xs mt-1">Iniciá sesión como Administrador en el panel para gestionar proveedores.</p>
+    </div>
+
+    <div id="prov-contenido" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <!-- Formulario de alta / edición -->
+      <section class="lg:col-span-5 bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <h2 id="prov-form-titulo" class="text-sm font-extrabold text-slate-800 mb-3">Nuevo Proveedor</h2>
+
+        <form id="form-proveedor" onsubmit="guardarProveedor(event)" class="space-y-3">
+          <input type="hidden" id="prov-id" />
+          <input type="hidden" id="persona-id" />
+
+          <div>
+            <label for="prov-nombre" class="block text-xs font-bold text-slate-700 mb-1">
+              Nombre o Razón Social *
+            </label>
+            <input
+              id="prov-nombre"
+              type="text"
+              required
+              placeholder="Ej: Ferretería Central o Juan Pérez"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+            />
+          </div>
+
+          <div>
+            <label for="prov-apellido" class="block text-xs font-bold text-slate-700 mb-1">
+              Apellido (opcional si es empresa)
+            </label>
+            <input
+              id="prov-apellido"
+              type="text"
+              placeholder="Ej: González (dejar vacío si no aplica)"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="prov-ruc" class="block text-xs font-bold text-slate-700 mb-1">RUC o CI</label>
+              <input
+                id="prov-ruc"
+                type="text"
+                placeholder="Ej: 80012345-6"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+              />
+            </div>
+
+            <div>
+              <label for="prov-telefono" class="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
+              <input
+                id="prov-telefono"
+                type="text"
+                placeholder="Ej: 0981123456"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="prov-direccion" class="block text-xs font-bold text-slate-700 mb-1">Dirección</label>
+            <input
+              id="prov-direccion"
+              type="text"
+              placeholder="Ej: Ruta 3 / Barrio Centro"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+            <div>
+              <label for="prov-timbrado" class="block text-xs font-bold text-slate-700 mb-1">
+                Timbrado Vigente
+              </label>
+              <input
+                id="prov-timbrado"
+                type="text"
+                inputmode="numeric"
+                maxlength="8"
+                placeholder="Ej: 12345678"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+              />
+            </div>
+
+            <div>
+              <label for="prov-vencimiento" class="block text-xs font-bold text-slate-700 mb-1">
+                Fin Vigencia Timbrado
+              </label>
+              <input
+                id="prov-vencimiento"
+                type="date"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="prov-notas" class="block text-xs font-bold text-slate-700 mb-1">Notas</label>
+            <input
+              id="prov-notas"
+              type="text"
+              placeholder="Ej: Factura crédito o contado, rubros..."
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+            />
+          </div>
+
+          <label class="flex items-center gap-2 text-xs font-bold text-slate-700 pt-1 cursor-pointer">
+            <input id="prov-activo" type="checkbox" checked class="rounded" />
+            Proveedor activo
+          </label>
+
+          <button
+            id="btn-prov-guardar"
+            type="submit"
+            class="w-full py-2.5 rounded-xl text-sm font-extrabold bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Guardar Proveedor
+          </button>
+
+          <div id="prov-msg" class="hidden"></div>
+        </form>
+      </section>
+
+      <!-- Listado y búsqueda -->
+      <section class="lg:col-span-7 bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-extrabold text-slate-800">Proveedores Registrados</h2>
+          <span id="prov-contador" class="text-xs font-semibold text-slate-500">0 proveedores</span>
+        </div>
+
+        <input
+          id="prov-buscar"
+          type="search"
+          placeholder="Buscar por nombre, RUC, timbrado o teléfono..."
+          class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm mb-3"
+        />
+
+        <div id="lista-proveedores" class="space-y-2 max-h-[620px] overflow-y-auto">
+          <p class="text-xs text-slate-500 text-center py-6">Cargando...</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="./admin-proveedores.js"></script>
+</body>
+</html>

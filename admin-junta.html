@@ -189,6 +189,28 @@ padding: 16px !important;
 <input type="text" id="gasto-monto" required placeholder="Ej: 150.000" inputmode="numeric" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
 </div>
 <div>
+  <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+  <div class="flex items-center justify-between gap-2">
+    <label for="gasto-proveedor-select" class="text-xs font-bold text-slate-700">
+      Proveedor del Padrón (opcional)
+    </label>
+    <a
+      href="./proveedores.html"
+      class="text-[11px] font-bold text-blue-600 hover:underline"
+    >
+      + Gestionar Proveedores
+    </a>
+  </div>
+
+  <select
+    id="gasto-proveedor-select"
+    class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm text-slate-800"
+  >
+    <option value="">-- Seleccionar proveedor o cargar manual --</option>
+  </select>
+
+  <div id="gasto-alerta-timbrado" class="hidden text-[11px] font-semibold rounded-lg p-2"></div>
+</div>
 <label for="gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario (opcional)</label>
 <input type="text" id="gasto-proveedor" placeholder="Ej: Ferretería, Juan Pérez, ANDE" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
 </div>

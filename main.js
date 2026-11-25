@@ -12,6 +12,7 @@ const botones = document.querySelectorAll('.nav-btn');
 const labelAdmin = document.getElementById('labelAdmin');
 const btnCaja = document.getElementById('btnCaja');
 const btnPadron = document.getElementById('btnPadron');
+const btnProveedores = document.getElementById('btnProveedores');
 const btnAccesoAdmin = document.getElementById('btnAccesoAdmin');
 
 function activarBoton(boton) {
@@ -47,11 +48,16 @@ function aplicarMenuPorRol(session) {
   toggleElemento(labelAdmin, esAdmin);
   toggleElemento(btnCaja, esAdmin);
   toggleElemento(btnPadron, esAdmin);
+  toggleElemento(btnProveedores, esAdmin);
   toggleElemento(btnAccesoAdmin, !esAdmin);
 
   if (!esAdmin && visor) {
     const rutaActual = visor.getAttribute('src') || '';
-    if (rutaActual.includes('padron') || rutaActual.includes('admin-junta.html')) {
+    if (
+      rutaActual.includes('padron') ||
+      rutaActual.includes('proveedores') ||
+      rutaActual.includes('admin-junta.html')
+    ) {
       const btnSocio = document.querySelector(`.nav-btn[data-src="${RUTA_PORTAL_SOCIO}"]`);
       if (btnSocio) {
         navegarA(btnSocio);

@@ -12,6 +12,12 @@
     .switch-input:checked + .switch-track{background-color:#10b981}
     .switch-thumb{position:absolute;top:2px;left:2px;width:20px;height:20px;background-color:#fff;border-radius:9999px;transition:transform 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.25)}
     .switch-input:checked + .switch-track .switch-thumb{transform:translateX(20px)}
+    @media (min-width: 900px) {
+      .portal-main-panel { max-width: 980px !important; }
+      .panel-grid-pc { display: grid; grid-template-columns: minmax(320px, 420px) minmax(360px, 1fr); gap: 16px; align-items: start; }
+      .panel-grid-pc > .mt-2 { margin-top: 0 !important; }
+      .panel-facturas-pc { position: sticky; top: 16px; }
+    }
   </style>
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -26,7 +32,7 @@
     <div><h1 class="font-bold text-base">Junta de Saneamiento</h1><p class="text-[10px] text-blue-200">Portal de Consulta Ciudadana</p></div>
     <div id="user-info" class="hidden text-right"><span id="lbl-nombre-usuario" class="block text-xs font-semibold"></span><button type="button" onclick="cerrarSesion()" class="mt-1 bg-blue-700 px-2.5 py-1 rounded text-[11px]">Salir</button></div>
   </header>
-  <main class="p-4 max-w-md mx-auto w-full flex-grow">
+  <main id="portal-main" class="p-4 max-w-md mx-auto w-full flex-grow">
     <section id="seccion-auth" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-4">
       <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl mb-6">
         <button type="button" id="tab-login" onclick="cambiarTab('login')" class="py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm">Iniciar Sesión</button>
@@ -52,24 +58,28 @@
       <div id="auth-msg" class="mt-4 p-3 rounded-xl text-xs text-center hidden font-medium"></div>
     </section>
     <section id="seccion-panel" class="hidden space-y-4 mt-2">
-      <div class="bg-gradient-to-br from-blue-700 to-blue-800 text-white p-5 rounded-2xl shadow-md">
-        <p class="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Titular de la Cuenta</p>
-        <h3 id="panel-nombre-cliente" class="text-lg font-bold mt-0.5">--</h3>
-        <div class="mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs">
-          <div><span class="text-blue-200 block text-[10px]">N.º DE CUENTA</span><span id="panel-nro-cuenta" class="font-bold text-sm">--</span></div>
-          <div class="text-right"><span class="text-blue-200 block text-[10px]">DEUDA TOTAL</span><span id="panel-deuda-total" class="font-bold text-sm text-emerald-300">Gs. 0</span></div>
+      <div class="panel-grid-pc">
+        <div class="space-y-4 mt-2">
+          <div class="bg-gradient-to-br from-blue-700 to-blue-800 text-white p-5 rounded-2xl shadow-md">
+            <p class="text-[11px] uppercase tracking-wider text-blue-200 font-bold">Titular de la Cuenta</p>
+            <h3 id="panel-nombre-cliente" class="text-lg font-bold mt-0.5">--</h3>
+            <div class="mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs">
+              <div><span class="text-blue-200 block text-[10px]">N.º DE CUENTA</span><span id="panel-nro-cuenta" class="font-bold text-sm">--</span></div>
+              <div class="text-right"><span class="text-blue-200 block text-[10px]">DEUDA TOTAL</span><span id="panel-deuda-total" class="font-bold text-sm text-emerald-300">Gs. 0</span></div>
+            </div>
+            <div id="box-saldo-favor-banner" class="hidden mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs"><span class="text-emerald-200 font-semibold">SALDO A FAVOR DISPONIBLE</span><span id="panel-saldo-favor" class="font-extrabold text-sm text-emerald-300">Gs. 0</span></div>
+            <div class="mt-3 pt-3 border-t border-blue-600/50 flex items-center justify-between gap-3">
+              <div class="text-left"><p class="text-xs font-bold text-white">Cobro automático con saldo a favor</p><p id="lbl-estado-auto-saldo" class="text-[11px] text-emerald-200">Activado: se descuenta solo al emitirse la factura</p></div>
+              <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="chk-auto-saldo" checked onchange="cambiarAutoPagarSaldo(this.checked)" class="sr-only switch-input" /><span class="switch-track"><span class="switch-thumb"></span></span></label>
+            </div>
+          </div>
+          <div id="box-resumen" class="p-5 rounded-2xl border text-center"></div>
+          <div id="saldo-msg" class="hidden p-3 rounded-xl text-xs text-center font-medium"></div>
+          <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center"><p class="text-xs text-emerald-800 font-semibold mb-2">¿Ya realizaste tu pago o transferencia?</p><a id="btn-whatsapp" href="#" target="_blank" rel="noopener noreferrer" class="inline-block bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl">Enviar comprobante por WhatsApp</a></div>
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"><h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Cambiar Contraseña</h4><form id="form-cambiar-pass" onsubmit="cambiarContrasenaCliente(event)" class="space-y-3"><input type="password" id="nueva-pass" required placeholder="Nueva contraseña (mín. 6 caracteres)" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50" /><input type="password" id="confirma-pass" required placeholder="Confirmar nueva contraseña" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50" /><button type="submit" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold text-xs">Actualizar Contraseña</button></form><div id="pass-msg" class="mt-2 text-xs text-center hidden font-medium p-2 rounded-lg"></div></div>
         </div>
-        <div id="box-saldo-favor-banner" class="hidden mt-3 pt-3 border-t border-blue-600/50 flex justify-between items-center text-xs"><span class="text-emerald-200 font-semibold">SALDO A FAVOR DISPONIBLE</span><span id="panel-saldo-favor" class="font-extrabold text-sm text-emerald-300">Gs. 0</span></div>
-        <div class="mt-3 pt-3 border-t border-blue-600/50 flex items-center justify-between gap-3">
-          <div class="text-left"><p class="text-xs font-bold text-white">Cobro automático con saldo a favor</p><p id="lbl-estado-auto-saldo" class="text-[11px] text-emerald-200">Activado: se descuenta solo al emitirse la factura</p></div>
-          <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="chk-auto-saldo" checked onchange="cambiarAutoPagarSaldo(this.checked)" class="sr-only switch-input" /><span class="switch-track"><span class="switch-thumb"></span></span></label>
-        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 panel-facturas-pc mt-2"><div class="flex justify-between items-center mb-3 border-b pb-2"><h4 class="font-bold text-xs text-slate-700 uppercase">Facturas y Deudas</h4><span id="contador-deuda" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">--</span></div><div id="lista-facturas" class="space-y-3"></div></div>
       </div>
-      <div id="box-resumen" class="p-5 rounded-2xl border text-center"></div>
-      <div id="saldo-msg" class="hidden p-3 rounded-xl text-xs text-center font-medium"></div>
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"><div class="flex justify-between items-center mb-3 border-b pb-2"><h4 class="font-bold text-xs text-slate-700 uppercase">Facturas y Deudas</h4><span id="contador-deuda" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">--</span></div><div id="lista-facturas" class="space-y-3"></div></div>
-      <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center"><p class="text-xs text-emerald-800 font-semibold mb-2">¿Ya realizaste tu pago o transferencia?</p><a id="btn-whatsapp" href="#" target="_blank" rel="noopener noreferrer" class="inline-block bg-emerald-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl">Enviar comprobante por WhatsApp</a></div>
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4"><h4 class="font-bold text-xs text-slate-700 uppercase mb-3 border-b pb-2">Cambiar Contraseña</h4><form id="form-cambiar-pass" onsubmit="cambiarContrasenaCliente(event)" class="space-y-3"><input type="password" id="nueva-pass" required placeholder="Nueva contraseña (mín. 6 caracteres)" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50" /><input type="password" id="confirma-pass" required placeholder="Confirmar nueva contraseña" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50" /><button type="submit" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold text-xs">Actualizar Contraseña</button></form><div id="pass-msg" class="mt-2 text-xs text-center hidden font-medium p-2 rounded-lg"></div></div>
     </section>
   </main>
   <footer class="text-center p-4 text-[11px] text-slate-400">Junta de Saneamiento JSYBYPE 2026 - Paraguay</footer>
@@ -163,6 +173,7 @@
       document.getElementById('btn-whatsapp').href=`https://wa.me/${WHATSAPP_JUNTA}?text=${mensajeWa}`;
       document.getElementById('seccion-auth').classList.add('hidden');
       document.getElementById('seccion-panel').classList.remove('hidden');
+      document.getElementById('portal-main')?.classList.add('portal-main-panel');
       await cargarFacturasCliente(cliente.id);
     }
     window.pagarFacturaConSaldoFavor = async function(facturaId){

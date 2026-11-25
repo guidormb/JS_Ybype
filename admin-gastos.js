@@ -1,6 +1,7 @@
-// admin-gastos.js - FINAL - Sin prompt, con window.supabaseClient
+// admin-gastos.js - FINAL - Sin prompt, con window.supabaseClient + Padrón de Proveedores
 var filtroGastosActual = 'activo';
 window.gastosRecientesCache = window.gastosRecientesCache || [];
+window.proveedoresGastosCache = window.proveedoresGastosCache || [];
 
 function getSB() { return window.supabaseClient || supabaseClient; }
 
@@ -48,6 +49,118 @@ function normalizarRuc(valor) {
 
 function normalizarTexto(valor) {
   return String(valor || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function verificarVigenciaTimbradoGasto() {
+  var alertaEl = document.getElementById('gasto-alerta-timbrado');
+  if (!alertaEl) return;
+
+  var sel = document.getElementById('gasto-proveedor-select');
+  var provId = sel ? sel.value : '';
+  var fechaEl = document.getElementById('gasto-fecha');
+  var fechaGasto = (fechaEl && fechaEl.value) ? fechaEl.value : obtenerHoyISO();
+
+  if (!provId) {
+    alertaEl.classList.add('hidden');
+    alertaEl.textContent = '';
+    return;
+  }
+
+  var prov = window.proveedoresGastosCache.find(function (x) {
+    return String(x.id) === String(provId);
+  });
+
+  if (!prov || !prov.fecha_fin_timbrado) {
+    alertaEl.classList.add('hidden');
+    alertaEl.textContent = '';
+    return;
+  }
+
+  if (fechaGasto > prov.fecha_fin_timbrado) {
+    alertaEl.className = 'text-[11px] font-semibold rounded-lg p-2 bg-amber-50 text-amber-800 border border-amber-300';
+    alertaEl.textContent = 'Atención: la fecha del comprobante (' + fechaGasto + ') es posterior al fin de vigencia del timbrado registrado (' + prov.fecha_fin_timbrado + '). Verificá el talonario antes de guardar.';
+    alertaEl.classList.remove('hidden');
+  } else {
+    alertaEl.className = 'text-[11px] font-semibold rounded-lg p-2 bg-emerald-50 text-emerald-800 border border-emerald-200';
+    alertaEl.textContent = 'Timbrado vigente hasta ' + prov.fecha_fin_timbrado + '.';
+    alertaEl.classList.remove('hidden');
+  }
+}
+
+function configurarSelectorProveedorGasto() {
+  var sel = document.getElementById('gasto-proveedor-select');
+  var fechaEl = document.getElementById('gasto-fecha');
+
+  if (sel && sel.dataset.bound !== '1') {
+    sel.dataset.bound = '1';
+    sel.addEventListener('change', function () {
+      var prov = window.proveedoresGastosCache.find(function (x) {
+        return String(x.id) === String(sel.value);
+      });
+
+      if (!prov) {
+        verificarVigenciaTimbradoGasto();
+        return;
+      }
+
+      var p = prov.personas || {};
+      var nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim();
+      var inpProv = document.getElementById('gasto-proveedor');
+      var inpRuc = document.getElementById('gasto-ruc');
+      var inpTimb = document.getElementById('gasto-timbrado');
+
+      if (inpProv && nombre) inpProv.value = nombre;
+      if (inpRuc && p.cedula_ruc) inpRuc.value = normalizarRuc(p.cedula_ruc);
+      if (inpTimb && prov.timbrado_vigente) inpTimb.value = normalizarTimbrado(prov.timbrado_vigente);
+
+      verificarVigenciaTimbradoGasto();
+    });
+  }
+
+  if (fechaEl && fechaEl.dataset.provBound !== '1') {
+    fechaEl.dataset.provBound = '1';
+    fechaEl.addEventListener('change', verificarVigenciaTimbradoGasto);
+  }
+}
+
+async function cargarProveedoresParaGastos() {
+  var sel = document.getElementById('gasto-proveedor-select');
+  if (!sel) return;
+
+  var valorPrevio = sel.value;
+
+  try {
+    var res = await getSB()
+      .from('proveedores')
+      .select('id, persona_id, timbrado_vigente, fecha_fin_timbrado, activo, personas(nombre, apellido, cedula_ruc)')
+      .eq('activo', true)
+      .order('created_at', { ascending: false });
+
+    if (res.error) {
+      console.warn('No se pudieron cargar proveedores para gastos:', res.error.message);
+      return;
+    }
+
+    window.proveedoresGastosCache = res.data || [];
+
+    sel.innerHTML = '<option value="">-- Seleccionar proveedor o cargar manual --</option>' +
+      window.proveedoresGastosCache.map(function (prov) {
+        var p = prov.personas || {};
+        var nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
+        var rucTexto = p.cedula_ruc ? ' - RUC ' + p.cedula_ruc : '';
+        var timbTexto = prov.timbrado_vigente ? ' (Timb. ' + prov.timbrado_vigente + ')' : '';
+        return '<option value="' + escapeHtml(prov.id) + '">' + escapeHtml(nombre + rucTexto + timbTexto) + '</option>';
+      }).join('');
+
+    if (valorPrevio && window.proveedoresGastosCache.some(function (x) { return String(x.id) === String(valorPrevio); })) {
+      sel.value = valorPrevio;
+    }
+
+    configurarSelectorProveedorGasto();
+    verificarVigenciaTimbradoGasto();
+  } catch (e) {
+    console.warn('Error cargando proveedores en gastos:', e);
+  }
 }
 
 function configurarValidacionFacturaGasto() {
@@ -190,6 +303,8 @@ window.registrarGasto = async function (event) {
   var descripcion = document.getElementById('gasto-concepto').value.trim();
   var categoria = document.getElementById('gasto-categoria').value;
   var monto = limpiarGuaraniesInput(document.getElementById('gasto-monto').value);
+  var selProv = document.getElementById('gasto-proveedor-select');
+  var proveedorId = (selProv && selProv.value) ? selProv.value : null;
   var proveedor = document.getElementById('gasto-proveedor').value.trim();
   var rucEl = document.getElementById('gasto-ruc');
   var ruc = rucEl ? normalizarRuc(rucEl.value) : '';
@@ -257,6 +372,7 @@ window.registrarGasto = async function (event) {
       descripcion: descripcion,
       categoria: categoria,
       monto: monto,
+      proveedor_id: proveedorId,
       proveedor_beneficiario: proveedor || null,
       ruc: ruc || null,
       timbrado: timbrado || null,
@@ -274,6 +390,7 @@ window.registrarGasto = async function (event) {
     mostrarMensajeAdmin('gasto-msg', '¡Gasto registrado!', false);
     document.getElementById('gasto-concepto').value = '';
     document.getElementById('gasto-monto').value = '';
+    if (selProv) selProv.value = '';
     document.getElementById('gasto-proveedor').value = '';
     if (rucEl) rucEl.value = '';
     if (timbradoEl) timbradoEl.value = '';
@@ -281,6 +398,7 @@ window.registrarGasto = async function (event) {
     if (tipoComprobanteEl) tipoComprobanteEl.value = 'Factura';
     if (medioPagoEl) medioPagoEl.value = 'efectivo';
     if (fechaEl) fechaEl.value = obtenerHoyISO();
+    verificarVigenciaTimbradoGasto();
 
     await window.cargarDatosAdmin();
   } catch (e) {
@@ -296,6 +414,9 @@ window.registrarGasto = async function (event) {
 window.cargarGastosRecientes = async function () {
   inicializarFechaGastoDefault();
   configurarValidacionFacturaGasto();
+  configurarSelectorProveedorGasto();
+  cargarProveedoresParaGastos();
+
   var cont = document.getElementById('lista-gastos');
   if (!cont) return;
   var r = await getSB().from('gastos').select('*').eq('estado', filtroGastosActual).order('created_at', { ascending: false }).limit(20);
@@ -400,8 +521,12 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function () {
     inicializarFechaGastoDefault();
     configurarValidacionFacturaGasto();
+    configurarSelectorProveedorGasto();
+    cargarProveedoresParaGastos();
   });
 } else {
   inicializarFechaGastoDefault();
   configurarValidacionFacturaGasto();
+  configurarSelectorProveedorGasto();
+  cargarProveedoresParaGastos();
 }
