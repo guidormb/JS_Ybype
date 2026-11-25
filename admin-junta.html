@@ -84,7 +84,7 @@ padding: 16px !important;
 <button type="button" onclick="abrirModalDonacion()" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-700 transition text-left w-full p-3 rounded-xl cursor-pointer">
   <span class="text-emerald-300 block text-[10px] font-bold">💰 DONACIONES RECIBIDAS</span>
   <span id="total-donaciones" class="font-bold text-sm text-white block">Gs. 0</span>
-  <span class="text-[10px] font-bold text-emerald-300 block mt-1">+ Registrar donación →</span>
+  <span class="text-[10px] font-bold text-emerald-300 block mt-1">👁️ Ver lista / + Registrar →</span>
 </button>
 <div class="bg-slate-800 p-3 rounded-xl">
 <span class="text-amber-300 block text-[10px] font-bold">TOTAL GENERAL DE SALDOS</span>
@@ -94,7 +94,6 @@ padding: 16px !important;
 </div>
 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 flex gap-1 no-print">
 <button type="button" id="tab-btn-cobrar" onclick="cambiarPestanaAdmin('cobrar')" class="tab-btn activo flex-1">Cobrar</button>
-
 <button type="button" id="tab-btn-gastos" onclick="cambiarPestanaAdmin('gastos')" class="tab-btn no-activo flex-1">Gastos</button>
 <button type="button" id="tab-btn-cuotas" onclick="cambiarPestanaAdmin('cuotas')" class="tab-btn no-activo flex-1">Cuotas</button>
 <button type="button" id="tab-btn-reportes" onclick="cambiarPestanaAdmin('reportes')" class="tab-btn no-activo flex-1">PDF Cobros</button>
@@ -405,11 +404,24 @@ padding: 16px !important;
 </div>
 <!-- MODAL DONACIÓN -->
 <div id="modal-donacion" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5">
+  <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
     <div class="flex justify-between items-center mb-4">
-      <h4 class="font-bold text-sm">💰 Registrar Donación / Aporte</h4>
+      <h4 class="font-bold text-sm">💰 Donaciones Recibidas</h4>
       <button type="button" onclick="cerrarModalDonacion()" class="text-slate-400 text-xl leading-none">×</button>
     </div>
+
+    <!-- FILTROS -->
+    <div class="flex gap-2 mb-3">
+      <button type="button" id="btn-don-activo" onclick="setFiltroDonaciones('activo')" class="flex-1 py-2 rounded-lg text-xs font-bold bg-slate-800 text-white">Activas</button>
+      <button type="button" id="btn-don-anulado" onclick="setFiltroDonaciones('anulado')" class="flex-1 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-600">Anuladas</button>
+      <button type="button" id="btn-don-todos" onclick="setFiltroDonaciones('todos')" class="flex-1 py-2 rounded-lg text-xs font-bold bg-slate-100 text-slate-600">Todas</button>
+    </div>
+
+    <!-- LISTA -->
+    <div id="lista-donaciones" class="mb-5 bg-slate-50 rounded-xl px-3 py-1 max-h-[220px] overflow-y-auto"></div>
+
+    <!-- FORM PARA AGREGAR -->
+    <h4 class="font-bold text-sm mb-2">+ Registrar nueva donación</h4>
     <form onsubmit="registrarDonacion(event)" class="space-y-3">
       <div>
         <label class="block text-xs font-bold text-slate-600 mb-1">Tipo de Donación</label>
