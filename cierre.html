@@ -40,13 +40,23 @@
   .total-propio{font-size:21px; text-align:center; margin:12px 0 4px; background:#e8f5e9; padding:10px; border-radius:8px; border:1px solid #a5d6a7}
   .nota{font-size:12px; color:#666; text-align:center}
   .leyenda-saldo{font-size:12px; color:#856404; background:#fff3cd; padding:8px; border-radius:8px; text-align:center; margin-top:8px}
-  @media print{
-    button, select, label, .no-print{display:none !important}
-    body{background:white; padding:0}
-    .caja{border:1px solid #000}
-  }
   .parcial{background:#fff3cd; color:#856404; border:1px solid #ffeeba; padding:8px; border-radius:8px; text-align:center; font-weight:bold; font-size:13px; margin-bottom:10px}
   .definitivo{background:#d4edda; color:#155724; border:1px solid #c3e6cb; padding:8px; border-radius:8px; text-align:center; font-weight:bold; font-size:13px; margin-bottom:10px}
+  @media print{
+    @page{ size:A4; margin:12mm; }
+    html, body{ width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; background:white !important; }
+    button, select, label, .no-print, h2, #estado-sesion-cierre{display:none !important}
+    #resultado{ width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; }
+    .caja{ width:100% !important; max-width:none !important; border:1.5px solid #000 !important; padding:22px !important; margin:0 !important; border-radius:0 !important; font-size:15px; }
+    .caja h3{ font-size:22px !important; }
+    .caja p{ font-size:15px !important; }
+    .fila{ padding:9px 0 !important; font-size:16px !important; }
+    .fila.sub{ font-size:15px !important; }
+    .total{ font-size:24px !important; }
+    .total-propio{ font-size:24px !important; }
+    .leyenda-saldo, .parcial, .definitivo{ font-size:14px !important; }
+    .nota{ font-size:12px !important; }
+  }
 </style>
 </head>
 <body>
@@ -77,7 +87,6 @@
   <button type="button" class="volver" onclick="location.href='admin-junta.html'">⬅ Volver al Admin</button>
 </div>
 <script>
-// Paraguay usa UTC-3 (America/Asuncion)
 const TZ_OFFSET_PY = '-03:00';
 
 function obtenerHoyLocalPY() {
@@ -93,19 +102,13 @@ function obtenerHoyLocalPY() {
 function obtenerRangoMesPY(anio, mes) {
   const mesStr = String(mes).padStart(2, '0');
   const inicioMesISO = `${anio}-${mesStr}-01T00:00:00.000${TZ_OFFSET_PY}`;
-
   let sigAnio = anio;
   let sigMes = mes + 1;
-  if (sigMes > 12) {
-    sigMes = 1;
-    sigAnio = anio + 1;
-  }
+  if (sigMes > 12) { sigMes = 1; sigAnio = anio + 1; }
   const sigMesStr = String(sigMes).padStart(2, '0');
   const inicioSigMesISO = `${sigAnio}-${sigMesStr}-01T00:00:00.000${TZ_OFFSET_PY}`;
-
   const ultimoDia = new Date(anio, mes, 0).getDate();
   const finMesISO = `${anio}-${mesStr}-${String(ultimoDia).padStart(2, '0')}T23:59:59.999${TZ_OFFSET_PY}`;
-
   return { inicioMesISO, finMesISO, inicioSigMesISO };
 }
 
@@ -134,7 +137,6 @@ async function verificarEstadoSesionCierre() {
     const user = data?.session?.user || null;
     const badge = document.getElementById('estado-sesion-cierre');
     if (!badge) return;
-
     if (user) {
       badge.textContent = 'Sesión activa: ' + (user.email || 'Admin');
       badge.style.cssText = 'background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
@@ -147,7 +149,6 @@ async function verificarEstadoSesionCierre() {
   }
 }
 
-// Anticipos pendientes AL CIERRE de ese mes: cobrados hasta fin de mes (PY) - usados hasta fin de mes (PY)
 async function obtenerAnticiposPendientes(anio, mes) {
   try {
     const { inicioSigMesISO } = obtenerRangoMesPY(anio, mes);
@@ -156,7 +157,6 @@ async function obtenerAnticiposPendientes(anio, mes) {
       .neq('estado', 'anulado')
       .lt('created_at', inicioSigMesISO);
     if (error) return 0;
-
     let cobrados = 0;
     let usados = 0;
     (data || []).forEach(p => {
@@ -169,12 +169,9 @@ async function obtenerAnticiposPendientes(anio, mes) {
       if (esUsoSaldoFavor && !esAnticipo) usados += Number(p.monto_pagado || 0);
     });
     return Math.max(0, cobrados - usados);
-  } catch (e) {
-    return 0;
-  }
+  } catch (e) { return 0; }
 }
 
-// Facturas cobradas con saldo a favor en el mes (excluyendo anulados), rango horario PY
 async function obtenerFacturasConSaldo(anio, mes) {
   try {
     const { inicioMesISO, inicioSigMesISO } = obtenerRangoMesPY(anio, mes);
@@ -184,36 +181,26 @@ async function obtenerFacturasConSaldo(anio, mes) {
       .gte('created_at', inicioMesISO)
       .lt('created_at', inicioSigMesISO);
     if (error) return 0;
-
     return (data || []).reduce((acc, p) => {
       if (p.estado === 'anulado') return acc;
       const conceptoLower = String(p.concepto || '').toLowerCase();
       const metodoLower = String(p.metodo || '').toLowerCase();
       const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
       const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
-      if (esUsoSaldoFavor && !esAnticipo) {
-        return acc + Number(p.monto_pagado || 0);
-      }
+      if (esUsoSaldoFavor && !esAnticipo) return acc + Number(p.monto_pagado || 0);
       return acc;
     }, 0);
-  } catch (e) {
-    return 0;
-  }
+  } catch (e) { return 0; }
 }
 
-// Donaciones recibidas en el mes (rango horario PY), excluyendo anuladas si aplica
-// Donaciones recibidas en el mes según la columna 'fecha' (date) de la tabla donaciones
+// Donaciones del mes por created_at (PY) - CORREGIDO: antes buscaba por columna 'fecha' que no existe
 async function obtenerDonacionesMes(anio, mes) {
   try {
-    const mesStr = String(mes).padStart(2, '0');
-    const fechaDesde = `${anio}-${mesStr}-01`;
-    const ultimoDia = new Date(anio, mes, 0).getDate();
-    const fechaHasta = `${anio}-${mesStr}-${String(ultimoDia).padStart(2, '0')}`;
-
+    const { inicioMesISO, inicioSigMesISO } = obtenerRangoMesPY(anio, mes);
     const { data, error } = await getSB().from('donaciones')
-      .select('monto, estado, fecha')
-      .gte('fecha', fechaDesde)
-      .lte('fecha', fechaHasta);
+      .select('monto, estado, created_at')
+      .gte('created_at', inicioMesISO)
+      .lt('created_at', inicioSigMesISO);
     if (error) {
       console.warn('No se pudieron leer donaciones en cierre:', error.message);
       return 0;
@@ -222,66 +209,53 @@ async function obtenerDonacionesMes(anio, mes) {
       if (String(d.estado || '').toLowerCase() === 'anulado') return acc;
       return acc + Number(d.monto || 0);
     }, 0);
-  } catch (e) {
-    return 0;
-  }
+  } catch (e) { return 0; }
 }
+
 async function verResumen() {
   const sb = getSB();
   const mes = Number(document.getElementById('mes').value);
   const anio = Number(document.getElementById('anio').value);
   const nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   document.getElementById('resultado').innerHTML = '<p style="text-align:center">Cargando...</p>';
-
   const { data, error } = await sb.rpc('calcular_cierre', { p_anio: anio, p_mes: mes });
   if (error) {
     document.getElementById('resultado').innerHTML = '';
     return alert('Error: ' + error.message);
   }
-
   const r = (data && data[0]) || { cobrado_facturas: 0, cobrado_anticipos: 0, total_cobrado: 0, total_gastado: 0, cantidad_pagos: 0, cantidad_gastos: 0 };
   const { data: cierreExistente } = await sb.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
   const esParcial = !cierreExistente;
-
   const leyenda = esParcial
     ? `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>`
     : `<div class="definitivo">✅ CIERRE DEFINITIVO - Mes cerrado</div>`;
-
   let mesAnt = mes - 1;
   let anioAnt = anio;
   if (mesAnt === 0) { mesAnt = 12; anioAnt = anio - 1; }
   const { data: cierreAnt } = await sb.from('cierres_mensuales').select('saldo_final').eq('anio', anioAnt).eq('mes', mesAnt).maybeSingle();
-
   const saldoAnterior = Number(cierreAnt?.saldo_final || 0);
   const cobradoFacturasEfectivo = Number(r.cobrado_facturas || 0);
   const cobradoAnticiposMes = Number(r.cobrado_anticipos || 0);
   const totalCobradoEfectivo = Number(r.total_cobrado || 0);
   const totalGastado = Number(r.total_gastado || 0);
-
   const [facturasConSaldo, donacionesMes, anticiposPendientes] = await Promise.all([
     obtenerFacturasConSaldo(anio, mes),
     obtenerDonacionesMes(anio, mes),
     obtenerAnticiposPendientes(anio, mes)
   ]);
-
   const totalFacturasCobradas = cobradoFacturasEfectivo + facturasConSaldo;
-  // Evita doble conteo si calcular_cierre ya devolviera total_donaciones en algún entorno
   const donacionesRpc = Number(r.total_donaciones || 0);
   const totalDonaciones = donacionesRpc > 0 ? donacionesRpc : donacionesMes;
   const donacionesAIncluir = donacionesRpc > 0 ? 0 : totalDonaciones;
-
   const saldoFinalCaja = saldoAnterior + totalCobradoEfectivo + donacionesAIncluir - totalGastado;
   const saldoPropio = saldoFinalCaja - anticiposPendientes;
-
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
   const leyendaSaldo = saldoPropio < 0
     ? `<div class="leyenda-saldo">⚠️ Caja sin plata propia. En caja hay Gs. ${fmt(saldoFinalCaja)}, pero se deben Gs. ${fmt(anticiposPendientes)} de anticipos. Faltan Gs. ${fmt(Math.abs(saldoPropio))} para cubrirlos.</div>`
     : `<div class="leyenda-saldo">ℹ️ De los fondos en caja, Gs. ${fmt(anticiposPendientes)} son anticipos de socios (plata a descontar, no ganancia). Lo propio de la Junta es Gs. ${fmt(saldoPropio)}.</div>`;
-
   const botonCerrar = esParcial
     ? `<button type="button" onclick="cerrarMes(${anio}, ${mes}, ${cobradoFacturasEfectivo}, ${cobradoAnticiposMes}, ${totalGastado}, ${saldoFinalCaja})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>`
     : `<div style="background:#d4edda; color:#155724; padding:12px; border-radius:8px; text-align:center; font-weight:bold; margin-top:15px">✅ Este mes ya está cerrado. No se puede volver a cerrar.</div>`;
-
   document.getElementById('resultado').innerHTML = `
     <div class="caja">
     ${leyenda}
