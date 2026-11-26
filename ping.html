@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ping - Mantener vivo</title>
+</head>
+<body>
+<p id="status">Haciendo ping a Supabase...</p>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://zbwpsemyeejebpfkaepz.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+async function hacerPing() {
+  const { data, error } = await supabaseClient
+    .from('clientes')
+    .select('id')
+    .limit(1);
+  if (error) {
+    document.getElementById('status').innerText = "Error: " + error.message;
+  } else {
+    document.getElementById('status').innerText = "OK - Supabase vivo! " + new Date().toLocaleString('es-PY');
+  }
+}
+hacerPing();
+</script>
+</body>
+</html>
