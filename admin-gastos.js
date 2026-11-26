@@ -90,6 +90,8 @@ function verificarVigenciaTimbradoGasto() {
 function configurarSelectorProveedorGasto() {
   var sel = document.getElementById('gasto-proveedor-select');
   var fechaEl = document.getElementById('gasto-fecha');
+  var inpProv = document.getElementById('gasto-proveedor');
+  var inpRuc = document.getElementById('gasto-ruc');
 
   if (sel && sel.dataset.bound !== '1') {
     sel.dataset.bound = '1';
@@ -105,8 +107,6 @@ function configurarSelectorProveedorGasto() {
 
       var p = prov.personas || {};
       var nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim();
-      var inpProv = document.getElementById('gasto-proveedor');
-      var inpRuc = document.getElementById('gasto-ruc');
       var inpTimb = document.getElementById('gasto-timbrado');
 
       if (inpProv && nombre) inpProv.value = nombre;
@@ -114,6 +114,26 @@ function configurarSelectorProveedorGasto() {
       if (inpTimb && prov.timbrado_vigente) inpTimb.value = normalizarTimbrado(prov.timbrado_vigente);
 
       verificarVigenciaTimbradoGasto();
+    });
+  }
+
+  if (inpProv && inpProv.dataset.provEditBound !== '1') {
+    inpProv.dataset.provEditBound = '1';
+    inpProv.addEventListener('input', function () {
+      if (sel && sel.value) {
+        sel.value = '';
+        verificarVigenciaTimbradoGasto();
+      }
+    });
+  }
+
+  if (inpRuc && inpRuc.dataset.rucEditBound !== '1') {
+    inpRuc.dataset.rucEditBound = '1';
+    inpRuc.addEventListener('input', function () {
+      if (sel && sel.value) {
+        sel.value = '';
+        verificarVigenciaTimbradoGasto();
+      }
     });
   }
 
@@ -180,24 +200,29 @@ function configurarValidacionFacturaGasto() {
     }
   }
 
-  inpNro.addEventListener('input', function () {
-    var esFactura = !selTipo || selTipo.value === 'Factura';
-    if (esFactura) {
-      var cursorAlFinal = inpNro.selectionStart === inpNro.value.length;
-      inpNro.value = formatearNumeroFactura13(inpNro.value);
-      if (cursorAlFinal) {
-        inpNro.setSelectionRange(inpNro.value.length, inpNro.value.length);
+  if (inpNro.dataset.bound !== '1') {
+    inpNro.dataset.bound = '1';
+    inpNro.addEventListener('input', function () {
+      var esFactura = !selTipo || selTipo.value === 'Factura';
+      if (esFactura) {
+        var cursorAlFinal = inpNro.selectionStart === inpNro.value.length;
+        inpNro.value = formatearNumeroFactura13(inpNro.value);
+        if (cursorAlFinal) {
+          inpNro.setSelectionRange(inpNro.value.length, inpNro.value.length);
+        }
       }
-    }
-  });
+    });
+  }
 
-  if (inpTimbrado) {
+  if (inpTimbrado && inpTimbrado.dataset.bound !== '1') {
+    inpTimbrado.dataset.bound = '1';
     inpTimbrado.addEventListener('input', function () {
       inpTimbrado.value = normalizarTimbrado(inpTimbrado.value);
     });
   }
 
-  if (selTipo) {
+  if (selTipo && selTipo.dataset.bound !== '1') {
+    selTipo.dataset.bound = '1';
     selTipo.addEventListener('change', actualizarPlaceholderYFormato);
   }
   actualizarPlaceholderYFormato();
@@ -363,8 +388,10 @@ window.registrarGasto = async function (event) {
   }
 
   var btn = document.getElementById('btn-gasto');
-  btn.textContent = 'Registrando...';
-  btn.disabled = true;
+  if (btn) {
+    btn.textContent = 'Registrando...';
+    btn.disabled = true;
+  }
   try {
     var personaId = await buscarPersonaIdPorRuc(ruc);
 
@@ -405,9 +432,12 @@ window.registrarGasto = async function (event) {
     console.error('Error registrarGasto:', e);
     mostrarMensajeAdmin('gasto-msg', 'Error: ' + e.message, true);
     alert('Error al guardar: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.textContent = 'Registrar Gasto';
+      btn.disabled = false;
+    }
   }
-  btn.textContent = 'Registrar Gasto';
-  btn.disabled = false;
   return false;
 };
 
@@ -500,12 +530,30 @@ window.anularGastoDesdeModal = async function () {
   if (!confirm('¿Seguro querés ANULAR?\n' + desc)) return;
   var btnAnular = document.getElementById('btn-edit-gasto-anular');
   if (btnAnular) { btnAnular.textContent = 'Anulando...'; btnAnular.disabled = true; }
-  var res = await getSB().from('gastos').update({ estado: 'anulado', motivo_anulacion: motivo, anulado_en: new Date().toISOString() }).eq('id', id).eq('estado', 'activo');
-  if (btnAnular) { btnAnular.textContent = 'Anular Gasto'; btnAnular.disabled = false; }
-  if (res.error) { mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + res.error.message, true); alert('Error: ' + res.error.message); return; }
-  window.cerrarModalEditarGasto();
-  mostrarMensajeAdmin('gasto-msg', 'Gasto anulado. Queda en historia, no suma en balance.', false);
-  await window.cargarDatosAdmin();
+  try {
+    var res = await getSB()
+      .from('gastos')
+      .update({ estado: 'anulado', motivo_anulacion: motivo, anulado_en: new Date().toISOString() })
+      .eq('id', id)
+      .eq('estado', 'activo')
+      .select();
+    if (res.error) {
+      mostrarMensajeAdmin('edit-gasto-msg', 'Error: ' + res.error.message, true);
+      alert('Error: ' + res.error.message);
+      return;
+    }
+    if (!res.data || res.data.length === 0) {
+      var msgSinCambio = 'No se pudo anular el gasto (puede que ya esté anulado o pertenezca a un mes cerrado).';
+      mostrarMensajeAdmin('edit-gasto-msg', msgSinCambio, true);
+      alert(msgSinCambio);
+      return;
+    }
+    window.cerrarModalEditarGasto();
+    mostrarMensajeAdmin('gasto-msg', 'Gasto anulado. Queda en historia, no suma en balance.', false);
+    await window.cargarDatosAdmin();
+  } finally {
+    if (btnAnular) { btnAnular.textContent = 'Anular Gasto'; btnAnular.disabled = false; }
+  }
 };
 
 var registrarGasto = window.registrarGasto;
