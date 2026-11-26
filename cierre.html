@@ -193,7 +193,6 @@ async function obtenerFacturasConSaldo(anio, mes) {
   } catch (e) { return 0; }
 }
 
-// Donaciones del mes por created_at (PY) - CORREGIDO: antes buscaba por columna 'fecha' que no existe
 async function obtenerDonacionesMes(anio, mes) {
   try {
     const { inicioMesISO, inicioSigMesISO } = obtenerRangoMesPY(anio, mes);
@@ -218,62 +217,72 @@ async function verResumen() {
   const anio = Number(document.getElementById('anio').value);
   const nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   document.getElementById('resultado').innerHTML = '<p style="text-align:center">Cargando...</p>';
+
   const { data, error } = await sb.rpc('calcular_cierre', { p_anio: anio, p_mes: mes });
   if (error) {
     document.getElementById('resultado').innerHTML = '';
     return alert('Error: ' + error.message);
   }
+
   const r = (data && data[0]) || { cobrado_facturas: 0, cobrado_anticipos: 0, total_cobrado: 0, total_gastado: 0, cantidad_pagos: 0, cantidad_gastos: 0 };
   const { data: cierreExistente } = await sb.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
   const esParcial = !cierreExistente;
+
   const leyenda = esParcial
     ? `<div class="parcial">⚠️ REPORTE PARCIAL<br><span style="font-weight:normal; font-size:12px">Mes todavía no se cerró. Los números pueden cambiar.</span></div>`
     : `<div class="definitivo">✅ CIERRE DEFINITIVO - Mes cerrado</div>`;
+
   let mesAnt = mes - 1;
   let anioAnt = anio;
   if (mesAnt === 0) { mesAnt = 12; anioAnt = anio - 1; }
+
   const { data: cierreAnt } = await sb.from('cierres_mensuales').select('saldo_final').eq('anio', anioAnt).eq('mes', mesAnt).maybeSingle();
   const saldoAnterior = Number(cierreAnt?.saldo_final || 0);
+
   const cobradoFacturasEfectivo = Number(r.cobrado_facturas || 0);
   const cobradoAnticiposMes = Number(r.cobrado_anticipos || 0);
-  const totalCobradoEfectivo = Number(r.total_cobrado || 0);
+  const totalCobradoRpc = Number(r.total_cobrado || 0);
   const totalGastado = Number(r.total_gastado || 0);
+
   const [facturasConSaldo, donacionesMes, anticiposPendientes] = await Promise.all([
     obtenerFacturasConSaldo(anio, mes),
     obtenerDonacionesMes(anio, mes),
     obtenerAnticiposPendientes(anio, mes)
   ]);
+
   const totalFacturasCobradas = cobradoFacturasEfectivo + facturasConSaldo;
   const donacionesRpc = Number(r.total_donaciones || 0);
   const totalDonaciones = donacionesRpc > 0 ? donacionesRpc : donacionesMes;
   const donacionesAIncluir = donacionesRpc > 0 ? 0 : totalDonaciones;
-  const saldoFinalCaja = saldoAnterior + totalCobradoEfectivo + donacionesAIncluir - totalGastado;
+
+  const anticiposUsadosMes = facturasConSaldo;
+  const totalCobradoEfectivoMostrado = totalCobradoRpc + donacionesAIncluir;
+  const saldoFinalCaja = saldoAnterior + totalCobradoEfectivoMostrado - totalGastado;
   const saldoPropio = saldoFinalCaja - anticiposPendientes;
+
   const fmt = (n) => Number(n || 0).toLocaleString('es-PY');
   const leyendaSaldo = saldoPropio < 0
     ? `<div class="leyenda-saldo">⚠️ Caja sin plata propia. En caja hay Gs. ${fmt(saldoFinalCaja)}, pero se deben Gs. ${fmt(anticiposPendientes)} de anticipos. Faltan Gs. ${fmt(Math.abs(saldoPropio))} para cubrirlos.</div>`
     : `<div class="leyenda-saldo">ℹ️ De los fondos en caja, Gs. ${fmt(anticiposPendientes)} son anticipos de socios (plata a descontar, no ganancia). Lo propio de la Junta es Gs. ${fmt(saldoPropio)}.</div>`;
+
   const botonCerrar = esParcial
-    ? `<button type="button" onclick="cerrarMes(${anio}, ${mes}, ${cobradoFacturasEfectivo}, ${cobradoAnticiposMes}, ${totalGastado}, ${saldoFinalCaja})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>`
+    ? `<button type="button" id="btn-cerrar-mes" onclick="cerrarMes(${anio}, ${mes}, ${totalFacturasCobradas}, ${cobradoAnticiposMes}, ${totalGastado}, ${saldoFinalCaja})" style="width:100%; padding:14px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; margin-top:15px">🔒 Cerrar Mes</button>`
     : `<div style="background:#d4edda; color:#155724; padding:12px; border-radius:8px; text-align:center; font-weight:bold; margin-top:15px">✅ Este mes ya está cerrado. No se puede volver a cerrar.</div>`;
+
   document.getElementById('resultado').innerHTML = `
     <div class="caja">
-    ${leyenda}
+      ${leyenda}
       <h3 style="text-align:center; margin:0">JUNTA JSYBYPE</h3>
       <p style="text-align:center; margin:4px 0 12px"><b>CIERRE ${nombres[mes].toUpperCase()} ${anio}</b></p>
-      <div class="fila">
-      <span>Saldo mes anterior:
-      </span><b>Gs. ${fmt(saldoAnterior)}</b></div>
+      <div class="fila"><span>Saldo mes anterior:</span><b>Gs. ${fmt(saldoAnterior)}</b></div>
       <div class="fila sub"><span>Cobrado Facturas en efectivo:</span><b>Gs. ${fmt(cobradoFacturasEfectivo)}</b></div>
       <div class="fila sub"><span>Cobrado Facturas con saldo:</span><b>Gs. ${fmt(facturasConSaldo)}</b></div>
-      <div class="fila"><span>Total Facturas Cobradas:</span><b>Gs. ${fmt(totalFacturasCobradas)}</b></div><div class="fila">
-    <span>Cobrado Anticipos del mes <small><i>(Bruto)</i></small>:</span>
-     <b>Gs. ${fmt(cobradoAnticiposMes)}</b></div>
-<div class="fila"><span>Menos Anticipos usados para pagar facturas:</span><b>- Gs. ${fmt(cobradoAnticiposMes - anticiposPendientes)}</b></div>
-<div class="fila destacada">
-<span>Saldo de Anticipos que queda:</span><b>Gs. ${fmt(anticiposPendientes)}</b></div>
+      <div class="fila"><span>Total Facturas Cobradas:</span><b>Gs. ${fmt(totalFacturasCobradas)}</b></div>
+      <div class="fila"><span>Cobrado Anticipos del mes <small><i>(Bruto)</i></small>:</span><b>Gs. ${fmt(cobradoAnticiposMes)}</b></div>
+      <div class="fila"><span>Anticipos aplicados a facturas en el mes:</span><b>Gs. ${fmt(anticiposUsadosMes)}</b></div>
+      <div class="fila destacada"><span>Saldo de Anticipos acumulado:</span><b>Gs. ${fmt(anticiposPendientes)}</b></div>
       <div class="fila"><span>Donaciones recibidas del mes:</span><b>Gs. ${fmt(totalDonaciones)}</b></div>
-<div class="fila total"><span>Total Cobrado en <small><i>Efectivo</i></small>:</span><b>Gs. ${fmt(totalCobradoEfectivo)}</b></div>
+      <div class="fila total"><span>Total Cobrado en <small><i>Efectivo</i></small>:</span><b>Gs. ${fmt(totalCobradoEfectivoMostrado)}</b></div>
       <div class="fila"><span>Total Gastado:</span><b>Gs. ${fmt(totalGastado)}</b></div>
       <h3 class="total">Saldo Final en Caja: Gs. ${fmt(saldoFinalCaja)}</h3>
       <div class="fila destacada"><span>Menos Anticipos / Saldo de socios:</span><b>Gs. ${fmt(anticiposPendientes)}</b></div>
@@ -291,6 +300,7 @@ async function verResumen() {
 
 async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
   const sb = getSB();
+  const btn = document.getElementById('btn-cerrar-mes');
   const { data: sesData } = await sb.auth.getSession();
   if (!sesData?.session) {
     return alert('Iniciá sesión como administrador para cerrar el mes.');
@@ -303,20 +313,43 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
     return alert(`No se puede cerrar todavía.\n\n${nombres[mes]} ${anio} solo se puede cerrar desde el 15 de ${mesSiguiente}.`);
   }
   if (!confirm('¿Cerrar este mes? Después del 15 ya no se podrá anular nada de este mes.')) return;
-  const { data: yaCerrado } = await sb.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
-  if (yaCerrado) return alert('Este mes ya está cerrado. No se puede volver a cerrar.');
-  const { error } = await sb.from('cierres_mensuales').insert({
-    anio: anio,
-    mes: mes,
-    fecha_cierre: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date()),
-    total_cobrado_facturas: cf,
-    total_anticipos: ca,
-    total_gastado: tg,
-    saldo_final: saldo
-  });
-  if (error) return alert('Error al cerrar: ' + error.message);
-  alert('¡Mes cerrado y guardado!');
-  verResumen();
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Cerrando...';
+  }
+
+  try {
+    const { data: yaCerrado } = await sb.from('cierres_mensuales').select('id').eq('anio', anio).eq('mes', mes).maybeSingle();
+    if (yaCerrado) {
+      alert('Este mes ya está cerrado. No se puede volver a cerrar.');
+      return;
+    }
+
+    const { error } = await sb.from('cierres_mensuales').insert({
+      anio: anio,
+      mes: mes,
+      fecha_cierre: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date()),
+      total_cobrado_facturas: cf,
+      total_anticipos: ca,
+      total_gastado: tg,
+      saldo_final: saldo
+    }).select().single();
+
+    if (error) {
+      alert('Error al cerrar: ' + error.message);
+      return;
+    }
+
+    alert('¡Mes cerrado y guardado!');
+    await verResumen();
+  } finally {
+    const btnActual = document.getElementById('btn-cerrar-mes');
+    if (btnActual) {
+      btnActual.disabled = false;
+      btnActual.textContent = '🔒 Cerrar Mes';
+    }
+  }
 }
 
 poblarSelectorAnios();
