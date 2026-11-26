@@ -19,7 +19,9 @@ jobs:
             exit 1
           fi
 
-          BASE_URL="${SUPABASE_URL%/}"
+          CLEAN_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          BASE_URL="${CLEAN_URL%/}"
+
           STATUS=$(curl -sS -o /tmp/supabase_body.txt -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
