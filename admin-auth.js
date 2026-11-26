@@ -1,6 +1,44 @@
 // admin-auth.js - CORREGIDO - Nunca más rompe el login si falla una función
 const supabaseClient = window.supabaseClient;
 
+function obtenerFechaLocalPY() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Asuncion',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date()).split('-');
+  return {
+    anio: partes[0],
+    mes: partes[1],
+    dia: partes[2],
+    ym: `${partes[0]}-${partes[1]}`,
+    ymd: `${partes[0]}-${partes[1]}-${partes[2]}`
+  };
+}
+
+async function consultarEsAdminEnBD(userId) {
+  if (!supabaseClient || !userId) return false;
+  try {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!error && data?.role === 'admin') {
+      return true;
+    }
+    const rpcRes = await supabaseClient.rpc('es_admin');
+    if (!rpcRes.error && rpcRes.data === true) {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn('No se pudo verificar rol en profiles:', e);
+    return false;
+  }
+}
+
 window.abrirModalNuevoSocio = async function() {
   const { data } = await supabaseClient.auth.getSession();
   if (!data.session) {
@@ -33,22 +71,32 @@ window.manejarLoginAdmin = async function(event) {
   const email = document.getElementById('login-email-admin').value.trim();
   const pass = document.getElementById('login-pass-admin').value;
   const btn = document.getElementById('btn-login-admin');
-  const textoOriginal = btn.textContent;
-  btn.textContent = 'Verificando...';
-  btn.disabled = true;
+  const textoOriginal = btn ? btn.textContent : 'Ingresar';
+  if (btn) {
+    btn.textContent = 'Verificando...';
+    btn.disabled = true;
+  }
   try {
     const r = await supabaseClient.auth.signInWithPassword({ email, password: pass });
     if (r.error) {
-      mostrarMensajeAdmin('login-msg', 'Correo o contraseña incorrecta: ' + r.error.message, true);
-      btn.textContent = textoOriginal;
-      btn.disabled = false;
+      if (typeof mostrarMensajeAdmin === 'function') {
+        mostrarMensajeAdmin('login-msg', 'Correo o contraseña incorrecta: ' + r.error.message, true);
+      } else {
+        alert('Correo o contraseña incorrecta: ' + r.error.message);
+      }
+      if (btn) {
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
+      }
       return;
     }
     await window.verificarSesionAdmin();
   } catch (e) {
     alert('Error al entrar: ' + (e?.message || e));
-    btn.textContent = textoOriginal;
-    btn.disabled = false;
+    if (btn) {
+      btn.textContent = textoOriginal;
+      btn.disabled = false;
+    }
   }
 };
 
@@ -69,49 +117,50 @@ window.cerrarSesion = async function() {
 };
 
 window.verificarSesionAdmin = async function() {
+  const btn = document.getElementById('btn-login-admin');
   try {
     const { data } = await supabaseClient.auth.getSession();
     const session = data.session;
     const acciones = document.getElementById('header-acciones');
     const boxLogin = document.getElementById('box-login');
     const boxContenido = document.getElementById('box-contenido');
+
     if (!session) {
       boxLogin?.classList.remove('hidden');
       boxContenido?.classList.add('hidden');
       if (acciones) acciones.classList.add('hidden');
       document.getElementById('modal-nuevo-socio')?.classList.add('hidden');
-      const btn = document.getElementById('btn-login-admin');
       if (btn) { btn.textContent = 'Ingresar'; btn.disabled = false; }
       return;
     }
-    const email = session.user.email || '';
-    const rol = session.user.user_metadata?.rol;
-    const esAdmin = rol === 'admin' || !email.startsWith('ci_');
+
+    const rolMeta = session.user.user_metadata?.rol;
+    const esAdminBD = await consultarEsAdminEnBD(session.user.id);
+    const esAdmin = esAdminBD || rolMeta === 'admin';
+
     if (!esAdmin) {
       alert('Esta sección es solo para Admin.');
       await supabaseClient.auth.signOut();
       location.reload();
       return;
     }
+
     boxLogin?.classList.add('hidden');
     boxContenido?.classList.remove('hidden');
     if (acciones) acciones.classList.remove('hidden');
-    const hoy = new Date();
-    const ym = hoy.toISOString().slice(0, 7);
-    const ymd = hoy.toISOString().slice(0, 10);
+
+    const { ym, ymd } = obtenerFechaLocalPY();
     const repMesEl = document.getElementById('rep-mes-input');
     const repDesdeEl = document.getElementById('rep-fecha-desde');
     const repHastaEl = document.getElementById('rep-fecha-hasta');
     if (repMesEl && !repMesEl.value) repMesEl.value = ym;
     if (repDesdeEl && !repDesdeEl.value) repDesdeEl.value = `${ym}-01`;
     if (repHastaEl && !repHastaEl.value) repHastaEl.value = ymd;
+
     await window.cargarDatosAdmin();
-    const btn = document.getElementById('btn-login-admin');
     if (btn) { btn.textContent = 'Ingresar'; btn.disabled = false; }
   } catch (e) {
     console.error('verificarSesionAdmin', e);
-    // Ya no tiramos alert que traba todo, solo logueamos
-    const btn = document.getElementById('btn-login-admin');
     if (btn) { btn.textContent = 'Ingresar'; btn.disabled = false; }
   }
 };
@@ -133,4 +182,4 @@ var cargarDatosAdmin = window.cargarDatosAdmin;
 // Al abrir la página, verifica si ya hay sesión
 document.addEventListener('DOMContentLoaded', () => {
   window.verificarSesionAdmin();
-}); 
+});

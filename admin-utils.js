@@ -39,33 +39,39 @@ window.toggleCampoAnticipo = function() {
   if (!chk || !box) return;
   box.classList.toggle('hidden', !chk.checked);
   if (!chk.checked) {
-    document.getElementById('inp-monto-anticipo').value = '';
+    const inp = document.getElementById('inp-monto-anticipo');
+    if (inp) inp.value = '';
   }
 };
 
 window.cambiarPestanaAdmin = function(pestana) {
   ['cobrar', 'gastos', 'cuotas', 'reportes'].forEach((t) => {
-    document.getElementById('seccion-' + t).classList.toggle('hidden', t !== pestana);
+    const sec = document.getElementById('seccion-' + t);
     const btn = document.getElementById('tab-btn-' + t);
-    btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
+    if (sec) sec.classList.toggle('hidden', t !== pestana);
+    if (btn) btn.className = 'tab-btn flex-1 ' + (t === pestana ? 'activo' : 'no-activo');
   });
 };
 
 window.cambiarModoReporte = function(modo) {
-  modoReporteActual = modo;
+  window.modoReporteActual = modo;
+  if (typeof modoReporteActual !== 'undefined') {
+    modoReporteActual = modo;
+  }
   const btnMes = document.getElementById('modo-rep-mes');
   const btnRango = document.getElementById('modo-rep-rango');
   const boxMes = document.getElementById('filtro-rep-mes');
   const boxRango = document.getElementById('filtro-rep-rango');
+
   if (modo === 'mes') {
-    btnMes.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
-    btnRango.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
-    boxMes.classList.remove('hidden');
-    boxRango.classList.add('hidden');
+    if (btnMes) btnMes.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
+    if (btnRango) btnRango.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
+    if (boxMes) boxMes.classList.remove('hidden');
+    if (boxRango) boxRango.classList.add('hidden');
   } else {
-    btnRango.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
-    btnMes.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
-    boxRango.classList.remove('hidden');
-    boxMes.classList.add('hidden');
+    if (btnRango) btnRango.className = 'py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';
+    if (btnMes) btnMes.className = 'py-2 text-xs font-bold rounded-lg text-slate-500';
+    if (boxRango) boxRango.classList.remove('hidden');
+    if (boxMes) boxMes.classList.add('hidden');
   }
 };

@@ -9,13 +9,13 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 .hidden { display: none; }
-.tab-btn { padding: 8px 10px; 
+.tab-btn { padding: 8px 10px;
 border-radius: 9999px; font-size: 12px; font-weight: 700; }
 .tab-btn.activo { background: #2563eb; color: white; }
 .tab-btn.no-activo { background: #e2e8f0; color: #475569; }
 @media print {
 body { background: white !important; padding: 0 !important; }
-header, .no-print, #box-login, #modal-nuevo-socio, #modal-editar-gasto { display: none !important; }
+header, .no-print, #box-login, #modal-nuevo-socio, #modal-editar-gasto, #modal-anticipos, #modal-donacion { display: none !important; }
 main { max-width: 100% !important; padding: 0 !important; }
 #box-contenido, #seccion-reportes { display: block !important; }
 #area-impresion-reporte {
@@ -367,11 +367,11 @@ padding: 16px !important;
 <div class="space-y-3">
 <input type="hidden" id="edit-gasto-id" />
 <div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Concepto / Descripción</label>
+<label for="edit-gasto-descripcion" class="block text-xs font-bold text-slate-600 mb-1">Concepto / Descripción</label>
 <input type="text" id="edit-gasto-descripcion" readonly class="w-full p-3 border rounded-xl text-sm bg-slate-100 text-slate-600" />
 </div>
 <div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Categoría</label>
+<label for="edit-gasto-categoria" class="block text-xs font-bold text-slate-600 mb-1">Categoría</label>
 <select id="edit-gasto-categoria" disabled class="w-full p-3 border rounded-xl text-sm bg-slate-100 text-slate-600">
 <option value="mantenimiento">Mantenimiento</option>
 <option value="luz">Luz / ANDE</option>
@@ -381,15 +381,15 @@ padding: 16px !important;
 </select>
 </div>
 <div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
+<label for="edit-gasto-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
 <input type="text" id="edit-gasto-monto" readonly class="w-full p-3 border rounded-xl text-sm bg-slate-100 text-slate-600 font-bold" />
 </div>
 <div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario</label>
+<label for="edit-gasto-proveedor" class="block text-xs font-bold text-slate-600 mb-1">Proveedor / Beneficiario</label>
 <input type="text" id="edit-gasto-proveedor" readonly class="w-full p-3 border rounded-xl text-sm bg-slate-100 text-slate-600" />
 </div>
 <div>
-<label class="block text-xs font-bold text-slate-600 mb-1">Fecha</label>
+<label for="edit-gasto-fecha" class="block text-xs font-bold text-slate-600 mb-1">Fecha</label>
 <input type="date" id="edit-gasto-fecha" readonly class="w-full p-3 border rounded-xl text-sm bg-slate-100 text-slate-600" />
 </div>
 <p class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg">Este gasto no se puede editar. Si te equivocaste, anulalo y cargalo de nuevo.</p>
@@ -456,7 +456,7 @@ padding: 16px !important;
     <h4 class="font-bold text-sm mb-2">+ Registrar nueva donación</h4>
     <form onsubmit="registrarDonacion(event)" class="space-y-3">
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Tipo de Donación</label>
+        <label for="don-tipo" class="block text-xs font-bold text-slate-600 mb-1">Tipo de Donación</label>
         <select id="don-tipo" onchange="toggleDonSocio()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
           <option value="particular_socio">Donación particular de socio</option>
           <option value="municipalidad">Donación de la Municipalidad</option>
@@ -465,21 +465,21 @@ padding: 16px !important;
         </select>
       </div>
       <div id="box-don-socio">
-        <label class="block text-xs font-bold text-slate-600 mb-1">Socio que dona</label>
+        <label for="don-cliente" class="block text-xs font-bold text-slate-600 mb-1">Socio que dona</label>
         <select id="don-cliente" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50">
           <option value="">-- Seleccioná Socio --</option>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">¿De quién / Institución? (si es Municipalidad, Gobernación u Otros)</label>
+        <label for="don-origen" class="block text-xs font-bold text-slate-600 mb-1">¿De quién / Institución? (si es Municipalidad, Gobernación u Otros)</label>
         <input type="text" id="don-origen" placeholder="Ej: Municipalidad de Ybycuí, Juan Pérez" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
-        <input type="text" id="don-monto" required placeholder="Ej: 500.000" inputmode="numeric" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
+        <label for="don-monto" class="block text-xs font-bold text-slate-600 mb-1">Monto (Gs.)</label>
+        <input type="text" id="don-monto" required placeholder="Ej: 500.000" inputmode="numeric" oninput="formatearGuaraniesInput(this)" class="w-full p-3 border border-slate-300 rounded-xl text-base bg-slate-50 font-bold" />
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 mb-1">Concepto / Motivo (opcional)</label>
+        <label for="don-concepto" class="block text-xs font-bold text-slate-600 mb-1">Concepto / Motivo (opcional)</label>
         <input type="text" id="don-concepto" placeholder="Ej: Para reparación de bomba, Donación para caños" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-slate-50" />
       </div>
       <button type="submit" id="btn-don-guardar" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Guardar Donación en Caja</button>

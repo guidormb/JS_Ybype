@@ -2,7 +2,6 @@
 
 const SUPABASE_URL_PROV = 'https://zbwpsemyeejebpfkaepz.supabase.co';
 const SUPABASE_KEY_PROV = 'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE';
-const ADMIN_EMAIL_PROV = 'guidorafa92@gmail.com';
 
 const sbProv = window.supabaseClient || window.supabase.createClient(SUPABASE_URL_PROV, SUPABASE_KEY_PROV);
 
@@ -43,6 +42,33 @@ function mostrarMsgProv(texto, esError = false) {
     ? 'mt-3 p-3 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200'
     : 'mt-3 p-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
   el.classList.remove('hidden');
+}
+
+async function verificarEsAdminProv(session) {
+  const userId = session?.user?.id;
+  if (!userId || !sbProv) return false;
+
+  try {
+    const { data, error } = await sbProv
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error && data?.role === 'admin') {
+      return true;
+    }
+
+    const rpcRes = await sbProv.rpc('es_admin');
+    if (!rpcRes.error && rpcRes.data === true) {
+      return true;
+    }
+
+    return session?.user?.user_metadata?.rol === 'admin';
+  } catch (e) {
+    console.warn('Error al verificar rol admin en proveedores:', e);
+    return false;
+  }
 }
 
 function limpiarFormularioProveedor() {
@@ -191,8 +217,8 @@ window.guardarProveedor = async function (event) {
   event.preventDefault();
 
   const { data: sesData } = await sbProv.auth.getSession();
-  const email = (sesData?.session?.user?.email || '').trim().toLowerCase();
-  if (!sesData?.session || email !== ADMIN_EMAIL_PROV.toLowerCase()) {
+  const esAdmin = await verificarEsAdminProv(sesData?.session);
+  if (!sesData?.session || !esAdmin) {
     mostrarMsgProv('Tenés que iniciar sesión como Administrador para guardar proveedores.', true);
     return;
   }
@@ -220,12 +246,15 @@ window.guardarProveedor = async function (event) {
   }
 
   const btn = document.getElementById('btn-prov-guardar');
-  const textoBtn = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Guardando...';
+  const textoBtn = btn ? btn.textContent : 'Guardar Proveedor';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+  }
+
+  let personaCreadaId = null;
 
   try {
-    // Si no estamos editando pero el RUC ya existe en personas, reutilizamos esa persona
     if (!personaId && ruc) {
       const { data: existentePer, error: errBusq } = await sbProv
         .from('personas')
@@ -264,6 +293,7 @@ window.guardarProveedor = async function (event) {
         .single();
       if (errInsPer) throw errInsPer;
       personaId = nuevaPer.id;
+      personaCreadaId = nuevaPer.id;
     }
 
     if (provId) {
@@ -289,7 +319,12 @@ window.guardarProveedor = async function (event) {
           activo,
           notas
         });
-      if (errInsProv) throw errInsProv;
+      if (errInsProv) {
+        if (personaCreadaId) {
+          await sbProv.from('personas').delete().eq('id', personaCreadaId);
+        }
+        throw errInsProv;
+      }
       mostrarMsgProv('Proveedor guardado en el padrón.', false);
       limpiarFormularioProveedor();
     }
@@ -298,14 +333,17 @@ window.guardarProveedor = async function (event) {
   } catch (err) {
     mostrarMsgProv('Error al guardar: ' + (err?.message || err), true);
   } finally {
-    btn.disabled = false;
-    btn.textContent = textoBtn;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = textoBtn;
+    }
   }
 };
 
 async function iniciarVistaProveedores() {
   const sinAcceso = document.getElementById('prov-sin-acceso');
   const contenido = document.getElementById('prov-contenido');
+  const contLista = document.getElementById('lista-proveedores');
 
   document.getElementById('prov-timbrado')?.addEventListener('input', function () {
     this.value = limpiarTimbradoProv(this.value);
@@ -313,19 +351,25 @@ async function iniciarVistaProveedores() {
 
   document.getElementById('prov-buscar')?.addEventListener('input', renderizarListaProveedores);
 
-  const { data } = await sbProv.auth.getSession();
-  const email = (data?.session?.user?.email || '').trim().toLowerCase();
-  const esAdmin = Boolean(data?.session) && email === ADMIN_EMAIL_PROV.toLowerCase();
+  try {
+    const { data } = await sbProv.auth.getSession();
+    const esAdmin = await verificarEsAdminProv(data?.session);
 
-  if (!esAdmin) {
-    sinAcceso?.classList.remove('hidden');
-    contenido?.classList.add('hidden');
-    return;
+    if (!esAdmin) {
+      sinAcceso?.classList.remove('hidden');
+      contenido?.classList.add('hidden');
+      return;
+    }
+
+    sinAcceso?.classList.add('hidden');
+    contenido?.classList.remove('hidden');
+    await window.cargarProveedores();
+  } catch (err) {
+    console.error('Error iniciarVistaProveedores:', err);
+    if (contLista) {
+      contLista.innerHTML = `<p class="text-xs text-red-600 text-center py-4">Error al iniciar: ${escProv(err?.message || err)}</p>`;
+    }
   }
-
-  sinAcceso?.classList.add('hidden');
-  contenido?.classList.remove('hidden');
-  await window.cargarProveedores();
 }
 
 document.addEventListener('DOMContentLoaded', iniciarVistaProveedores);

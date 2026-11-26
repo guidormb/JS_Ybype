@@ -1,9 +1,18 @@
 // admin-init.js - Va último, arranca todo - CORREGIDO
-document.getElementById('inp-monto').addEventListener('input', function() { formatearGuaraniesInput(this); });
-document.getElementById('inp-monto-anticipo').addEventListener('input', function() { formatearGuaraniesInput(this); });
-document.getElementById('gasto-monto').addEventListener('input', function() { formatearGuaraniesInput(this); });
-document.getElementById('inp-monto-cuota').addEventListener('input', function() { formatearGuaraniesInput(this); });
-document.getElementById('edit-gasto-monto').addEventListener('input', function() { formatearGuaraniesInput(this); });
+[
+  'inp-monto',
+  'inp-monto-anticipo',
+  'gasto-monto',
+  'inp-monto-cuota',
+  'edit-gasto-monto'
+].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', function () {
+      formatearGuaraniesInput(this);
+    });
+  }
+});
 
 // === SEGURO: Si admin-gastos.js falló por algo, creamos la función acá para que no rompa el login ===
 if (typeof window.cargarGastosRecientes === 'undefined') {

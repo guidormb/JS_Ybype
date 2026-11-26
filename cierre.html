@@ -29,6 +29,7 @@
   select,button{padding:14px; margin:6px 0 12px; width:100%; font-size:16px; border-radius:10px; border:1px solid #ccc}
   button{background:#27ae60; color:white; border:none; font-weight:bold; cursor:pointer}
   button:active{opacity:0.8}
+  button:disabled{opacity:0.6; cursor:not-allowed}
   .cerrar{background:#e74c3c}
   .volver{background:#555}
   .caja{background:white; border:1px solid #ddd; padding:16px; border-radius:12px; margin-top:15px}
@@ -89,14 +90,24 @@
 <script>
 const TZ_OFFSET_PY = '-03:00';
 
-function obtenerHoyLocalPY() {
+function obtenerPartesHoyPY() {
   const partes = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Asuncion',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
   }).format(new Date()).split('-');
-  return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 0, 0, 0, 0);
+  return {
+    anio: Number(partes[0]),
+    mes: Number(partes[1]),
+    dia: Number(partes[2]),
+    ymd: `${partes[0]}-${partes[1]}-${partes[2]}`
+  };
+}
+
+function obtenerHoyLocalPY() {
+  const hoy = obtenerPartesHoyPY();
+  return new Date(hoy.anio, hoy.mes - 1, hoy.dia, 0, 0, 0, 0);
 }
 
 function obtenerRangoMesPY(anio, mes) {
@@ -109,14 +120,14 @@ function obtenerRangoMesPY(anio, mes) {
   const inicioSigMesISO = `${sigAnio}-${sigMesStr}-01T00:00:00.000${TZ_OFFSET_PY}`;
   const ultimoDia = new Date(anio, mes, 0).getDate();
   const finMesISO = `${anio}-${mesStr}-${String(ultimoDia).padStart(2, '0')}T23:59:59.999${TZ_OFFSET_PY}`;
-  return { inicioMesISO, finMesISO, inicioSigMesISO };
+  return { inicioMesISO, finMesISO, inicioSigMesISO, sigAnio, sigMesStr };
 }
 
 function poblarSelectorAnios() {
   const selAnio = document.getElementById('anio');
   if (!selAnio) return;
-  const hoy = obtenerHoyLocalPY();
-  const anioActual = hoy.getFullYear();
+  const hoy = obtenerPartesHoyPY();
+  const anioActual = hoy.anio;
   const anioInicio = 2026;
   const anioFin = Math.max(2028, anioActual + 1);
   selAnio.innerHTML = '';
@@ -129,17 +140,44 @@ function poblarSelectorAnios() {
   }
 }
 
+async function esAdminCierre(session) {
+  const sb = getSB();
+  const userId = session?.user?.id;
+  if (!userId || !sb) return false;
+  try {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!error && data?.role === 'admin') return true;
+    const rpcRes = await sb.rpc('es_admin');
+    if (!rpcRes.error && rpcRes.data === true) return true;
+    return session?.user?.user_metadata?.rol === 'admin';
+  } catch (e) {
+    console.warn('Error verificando rol admin en cierre:', e);
+    return false;
+  }
+}
+
 async function verificarEstadoSesionCierre() {
   try {
     const sb = getSB();
     if (!sb?.auth) return;
     const { data } = await sb.auth.getSession();
-    const user = data?.session?.user || null;
+    const session = data?.session || null;
+    const user = session?.user || null;
     const badge = document.getElementById('estado-sesion-cierre');
     if (!badge) return;
     if (user) {
-      badge.textContent = 'Sesión activa: ' + (user.email || 'Admin');
-      badge.style.cssText = 'background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
+      const adminOk = await esAdminCierre(session);
+      if (adminOk) {
+        badge.textContent = 'Sesión Admin activa: ' + (user.email || 'Admin');
+        badge.style.cssText = 'background:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
+      } else {
+        badge.textContent = 'Sesión activa (' + (user.email || 'usuario') + '), pero sin rol Admin para cerrar mes.';
+        badge.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
+      }
     } else {
       badge.textContent = 'Sin sesión activa: podés ver resúmenes, pero para Cerrar Mes debés iniciar sesión como Admin.';
       badge.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:8px;border-radius:8px;text-align:center;font-size:12px;font-weight:bold;margin-bottom:10px';
@@ -302,12 +340,19 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
   const sb = getSB();
   const btn = document.getElementById('btn-cerrar-mes');
   const { data: sesData } = await sb.auth.getSession();
-  if (!sesData?.session) {
+  const session = sesData?.session || null;
+  if (!session) {
     return alert('Iniciá sesión como administrador para cerrar el mes.');
   }
-  const fechaPermitida = new Date(anio, mes, 15);
-  const hoy = obtenerHoyLocalPY();
-  if (hoy < fechaPermitida) {
+  const adminOk = await esAdminCierre(session);
+  if (!adminOk) {
+    return alert('Tu cuenta no tiene permiso de administrador para cerrar el mes.');
+  }
+
+  const { sigAnio, sigMesStr } = obtenerRangoMesPY(anio, mes);
+  const fechaPermitidaStr = `${sigAnio}-${sigMesStr}-15`;
+  const hoyStr = obtenerPartesHoyPY().ymd;
+  if (hoyStr < fechaPermitidaStr) {
     const nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const mesSiguiente = mes === 12 ? 'Enero' : nombres[mes + 1];
     return alert(`No se puede cerrar todavía.\n\n${nombres[mes]} ${anio} solo se puede cerrar desde el 15 de ${mesSiguiente}.`);
@@ -329,7 +374,7 @@ async function cerrarMes(anio, mes, cf, ca, tg, saldo) {
     const { error } = await sb.from('cierres_mensuales').insert({
       anio: anio,
       mes: mes,
-      fecha_cierre: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion' }).format(new Date()),
+      fecha_cierre: obtenerPartesHoyPY().ymd,
       total_cobrado_facturas: cf,
       total_anticipos: ca,
       total_gastado: tg,

@@ -16,6 +16,7 @@
     label { font-size: 13px; font-weight: 700; color: #475569; }
     input, select { width: 100%; padding: 12px; margin: 6px 0 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 16px; box-sizing: border-box; background: white; }
     button { width: 100%; padding: 14px; background: #16a34a; color: white; border: 0; border-radius: 10px; font-size: 17px; font-weight: 800; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-out { background: #dc2626; padding: 10px 16px; width: auto; font-size: 14px; }
     .topbar { display: flex; gap: 8px; margin-bottom: 10px; }
     .topbar button { width: auto; flex: 1; padding: 12px 6px; font-size: 15px; }
@@ -82,7 +83,7 @@
     <input id="cedula" placeholder="Ej: 5656565" inputmode="numeric" maxlength="8" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 
     <label for="telefono">Teléfono / WhatsApp *</label>
-    <input id="telefono" placeholder="Ej: 0981 123456" inputmode="tel" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+    <input id="telefono" placeholder="Ej: 0981123456" inputmode="tel" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 
     <label for="direccion">Dirección / Compañía</label>
     <input id="direccion" placeholder="Ej: Ybypé 1ra. Línea" />
@@ -100,7 +101,7 @@
       <option value="false">⛔ Inactivo - Suspendido / Dado de baja</option>
     </select>
 
-    <button type="button" onclick="guardar()">Guardar Socio</button>
+    <button type="button" id="btnGuardarSocioInferior" onclick="guardar()">Guardar Socio</button>
     <div id="ok" class="ok"></div>
     <div id="err" class="err"></div>
 
@@ -122,11 +123,11 @@ const db = window.supabase.createClient(
   'https://zbwpsemyeejebpfkaepz.supabase.co',
   'sb_publishable_dxeFPiwiG1Fjvp7kS8vqOw_bY6kYNXE'
 );
-const ADMIN_EMAIL = 'guidorafa92@gmail.com';
 
 let editandoPersonaId = null;
 let editandoClienteId = null;
 let listaPadronGlobal = [];
+let guardandoPadron = false;
 
 function escapeHtml(valor) {
   return String(valor ?? '')
@@ -136,10 +137,37 @@ function escapeHtml(valor) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+async function verificarEsAdminPadron(session) {
+  const userId = session?.user?.id;
+  if (!userId) return false;
+
+  try {
+    const { data, error } = await db
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error && data?.role === 'admin') {
+      return true;
+    }
+
+    const rpcRes = await db.rpc('es_admin');
+    if (!rpcRes.error && rpcRes.data === true) {
+      return true;
+    }
+
+    return session?.user?.user_metadata?.rol === 'admin';
+  } catch (e) {
+    console.warn('Error al verificar rol admin en padrón:', e);
+    return false;
+  }
+}
+
 async function generarSiguienteNroCuenta() {
   const input = document.getElementById('cuenta');
   if (!input) return;
-  // Si estamos editando, NO tocar el número que ya tiene
   if (editandoClienteId) return;
   const { data } = await db.from('clientes').select('nro_cuenta').order('nro_cuenta', { ascending: false }).limit(1);
   let siguiente = 1;
@@ -148,22 +176,26 @@ async function generarSiguienteNroCuenta() {
   }
   input.value = String(siguiente).padStart(3, '0');
 }
+
 async function verificarSesionPadron() {
   const { data } = await db.auth.getSession();
   const session = data.session;
   document.getElementById('sinSesionBox').classList.add('hidden');
   document.getElementById('noPermisoBox').classList.add('hidden');
   document.getElementById('contenidoPadron').classList.add('hidden');
+
   if (!session) {
     document.getElementById('sinSesionBox').classList.remove('hidden');
     return;
   }
-  const email = (session.user.email || '').toLowerCase();
-  if (email !== ADMIN_EMAIL.toLowerCase()) {
-    document.getElementById('emailLogueado').textContent = email;
+
+  const esAdmin = await verificarEsAdminPadron(session);
+  if (!esAdmin) {
+    document.getElementById('emailLogueado').textContent = session.user.email || '';
     document.getElementById('noPermisoBox').classList.remove('hidden');
     return;
   }
+
   document.getElementById('contenidoPadron').classList.remove('hidden');
   actualizarContador();
   cargarListaPadron();
@@ -283,12 +315,12 @@ async function buscarParaEditar() {
     alert('Escribí una C.I. Ej: 5656565');
     return;
   }
-  const { data: persona } = await db.from('personas').select('*').eq('cedula_ruc', cedulaBuscar).single();
-  if (!persona) {
+  const { data: persona, error: errPer } = await db.from('personas').select('*').eq('cedula_ruc', cedulaBuscar).maybeSingle();
+  if (errPer || !persona) {
     alert('No existe esa C.I.');
     return;
   }
-  const { data: cliente } = await db.from('clientes').select('*').eq('persona_id', persona.id).single();
+  const { data: cliente } = await db.from('clientes').select('*').eq('persona_id', persona.id).maybeSingle();
   document.getElementById('nombre').value = persona.nombre;
   document.getElementById('apellido').value = persona.apellido;
   document.getElementById('cedula').value = persona.cedula_ruc;
@@ -334,6 +366,8 @@ function cancelar() {
 }
 
 async function guardar() {
+  if (guardandoPadron) return;
+
   const nombre = document.getElementById('nombre').value.trim();
   const apellido = document.getElementById('apellido').value.trim();
   const cedula = document.getElementById('cedula').value.trim();
@@ -347,95 +381,122 @@ async function guardar() {
   const errEl = document.getElementById('err');
   okEl.style.display = 'none';
   errEl.style.display = 'none';
+
   if (!nombre || !apellido || !cedula || !telefono || !cuenta) {
     errEl.textContent = 'Faltan datos obligatorios (*)';
     errEl.style.display = 'block';
     return;
   }
-  const { data: cuentaExiste } = await db
-    .from('clientes')
-    .select('id, personas(nombre, apellido)')
-    .eq('nro_cuenta', cuenta)
-    .maybeSingle();
-  if (cuentaExiste && cuentaExiste.id !== editandoClienteId) {
-    const dueno = cuentaExiste.personas ? cuentaExiste.personas.nombre + ' ' + cuentaExiste.personas.apellido : '';
-    errEl.textContent = '⚠️ Número de cuenta ya se encuentra registrada. Verificar - La cuenta ' + cuenta + ' ya es de ' + dueno;
-    errEl.style.display = 'block';
-    return;
-  }
-  if (editandoPersonaId) {
-    const { error: e1 } = await db
+
+  const btnTop = document.getElementById('btnGuardar');
+  const btnBot = document.getElementById('btnGuardarSocioInferior');
+  guardandoPadron = true;
+  if (btnTop) btnTop.disabled = true;
+  if (btnBot) btnBot.disabled = true;
+
+  try {
+    const { data: cuentaExiste } = await db
+      .from('clientes')
+      .select('id, personas(nombre, apellido)')
+      .eq('nro_cuenta', cuenta)
+      .maybeSingle();
+
+    if (cuentaExiste && cuentaExiste.id !== editandoClienteId) {
+      const dueno = cuentaExiste.personas ? cuentaExiste.personas.nombre + ' ' + cuentaExiste.personas.apellido : '';
+      errEl.textContent = '⚠️ Número de cuenta ya se encuentra registrada. Verificar - La cuenta ' + cuenta + ' ya es de ' + dueno;
+      errEl.style.display = 'block';
+      return;
+    }
+
+    if (editandoPersonaId) {
+      const { error: e1 } = await db
+        .from('personas')
+        .update({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
+        .eq('id', editandoPersonaId);
+      if (e1) {
+        if (e1.message && e1.message.includes('personas_cedula_ruc_key')) {
+          errEl.textContent = '⚠️ Esa cédula ' + cedula + ' ya existe en otro socio. Revisá que no esté duplicado.';
+        } else {
+          errEl.textContent = 'Error al actualizar: ' + e1.message;
+        }
+        errEl.style.display = 'block';
+        return;
+      }
+      if (editandoClienteId) {
+        await db.from('clientes').update({ nro_cuenta: cuenta, numero_medidor: medidor, activo }).eq('id', editandoClienteId);
+      } else {
+        const { error: e2 } = await db.from('clientes').insert({
+          persona_id: editandoPersonaId,
+          nro_cuenta: cuenta,
+          numero_medidor: medidor,
+          tipo_tarifa: 'fija',
+          saldo_favor: 0,
+          activo: activo
+        });
+        if (e2) {
+          errEl.textContent = 'Error al crear cuenta: ' + e2.message;
+          errEl.style.display = 'block';
+          return;
+        }
+      }
+      const mensajeFinal = '✅ Datos del Cliente Actualizado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta;
+      cancelar();
+      okEl.textContent = mensajeFinal;
+      okEl.style.display = 'block';
+      actualizarContador();
+      cargarListaPadron();
+      return;
+    }
+
+    const { data: persona, error: e1 } = await db
       .from('personas')
-      .update({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
-      .eq('id', editandoPersonaId);
+      .insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
+      .select()
+      .single();
     if (e1) {
       if (e1.message && e1.message.includes('personas_cedula_ruc_key')) {
-        errEl.textContent = '⚠️ Esa cédula ' + cedula + ' ya existe en otro socio. Revisá que no esté duplicado.';
+        errEl.textContent = '⚠️ Esa cédula ' + cedula + ' ya existe en el padrón. Revisá que no esté duplicado.';
       } else {
-        errEl.textContent = 'Error al actualizar: ' + e1.message;
+        errEl.textContent = 'Error en persona: ' + e1.message;
       }
       errEl.style.display = 'block';
       return;
     }
-    if (editandoClienteId) {
-      await db.from('clientes').update({ nro_cuenta: cuenta, numero_medidor: medidor, activo }).eq('id', editandoClienteId);
-    } else {
-      const { error: e2 } = await db.from('clientes').insert({
-        persona_id: editandoPersonaId,
-        nro_cuenta: cuenta,
-        numero_medidor: medidor,
-        tipo_tarifa: 'fija',
-        saldo_favor: 0,
-        activo: activo
-      });
-      if (e2) {
-        errEl.textContent = 'Error al crear cuenta: ' + e2.message;
-        errEl.style.display = 'block';
-        return;
-      }
+
+    const { error: e2 } = await db.from('clientes').insert({
+      persona_id: persona.id,
+      nro_cuenta: cuenta,
+      numero_medidor: medidor,
+      tipo_tarifa: 'fija',
+      saldo_favor: 0,
+      activo: activo
+    });
+    if (e2) {
+      errEl.textContent = 'Error en cliente: ' + e2.message + ' (la persona quedó creada, revisá nro. cuenta duplicado)';
+      errEl.style.display = 'block';
+      return;
     }
-    const mensajeFinal = '✅ Datos del Cliente Actualizado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta;
-    cancelar();
-    okEl.textContent = mensajeFinal;
+
+    okEl.textContent = '✅ Socio guardado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta + (medidor ? ' - Medidor ' + medidor : ' - Sin medidor');
     okEl.style.display = 'block';
+    ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'medidor'].forEach((id) => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('estado').value = 'true';
+    document.getElementById('cuenta').value = String(Number(cuenta) + 1).padStart(3, '0');
+    document.getElementById('nombre').focus();
     actualizarContador();
     cargarListaPadron();
-    return;
+  } finally {
+    guardandoPadron = false;
+    if (btnTop) btnTop.disabled = false;
+    if (btnBot) btnBot.disabled = false;
   }
-  const { data: persona, error: e1 } = await db
-    .from('personas')
-    .insert({ nombre, apellido, cedula_ruc: cedula, telefono, direccion: direccion || null })
-    .select()
-    .single();
-  if (e1) {
-    errEl.textContent = 'Error en persona: ' + e1.message;
-    errEl.style.display = 'block';
-    return;
-  }
-  const { error: e2 } = await db.from('clientes').insert({
-    persona_id: persona.id,
-    nro_cuenta: cuenta,
-    numero_medidor: medidor,
-    tipo_tarifa: 'fija',
-    saldo_favor: 0,
-    activo: activo
-  });
-  if (e2) {
-    errEl.textContent = 'Error en cliente: ' + e2.message + ' (la persona quedó creada, revisá nro. cuenta duplicado)';
-    errEl.style.display = 'block';
-    return;
-  }
-  okEl.textContent = '✅ Socio guardado: ' + nombre + ' ' + apellido + ' - Cuenta ' + cuenta + (medidor ? ' - Medidor ' + medidor : ' - Sin medidor');
-  okEl.style.display = 'block';
-  ['nombre', 'apellido', 'cedula', 'telefono', 'direccion', 'medidor'].forEach((id) => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('estado').value = 'true';
-  document.getElementById('cuenta').value = String(Number(cuenta) + 1).padStart(3, '0');
-  document.getElementById('nombre').focus();
-  actualizarContador();
-  cargarListaPadron();
 }
+
+db.auth.onAuthStateChange(() => {
+  verificarSesionPadron();
+});
 
 verificarSesionPadron();
 </script>

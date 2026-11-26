@@ -243,14 +243,10 @@ async function buscarPersonaIdPorRuc(ruc) {
   }
 }
 
-// Verifica:
-// 1) Si el timbrado ya está asignado a otro RUC en gastos activos
-// 2) Si ya existe una factura activa duplicada (mismo RUC/Proveedor + Timbrado + Nro. Factura)
 async function validarFiscalFacturaActiva(ruc, proveedor, timbrado, nroComprobante) {
   var rucNorm = normalizarRuc(ruc);
   var provNorm = normalizarTexto(proveedor);
 
-  // Control 1: Timbrado único por RUC en facturas activas
   if (rucNorm && timbrado) {
     var resTimb = await getSB()
       .from('gastos')
@@ -274,7 +270,6 @@ async function validarFiscalFacturaActiva(ruc, proveedor, timbrado, nroComproban
     }
   }
 
-  // Control 2: Factura duplicada activa (mismo Nro. Comprobante + Timbrado + RUC/Proveedor)
   var q = await getSB()
     .from('gastos')
     .select('id, descripcion, fecha, ruc, timbrado, nro_comprobante, proveedor_beneficiario, estado')
@@ -449,48 +444,55 @@ window.cargarGastosRecientes = async function () {
 
   var cont = document.getElementById('lista-gastos');
   if (!cont) return;
-  var r = await getSB().from('gastos').select('*').eq('estado', filtroGastosActual).order('created_at', { ascending: false }).limit(20);
-  var gastos = r.data || [];
-  window.gastosRecientesCache = gastos;
-  if (gastos.length === 0) {
-    cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin gastos ' + (filtroGastosActual === 'anulado' ? 'anulados.' : 'activos.') + '</p>';
-    return;
-  }
-  cont.innerHTML = gastos.map(function (g) {
-    var compInfo = [];
-    if (g.tipo_comprobante) compInfo.push(g.tipo_comprobante + (g.nro_comprobante ? ' #' + g.nro_comprobante : ''));
-    else if (g.nro_comprobante) compInfo.push('Comp. #' + g.nro_comprobante);
-    if (g.timbrado) compInfo.push('Timb. ' + g.timbrado);
-    if (g.ruc) compInfo.push('RUC ' + g.ruc);
-    if (g.medio_pago) compInfo.push(g.medio_pago);
 
-    var lineaMeta = (g.categoria || '')
-      + ' - ' + (g.fecha || '')
-      + (g.proveedor_beneficiario ? ' - ' + g.proveedor_beneficiario : '')
-      + (compInfo.length > 0 ? ' - ' + compInfo.join(' · ') : '');
+  try {
+    var r = await getSB().from('gastos').select('*').eq('estado', filtroGastosActual).order('created_at', { ascending: false }).limit(20);
+    if (r.error) throw r.error;
+    var gastos = r.data || [];
+    window.gastosRecientesCache = gastos;
+    if (gastos.length === 0) {
+      cont.innerHTML = '<p class="text-xs text-slate-500 text-center">Sin gastos ' + (filtroGastosActual === 'anulado' ? 'anulados.' : 'activos.') + '</p>';
+      return;
+    }
+    cont.innerHTML = gastos.map(function (g) {
+      var compInfo = [];
+      if (g.tipo_comprobante) compInfo.push(g.tipo_comprobante + (g.nro_comprobante ? ' #' + g.nro_comprobante : ''));
+      else if (g.nro_comprobante) compInfo.push('Comp. #' + g.nro_comprobante);
+      if (g.timbrado) compInfo.push('Timb. ' + g.timbrado);
+      if (g.ruc) compInfo.push('RUC ' + g.ruc);
+      if (g.medio_pago) compInfo.push(g.medio_pago);
 
-    return '<div class="flex justify-between items-start gap-2 border-b pb-2 ' + (g.estado === 'anulado' ? 'opacity-70 bg-red-50 rounded-lg p-2' : '') + '">'
-      + '<div class="flex-1"><p class="text-xs font-bold">' + escapeHtml(g.descripcion || '') + '</p>'
-      + '<p class="text-[11px] text-slate-500">' + escapeHtml(lineaMeta) + '</p>'
-      + (g.estado === 'anulado' ? '<p class="text-[11px] font-bold text-red-600 mt-1">⛔ ANULADO: ' + escapeHtml(g.motivo_anulacion || 'sin motivo') + '</p>' : '')
-      + '</div><div class="flex flex-col items-end gap-1">'
-      + '<span class="text-xs font-bold ' + (g.estado === 'anulado' ? 'text-slate-500 line-through' : 'text-red-600') + '">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span>'
-      + (g.estado === 'anulado' ? '' : '<div class="flex gap-1">'
-        + '<button type="button" data-accion="anular" data-id="' + g.id + '" class="btn-gasto-accion text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button></div>')
-      + '</div></div>';
-  }).join('');
+      var lineaMeta = (g.categoria || '')
+        + ' - ' + (g.fecha || '')
+        + (g.proveedor_beneficiario ? ' - ' + g.proveedor_beneficiario : '')
+        + (compInfo.length > 0 ? ' - ' + compInfo.join(' · ') : '');
 
-  cont.querySelectorAll('.btn-gasto-accion').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var gasto = window.gastosRecientesCache.find(function (item) { return String(item.id) === String(btn.dataset.id); });
-      if (!gasto) return;
-      window.abrirEditarGasto(gasto.id, gasto.descripcion || '', gasto.categoria || 'otros', gasto.monto, gasto.proveedor_beneficiario || '', gasto.fecha || '');
-      setTimeout(function () {
-        var inp = document.getElementById('edit-gasto-motivo-anulacion');
-        if (inp) inp.focus();
-      }, 100);
+      return '<div class="flex justify-between items-start gap-2 border-b pb-2 ' + (g.estado === 'anulado' ? 'opacity-70 bg-red-50 rounded-lg p-2' : '') + '">'
+        + '<div class="flex-1"><p class="text-xs font-bold">' + escapeHtml(g.descripcion || '') + '</p>'
+        + '<p class="text-[11px] text-slate-500">' + escapeHtml(lineaMeta) + '</p>'
+        + (g.estado === 'anulado' ? '<p class="text-[11px] font-bold text-red-600 mt-1">⛔ ANULADO: ' + escapeHtml(g.motivo_anulacion || 'sin motivo') + '</p>' : '')
+        + '</div><div class="flex flex-col items-end gap-1">'
+        + '<span class="text-xs font-bold ' + (g.estado === 'anulado' ? 'text-slate-500 line-through' : 'text-red-600') + '">Gs. ' + Number(g.monto).toLocaleString('es-PY') + '</span>'
+        + (g.estado === 'anulado' ? '' : '<div class="flex gap-1">'
+          + '<button type="button" data-accion="anular" data-id="' + escapeHtml(g.id) + '" class="btn-gasto-accion text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-lg">Anular</button></div>')
+        + '</div></div>';
+    }).join('');
+
+    cont.querySelectorAll('.btn-gasto-accion').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var gasto = window.gastosRecientesCache.find(function (item) { return String(item.id) === String(btn.dataset.id); });
+        if (!gasto) return;
+        window.abrirEditarGasto(gasto.id, gasto.descripcion || '', gasto.categoria || 'otros', gasto.monto, gasto.proveedor_beneficiario || '', gasto.fecha || '');
+        setTimeout(function () {
+          var inp = document.getElementById('edit-gasto-motivo-anulacion');
+          if (inp) inp.focus();
+        }, 100);
+      });
     });
-  });
+  } catch (e) {
+    console.warn('Error cargando gastos recientes:', e);
+    cont.innerHTML = '<p class="text-xs text-red-600 text-center">Error al cargar gastos: ' + escapeHtml(e?.message || e) + '</p>';
+  }
 };
 window.cargarGastos = window.cargarGastosRecientes;
 

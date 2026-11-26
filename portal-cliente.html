@@ -89,8 +89,10 @@
     let aplicandoSaldo = false;
     let actualizandoPreferencia = false;
     function escapeHtml(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-    function obtenerEmailInterno(c){return 'ci_'+c.trim()+'@juntasaneamiento.local';}
-    function extraerCedulaDesdeEmail(e){if(!e) return null; const m=e.match(/^ci_(.+)@juntasaneamiento\.local$/i); return m?m[1]:null;}
+    function normalizarCedula(c){return String(c||'').replace(/\D/g,'').trim();}
+    function obtenerEmailInterno(c){return 'ci_'+normalizarCedula(c)+'@juntasaneamiento.local';}
+    function extraerCedulaDesdeEmail(e){if(!e) return null; const m=e.match(/^ci_(.+)@juntasaneamiento\.local$/i); return m?normalizarCedula(m[1]):null;}
+    function traducirErrorClave(msg){const m=String(msg||'').toLowerCase();if(m.includes('different from the old password')) return 'La nueva contraseña debe ser distinta a la anterior.';if(m.includes('at least')||m.includes('weak')) return 'La contraseña es muy débil o corta (mínimo 6 caracteres).';return msg||'No se pudo actualizar la contraseña.';}
     function mostrarMensajeAuth(t,e){const el=document.getElementById('auth-msg');el.textContent=t;el.className=e?'mt-4 p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600':'mt-4 p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700';el.classList.remove('hidden');}
     function mostrarMensajeSaldo(t,e){const el=document.getElementById('saldo-msg');if(!el)return;el.textContent=t;el.className=e?'p-3 rounded-xl text-xs text-center font-medium bg-red-50 text-red-600 border border-red-200':'p-3 rounded-xl text-xs text-center font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';el.classList.remove('hidden');}
     function setBotonEstado(b,t,d){if(!b)return;b.textContent=t;b.disabled=d;}
@@ -101,8 +103,10 @@
     window.cambiarTab = function(tab){document.getElementById('auth-msg').classList.add('hidden');const tl=document.getElementById('tab-login');const ta=document.getElementById('tab-activar');const bl=document.getElementById('box-login');const ba=document.getElementById('box-activar');if(tab==='login'){tl.className='py-2 text-xs font-bold rounded-lg bg-white text-blue-600 shadow-sm';ta.className='py-2 text-xs font-bold rounded-lg text-slate-500';bl.classList.remove('hidden');ba.classList.add('hidden');}else{ta.className='py-2 text-xs font-bold rounded-lg bg-white text-emerald-600 shadow-sm';tl.className='py-2 text-xs font-bold rounded-lg text-slate-500';ba.classList.remove('hidden');bl.classList.add('hidden');}};
 
     async function validarSocioPorCedula(cedula) {
+      const cedulaLimpia = normalizarCedula(cedula);
+      if (!cedulaLimpia) throw new Error('Ingresá tu número de cédula.');
       const supabase = window.supabaseClient;
-      const { data, error } = await supabase.rpc('obtener_datos_socio', { p_cedula: cedula });
+      const { data, error } = await supabase.rpc('obtener_datos_socio', { p_cedula: cedulaLimpia });
       if (error) throw new Error('Error al verificar. Intentá de nuevo.');
       if (!data || !data.existe) {
         if (data?.inactivo) throw new Error('Esta cuenta está INACTIVA. Contactá con la Junta.');
@@ -113,7 +117,7 @@
 
     window.manejarActivacionCuenta = async function(event){
       event.preventDefault();
-      const cedula=document.getElementById('reg-cedula').value.trim();
+      const cedula=normalizarCedula(document.getElementById('reg-cedula').value);
       const password=document.getElementById('reg-password').value;
       const passwordConf=document.getElementById('reg-password-conf').value;
       const btn=document.getElementById('btn-activar');
@@ -136,7 +140,7 @@
     };
     window.manejarLoginCliente = async function(event){
       event.preventDefault();
-      const cedula=document.getElementById('login-cedula').value.trim();
+      const cedula=normalizarCedula(document.getElementById('login-cedula').value);
       const password=document.getElementById('login-password').value;
       const btn=document.getElementById('btn-login');
       const textoOriginal='Consultar Estado de Cuenta';
@@ -154,12 +158,13 @@
       }catch(err){try{await window.supabaseClient.auth.signOut();}catch(_e){}mostrarMensajeAuth(err.message,true);setBotonEstado(btn,textoOriginal,false);}
     };
     async function cargarDatosPortalCliente(cedula){
+      const cedulaLimpia=normalizarCedula(cedula);
       const supabase=window.supabaseClient;
       const u=await supabase.auth.getUser();
       const user=u.data.user;
-      const emailEsperado=obtenerEmailInterno(cedula);
-      if(!user||user.email!==emailEsperado){await supabase.auth.signOut();throw new Error('Sesión no válida para esta cédula.');}
-      const datosSocio=await validarSocioPorCedula(cedula);
+      const emailEsperado=obtenerEmailInterno(cedulaLimpia);
+      if(!user||!user.email||user.email.toLowerCase()!==emailEsperado.toLowerCase()){await supabase.auth.signOut();throw new Error('Sesión no válida para esta cédula.');}
+      const datosSocio=await validarSocioPorCedula(cedulaLimpia);
       socioActual=datosSocio;
       const{persona,cliente}=datosSocio;
       const nombreCompleto=`${persona.nombre} ${persona.apellido||''}`.trim();
@@ -237,7 +242,7 @@
       const msgEl=document.getElementById('pass-msg');
       if(nuevaPass!==confirmaPass||nuevaPass.length<6){msgEl.textContent='Verificá que coincidan y tengan mínimo 6 caracteres.';msgEl.className='mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600';msgEl.classList.remove('hidden');return;}
       const r=await window.supabaseClient.auth.updateUser({password:nuevaPass});
-      msgEl.textContent=r.error?r.error.message:'¡Contraseña actualizada!';
+      msgEl.textContent=r.error?traducirErrorClave(r.error.message):'¡Contraseña actualizada!';
       msgEl.className=r.error?'mt-2 text-xs text-center font-medium p-2 rounded-lg bg-red-50 text-red-600':'mt-2 text-xs text-center font-medium p-2 rounded-lg bg-emerald-50 text-emerald-700';
       msgEl.classList.remove('hidden');
       if(!r.error) document.getElementById('form-cambiar-pass').reset();

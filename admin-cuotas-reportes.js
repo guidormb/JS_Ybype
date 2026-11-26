@@ -1,21 +1,27 @@
 // admin-cuotas-reportes.js - Reportes + Balance + Cuotas
 const OFFSET_ZONA_HORARIA = '-03:00';
+let generandoCuotasMasivas = false;
+
+function fechaHoyPYFormateada() {
+  return new Date().toLocaleDateString('es-PY', { timeZone: 'America/Asuncion' });
+}
 
 window.generarReporteCobranzas = async function() {
   const msgEl = document.getElementById('reporte-msg');
   const areaEl = document.getElementById('area-impresion-reporte');
   const btnImprimir = document.getElementById('btn-imprimir-reporte');
   const btnConsultar = document.getElementById('btn-generar-reporte');
-  msgEl.classList.add('hidden');
-  areaEl.classList.add('hidden');
-  btnImprimir.classList.add('hidden');
+
+  msgEl?.classList.add('hidden');
+  areaEl?.classList.add('hidden');
+  btnImprimir?.classList.add('hidden');
 
   let fechaInicioISO = '';
   let fechaFinISO = '';
   let tituloPeriodo = '';
 
   if (modoReporteActual === 'mes') {
-    const valorMes = document.getElementById('rep-mes-input').value;
+    const valorMes = document.getElementById('rep-mes-input')?.value || '';
     if (!valorMes) {
       mostrarMensajeAdmin('reporte-msg', 'Seleccioná un mes y año para el reporte.', true);
       return;
@@ -29,8 +35,8 @@ window.generarReporteCobranzas = async function() {
     const nombresMes = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     tituloPeriodo = `Cobranzas Mensuales - ${nombresMes[mes]} ${anio}`;
   } else {
-    const desde = document.getElementById('rep-fecha-desde').value;
-    const hasta = document.getElementById('rep-fecha-hasta').value;
+    const desde = document.getElementById('rep-fecha-desde')?.value || '';
+    const hasta = document.getElementById('rep-fecha-hasta')?.value || '';
     if (!desde || !hasta) {
       mostrarMensajeAdmin('reporte-msg', 'Completá la fecha Desde y Hasta.', true);
       return;
@@ -44,8 +50,11 @@ window.generarReporteCobranzas = async function() {
     tituloPeriodo = `Cobros del ${desde.split('-').reverse().join('/')} al ${hasta.split('-').reverse().join('/')}`;
   }
 
-  btnConsultar.textContent = 'Consultando...';
-  btnConsultar.disabled = true;
+  const textoOriginalBtn = btnConsultar ? btnConsultar.textContent : 'Consultar Cobros';
+  if (btnConsultar) {
+    btnConsultar.textContent = 'Consultando...';
+    btnConsultar.disabled = true;
+  }
 
   try {
     const { data, error } = await supabaseClient
@@ -77,48 +86,58 @@ window.generarReporteCobranzas = async function() {
 
     const totalGeneral = totalFacturas + totalAnticipos;
 
-    document.getElementById('rep-titulo-periodo').textContent = tituloPeriodo;
-    document.getElementById('rep-fecha-emision').textContent = 'Emitido: ' + new Date().toLocaleDateString('es-PY') + ' | Movimientos: ' + lista.length;
-    document.getElementById('rep-total-facturas').textContent = 'Gs. ' + totalFacturas.toLocaleString('es-PY');
-    document.getElementById('rep-total-anticipos').textContent = 'Gs. ' + totalAnticipos.toLocaleString('es-PY');
-    document.getElementById('rep-total-general').textContent = 'Gs. ' + totalGeneral.toLocaleString('es-PY');
+    const elPeriodo = document.getElementById('rep-titulo-periodo');
+    const elEmision = document.getElementById('rep-fecha-emision');
+    const elFacturas = document.getElementById('rep-total-facturas');
+    const elAnticipos = document.getElementById('rep-total-anticipos');
+    const elGeneral = document.getElementById('rep-total-general');
+
+    if (elPeriodo) elPeriodo.textContent = tituloPeriodo;
+    if (elEmision) elEmision.textContent = 'Emitido: ' + fechaHoyPYFormateada() + ' | Movimientos: ' + lista.length;
+    if (elFacturas) elFacturas.textContent = 'Gs. ' + totalFacturas.toLocaleString('es-PY');
+    if (elAnticipos) elAnticipos.textContent = 'Gs. ' + totalAnticipos.toLocaleString('es-PY');
+    if (elGeneral) elGeneral.textContent = 'Gs. ' + totalGeneral.toLocaleString('es-PY');
 
     const tablaCont = document.getElementById('rep-tabla-contenedor');
-    if (lista.length === 0) {
-      tablaCont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No se encontraron cobranzas en este período.</p>';
-    } else {
-      const filasHtml = lista.map((p) => {
-        const c = p.clientes || {};
-        const per = c.personas || {};
-        const fecha = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY') : '-';
-        const conceptoLower = String(p.concepto || '').toLowerCase();
-        const metodoLower = String(p.metodo || '').toLowerCase();
-        const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
-        const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
-        const tipo = esUsoSaldoFavor ? 'Débito Saldo' : (esAnticipo ? 'Anticipo' : 'Factura');
+    if (tablaCont) {
+      if (lista.length === 0) {
+        tablaCont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No se encontraron cobranzas en este período.</p>';
+      } else {
+        const filasHtml = lista.map((p) => {
+          const c = p.clientes || {};
+          const per = c.personas || {};
+          const fecha = p.created_at ? new Date(p.created_at).toLocaleDateString('es-PY', { timeZone: 'America/Asuncion' }) : '-';
+          const conceptoLower = String(p.concepto || '').toLowerCase();
+          const metodoLower = String(p.metodo || '').toLowerCase();
+          const esUsoSaldoFavor = metodoLower === 'saldo_a_favor' || conceptoLower.includes('saldo a favor');
+          const esAnticipo = !p.factura_id || conceptoLower.includes('anticipo');
+          const tipo = esUsoSaldoFavor ? 'Débito Saldo' : (esAnticipo ? 'Anticipo' : 'Factura');
 
-        return '<tr class="border-b border-slate-200">' +
-          '<td class="py-2 pr-2 whitespace-nowrap">' + escapeHtml(fecha) + '</td>' +
-          '<td class="py-2 pr-2 font-bold">' + escapeHtml(c.nro_cuenta || '-') + '</td>' +
-          '<td class="py-2 pr-2">' + escapeHtml(((per.nombre || '') + ' ' + (per.apellido || '')).trim()) + '</td>' +
-          '<td class="py-2 pr-2">' + escapeHtml(tipo) + ' (' + escapeHtml(p.metodo || '-') + ')</td>' +
-          '<td class="py-2 text-right font-bold whitespace-nowrap">Gs. ' + Number(p.monto_pagado || 0).toLocaleString('es-PY') + '</td>' +
-          '</tr>';
-      }).join('');
+          return '<tr class="border-b border-slate-200">' +
+            '<td class="py-2 pr-2 whitespace-nowrap">' + escapeHtml(fecha) + '</td>' +
+            '<td class="py-2 pr-2 font-bold">' + escapeHtml(c.nro_cuenta || '-') + '</td>' +
+            '<td class="py-2 pr-2">' + escapeHtml(((per.nombre || '') + ' ' + (per.apellido || '')).trim()) + '</td>' +
+            '<td class="py-2 pr-2">' + escapeHtml(tipo) + ' (' + escapeHtml(p.metodo || '-') + ')</td>' +
+            '<td class="py-2 text-right font-bold whitespace-nowrap">Gs. ' + Number(p.monto_pagado || 0).toLocaleString('es-PY') + '</td>' +
+            '</tr>';
+        }).join('');
 
-      tablaCont.innerHTML = '<table class="w-full text-[11px] text-left border-collapse">' +
-        '<thead><tr class="border-b-2 border-slate-300 text-slate-600 uppercase"><th class="py-2 pr-2">Fecha</th><th class="py-2 pr-2">Cta</th><th class="py-2 pr-2">Socio</th><th class="py-2 pr-2">Detalle</th><th class="py-2 text-right">Monto</th></tr></thead>' +
-        '<tbody>' + filasHtml + '</tbody>' +
-        '<tfoot><tr class="border-t-2 border-slate-400 font-extrabold text-slate-900"><td colspan="4" class="py-2 text-right pr-2">TOTAL EFECTIVO INGRESADO:</td><td class="py-2 text-right whitespace-nowrap">Gs. ' + totalGeneral.toLocaleString('es-PY') + '</td></tr></tfoot></table>';
+        tablaCont.innerHTML = '<table class="w-full text-[11px] text-left border-collapse">' +
+          '<thead><tr class="border-b-2 border-slate-300 text-slate-600 uppercase"><th class="py-2 pr-2">Fecha</th><th class="py-2 pr-2">Cta</th><th class="py-2 pr-2">Socio</th><th class="py-2 pr-2">Detalle</th><th class="py-2 text-right">Monto</th></tr></thead>' +
+          '<tbody>' + filasHtml + '</tbody>' +
+          '<tfoot><tr class="border-t-2 border-slate-400 font-extrabold text-slate-900"><td colspan="4" class="py-2 text-right pr-2">TOTAL EFECTIVO INGRESADO:</td><td class="py-2 text-right whitespace-nowrap">Gs. ' + totalGeneral.toLocaleString('es-PY') + '</td></tr></tfoot></table>';
+      }
     }
 
-    areaEl.classList.remove('hidden');
-    if (lista.length > 0) btnImprimir.classList.remove('hidden');
+    areaEl?.classList.remove('hidden');
+    if (lista.length > 0) btnImprimir?.classList.remove('hidden');
   } catch (e) {
-    mostrarMensajeAdmin('reporte-msg', 'Error al generar reporte: ' + e.message, true);
+    mostrarMensajeAdmin('reporte-msg', 'Error al generar reporte: ' + (e?.message || e), true);
   } finally {
-    btnConsultar.textContent = 'Consultar Cobros';
-    btnConsultar.disabled = false;
+    if (btnConsultar) {
+      btnConsultar.textContent = textoOriginalBtn;
+      btnConsultar.disabled = false;
+    }
   }
 };
 
@@ -130,13 +149,13 @@ window.cargarTotalPorCobrar = async function() {
     .gt('saldo_pendiente', 0);
 
   if (error) {
-    console.log('Error por cobrar:', error.message);
+    console.warn('Error por cobrar:', error.message);
     return;
   }
 
   const lista = data || [];
   const total = lista.reduce((a, f) => a + Number(f.saldo_pendiente || 0), 0);
-  const sociosUnicos = new Set(lista.map(f => f.cliente_id)).size;
+  const sociosUnicos = new Set(lista.map((f) => f.cliente_id)).size;
 
   const elTotal = document.getElementById('total-por-cobrar');
   if (elTotal) elTotal.textContent = 'Gs. ' + total.toLocaleString('es-PY');
@@ -153,20 +172,20 @@ async function cargarBalance() {
   try {
     const [rp, rg, rc, rd] = await Promise.all([
       supabaseClient
-      .from('pagos')
-      .select('monto_pagado, factura_id, concepto, metodo, estado')
-      .neq('estado', 'anulado'),
+        .from('pagos')
+        .select('monto_pagado, factura_id, concepto, metodo, estado')
+        .neq('estado', 'anulado'),
       supabaseClient
-      .from('gastos')
-      .select('monto, estado')
-      .eq('estado', 'activo'),
+        .from('gastos')
+        .select('monto, estado')
+        .eq('estado', 'activo'),
       supabaseClient
-      .from('clientes')
-      .select('saldo_favor'),
+        .from('clientes')
+        .select('saldo_favor'),
       supabaseClient
-      .from('donaciones')
-      .select('monto, estado')
-      .eq('estado', 'activo')
+        .from('donaciones')
+        .select('monto, estado')
+        .eq('estado', 'activo')
     ]);
 
     const pagos = (rp.data || []).filter((p) => p.estado !== 'anulado');
@@ -192,9 +211,7 @@ async function cargarBalance() {
     const totalAnticiposClientes = (rc.data || []).reduce((a, c) => a + Number(c.saldo_favor || 0), 0);
     const totalDonaciones = (rd.data || []).reduce((a, d) => a + Number(d.monto || 0), 0);
 
-    // CAJA REAL = ingreso efectivo + donaciones - gastos activos
     const totalGeneralSaldos = totalCobradoEfectivo + totalDonaciones - totalGastado;
-    // PROPIO DE LA JUNTA = caja real - anticipos pendientes de clientes
     const balanceCaja = totalGeneralSaldos - totalAnticiposClientes;
 
     const setTexto = (id, valor) => {
@@ -247,6 +264,8 @@ async function cargarBalance() {
 
 window.generarCuotasMasivas = async function(event) {
   event.preventDefault();
+  if (generandoCuotasMasivas) return;
+
   const mes = String(document.getElementById('inp-mes-cuota')?.value || '').trim();
   const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-cuota')?.value);
 
@@ -257,6 +276,7 @@ window.generarCuotasMasivas = async function(event) {
 
   const btn = document.getElementById('btn-generar-cuotas');
   const textoOriginal = btn ? btn.textContent : 'Generar Cuotas a Todos';
+  generandoCuotasMasivas = true;
   if (btn) {
     btn.textContent = 'Generando...';
     btn.disabled = true;
@@ -298,15 +318,16 @@ window.generarCuotasMasivas = async function(event) {
       .select('id');
     if (errInsert) throw errInsert;
 
-    await cargarDatosAdmin();
+    if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
     mostrarMensajeAdmin(
       'cuotas-msg',
       'Cuotas generadas: ' + (insertadas ? insertadas.length : nuevas.length) + ' socios. Ya tenían: ' + yaTienen.size,
       false
     );
   } catch (e) {
-    mostrarMensajeAdmin('cuotas-msg', 'Error: ' + e.message, true);
+    mostrarMensajeAdmin('cuotas-msg', 'Error: ' + (e?.message || e), true);
   } finally {
+    generandoCuotasMasivas = false;
     if (btn) {
       btn.textContent = textoOriginal;
       btn.disabled = false;

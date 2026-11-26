@@ -26,6 +26,7 @@
           + Nuevo
         </button>
         <a
+          id="btn-volver-caja"
           href="./admin-junta.html"
           class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-700 hover:bg-slate-600 text-white"
         >
@@ -181,5 +182,26 @@
   </div>
 
   <script src="./admin-proveedores.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const inpTimbrado = document.getElementById('prov-timbrado');
+      if (inpTimbrado) {
+        inpTimbrado.addEventListener('input', () => {
+          inpTimbrado.value = inpTimbrado.value.replace(/\D/g, '').slice(0, 8);
+        });
+      }
+
+      const linkCaja = document.getElementById('btn-volver-caja');
+      if (linkCaja && window.parent && window.parent !== window) {
+        const btnCajaMenu = window.parent.document.querySelector('.nav-btn[data-src*="admin-junta.html"]');
+        if (btnCajaMenu) {
+          linkCaja.addEventListener('click', (e) => {
+            e.preventDefault();
+            btnCajaMenu.click();
+          });
+        }
+      }
+    });
+  </script>
 </body>
 </html>
