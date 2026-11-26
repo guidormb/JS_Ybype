@@ -19,7 +19,7 @@ jobs:
             exit 1
           fi
 
-          CLEAN_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          CLEAN_URL=$(printf '%s' "$SUPABASE_URL" | tr -cd '[:graph:]')
           BASE_URL="${CLEAN_URL%/}"
 
           STATUS=$(curl -sS -o /tmp/supabase_body.txt -w "%{http_code}" \
