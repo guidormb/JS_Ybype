@@ -1,4 +1,4 @@
-// admin-cobros.js - VERSIÓN FINAL PULIDA + ANULACIÓN LÓGICA EN PAGOS + CANDADO ANTICIPO
+// admin-cobros.js - VERSIÓN FINAL PULIDA + ANULACIÓN LÓGICA EN PAGOS + CANDADO ANTICIPO + VALIDACIÓN ESTRICTA DE ERRORES
 // Bloqueo total para cuentas INACTIVAS (clientes.activo = false)
 // - No cobra, no genera anticipo, no aplica saldo a favor
 
@@ -335,13 +335,19 @@ async function crearDocumentoAnticipo(clienteId, montoAnticipo, metodo, motivo) 
   });
   if (errPago) throw errPago;
 
-  const { data: clienteActual } = await supabaseClient.from('clientes').select('saldo_favor').eq('id', clienteId).single();
-  const saldoActual = clienteActual ? Number(clienteActual.saldo_favor || 0) : 0;
-  const { error: errCli } = await supabaseClient
+  const { data: clienteActual, error: errCliLeer } = await supabaseClient
+    .from('clientes')
+    .select('saldo_favor')
+    .eq('id', clienteId)
+    .single();
+  if (errCliLeer) throw errCliLeer;
+
+  const saldoActual = Number(clienteActual?.saldo_favor || 0);
+  const { error: errCliUpd } = await supabaseClient
     .from('clientes')
     .update({ saldo_favor: saldoActual + montoAnticipo })
     .eq('id', clienteId);
-  if (errCli) throw errCli;
+  if (errCliUpd) throw errCliUpd;
 }
 
 // ============================================================
@@ -386,8 +392,14 @@ window.registrarPago = async function (event) {
 
       for (let i = 0; i < checks.length; i++) {
         const facturaId = checks[i].value;
-        const { data: factura } = await supabaseClient.from('facturas').select('id, cliente_id, mes, monto, saldo_pendiente, estado').eq('id', facturaId).single();
-        if (factura) {
+        const { data: factura, error: errFacLeer } = await supabaseClient
+          .from('facturas')
+          .select('id, cliente_id, mes, monto, saldo_pendiente, estado')
+          .eq('id', facturaId)
+          .single();
+        if (errFacLeer) throw errFacLeer;
+
+        if (factura && factura.estado !== 'pagado' && Number(factura.saldo_pendiente || 0) > 0) {
           facturasData.push(factura);
           totalFacturasMarcadas += Number(factura.saldo_pendiente || 0);
         }
@@ -428,7 +440,11 @@ window.registrarPago = async function (event) {
         });
         if (errPago) throw errPago;
 
-        await supabaseClient.from('facturas').update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado }).eq('id', factura.id);
+        const { error: errFacUpd } = await supabaseClient
+          .from('facturas')
+          .update({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado })
+          .eq('id', factura.id);
+        if (errFacUpd) throw errFacUpd;
 
         if (nuevoSaldo === 0) {
           facturasCanceladas.push(factura.mes);
@@ -574,10 +590,9 @@ async function eliminarCobranza(pago) {
   const esAnticipo = !pago.factura_id || (!esUsoSaldoFavor && conceptoLower.includes('anticipo'));
 
   try {
-    // 1. CANDADO NUEVO - TU IDEA: Bloquear + avisar a qué factura se usó + NO anular nada
+    // 1. CANDADO NUEVO - Bloquear + avisar a qué factura se usó + NO anular nada
     // Si el anticipo ya se usó para amortizar una factura, no se puede anular el anticipo primero.
     // Primero hay que anular la cobranza con saldo a favor de esa factura, después volver acá.
-    // Bloquea aunque el saldo alcance, porque si no la factura quedaría pagada con plata que ya no existe.
     if (esAnticipo && pago.cliente_id) {
       const { data: consumos, error: errConsumos } = await supabaseClient
         .from('pagos')
@@ -645,11 +660,12 @@ async function eliminarCobranza(pago) {
 
     // 3. Si estaba asociado a una factura, devolver saldo pendiente sin superar el monto original
     if (pago.factura_id) {
-      const { data: factura } = await supabaseClient
+      const { data: factura, error: errFacRevLeer } = await supabaseClient
         .from('facturas')
         .select('id, monto, saldo_pendiente, estado')
         .eq('id', pago.factura_id)
         .single();
+      if (errFacRevLeer) throw errFacRevLeer;
 
       if (factura) {
         const montoOriginal = Number(factura.monto || 0);
@@ -658,43 +674,50 @@ async function eliminarCobranza(pago) {
           ? Math.min(montoOriginal, saldoActual + monto)
           : saldoActual + monto;
 
-        await supabaseClient
+        const { error: errFacRevUpd } = await supabaseClient
           .from('facturas')
           .update({
             saldo_pendiente: nuevoSaldo,
             estado: nuevoSaldo > 0 ? 'pendiente' : 'pagado'
           })
           .eq('id', factura.id);
+        if (errFacRevUpd) throw errFacRevUpd;
       }
 
       // Si el pago de la factura se hizo con saldo_a_favor, reintegrar ese saldo al cliente
       if (esUsoSaldoFavor && pago.cliente_id) {
-        const { data: cliente } = await supabaseClient
+        const { data: cliente, error: errCliSaldoLeer } = await supabaseClient
           .from('clientes')
           .select('saldo_favor')
           .eq('id', pago.cliente_id)
           .single();
+        if (errCliSaldoLeer) throw errCliSaldoLeer;
+
         if (cliente) {
           const nuevoSaldoFavor = Number(cliente.saldo_favor || 0) + monto;
-          await supabaseClient
+          const { error: errCliSaldoUpd } = await supabaseClient
             .from('clientes')
             .update({ saldo_favor: nuevoSaldoFavor })
             .eq('id', pago.cliente_id);
+          if (errCliSaldoUpd) throw errCliSaldoUpd;
         }
       }
     } else if (esAnticipo && pago.cliente_id) {
       // 4. Si es un anticipo directo no consumido, descontar del saldo_favor del cliente
-      const { data: cliente } = await supabaseClient
+      const { data: cliente, error: errCliAntLeer } = await supabaseClient
         .from('clientes')
         .select('saldo_favor')
         .eq('id', pago.cliente_id)
         .single();
+      if (errCliAntLeer) throw errCliAntLeer;
+
       if (cliente) {
         const nuevoSaldoFavor = Math.max(0, Number(cliente.saldo_favor || 0) - monto);
-        await supabaseClient
+        const { error: errCliAntUpd } = await supabaseClient
           .from('clientes')
           .update({ saldo_favor: nuevoSaldoFavor })
           .eq('id', pago.cliente_id);
+        if (errCliAntUpd) throw errCliAntUpd;
       }
     }
 
@@ -719,6 +742,7 @@ async function eliminarCobranza(pago) {
     mostrarMensajeAdmin('pago-msg', 'Error al anular: ' + e.message, true);
   }
 }
+
 // ============================================================
 // MODAL LISTA DE ANTICIPOS / SALDO A FAVOR
 // ============================================================
@@ -773,6 +797,7 @@ async function abrirListaAnticipos() {
 function cerrarListaAnticipos() {
   document.getElementById('modal-anticipos')?.classList.add('hidden');
 }
+
 // ============================================================
 // NRO. CUENTA AUTOMÁTICO - 001, 002, 003...
 // ============================================================
@@ -797,17 +822,17 @@ async function generarSiguienteNroCuenta() {
     return '001';
   }
 }
+
 // ============================================================
 // ENGANCHE AUTOMÁTICO - Sin tocar el guardado viejo
 // ============================================================
 
-// 1. Cuando se toca cualquier botón "Nuevo Socio" -> genera el 005
+// 1. Cuando se toca cualquier botón "Nuevo Socio" -> genera el siguiente número
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
   const texto = (btn.textContent || '').toLowerCase();
   if (texto.includes('nuevo socio') || texto.includes('+ socio') || btn.id === 'btn-nuevo-socio') {
-    // Esperamos un poquito a que abra el modal
     setTimeout(() => generarSiguienteNroCuenta(), 100);
   }
 });

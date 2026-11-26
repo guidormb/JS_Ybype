@@ -247,15 +247,21 @@ async function cargarBalance() {
 
 window.generarCuotasMasivas = async function(event) {
   event.preventDefault();
-  const mes = document.getElementById('inp-mes-cuota').value;
-  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-cuota').value);
-  if (!mes || !monto || monto <= 0) {
-    mostrarMensajeAdmin('cuotas-msg', 'Elegí mes y monto válido.', true);
+  const mes = String(document.getElementById('inp-mes-cuota')?.value || '').trim();
+  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-cuota')?.value);
+
+  if (!/^\d{4}-\d{2}$/.test(mes) || !monto || monto <= 0) {
+    mostrarMensajeAdmin('cuotas-msg', 'Elegí mes (AAAA-MM) y monto válido.', true);
     return;
   }
+
   const btn = document.getElementById('btn-generar-cuotas');
-  btn.textContent = 'Generando...';
-  btn.disabled = true;
+  const textoOriginal = btn ? btn.textContent : 'Generar Cuotas a Todos';
+  if (btn) {
+    btn.textContent = 'Generando...';
+    btn.disabled = true;
+  }
+
   try {
     const { data: clientes, error: errClientes } = await supabaseClient
       .from('clientes')
@@ -274,22 +280,36 @@ window.generarCuotasMasivas = async function(event) {
 
     const nuevas = clientes
       .filter((c) => !yaTienen.has(c.id))
-      .map((c) => ({ cliente_id: c.id, mes, monto, saldo_pendiente: monto, estado: 'pendiente' }));
+      .map((c) => ({
+        cliente_id: c.id,
+        mes,
+        monto,
+        saldo_pendiente: monto,
+        estado: 'pendiente'
+      }));
 
-    if (nuevas.length === 0) throw new Error('Ya se generaron cuotas para ' + mes);
+    if (nuevas.length === 0) {
+      throw new Error('Ya se generaron cuotas para ' + mes + ' en todos los socios activos.');
+    }
 
-    const { error } = await supabaseClient.from('facturas').insert(nuevas);
-    if (error) throw error;
+    const { data: insertadas, error: errInsert } = await supabaseClient
+      .from('facturas')
+      .insert(nuevas)
+      .select('id');
+    if (errInsert) throw errInsert;
 
     await cargarDatosAdmin();
     mostrarMensajeAdmin(
       'cuotas-msg',
-      'Cuotas generadas: ' + nuevas.length + ' socios. Ya tenían: ' + yaTienen.size,
+      'Cuotas generadas: ' + (insertadas ? insertadas.length : nuevas.length) + ' socios. Ya tenían: ' + yaTienen.size,
       false
     );
   } catch (e) {
     mostrarMensajeAdmin('cuotas-msg', 'Error: ' + e.message, true);
+  } finally {
+    if (btn) {
+      btn.textContent = textoOriginal;
+      btn.disabled = false;
+    }
   }
-  btn.textContent = 'Generar Cuotas a Todos';
-  btn.disabled = false;
 };
