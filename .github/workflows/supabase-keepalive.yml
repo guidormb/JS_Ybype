@@ -2,7 +2,6 @@ name: Keep Supabase Alive
 
 on:
   schedule:
-    # Cada 3 días a las 12:00 UTC (09:00 en Paraguay, America/Asuncion)
     - cron: '0 12 */3 * *'
   workflow_dispatch:
 
@@ -20,13 +19,16 @@ jobs:
             exit 1
           fi
 
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          BASE_URL="${SUPABASE_URL%/}"
+          STATUS=$(curl -sS -o /tmp/supabase_body.txt -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            -H "Prefer: count=exact" \
-            "${SUPABASE_URL}/rest/v1/cierres_mensuales?select=id&limit=1")
+            "${BASE_URL}/rest/v1/cierres_mensuales?select=id&limit=1")
 
           echo "Respuesta HTTP de Supabase: $STATUS"
+          cat /tmp/supabase_body.txt || true
+          echo ""
+
           if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
             exit 1
           fi
