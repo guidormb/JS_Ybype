@@ -22,6 +22,14 @@ jobs:
           CLEAN_URL=$(printf '%s' "$SUPABASE_URL" | tr -cd '[:graph:]')
           BASE_URL="${CLEAN_URL%/}"
 
+          case "$BASE_URL" in
+            https://*) ;;
+            *)
+              echo "SUPABASE_URL invalida: debe empezar con https://"
+              exit 1
+              ;;
+          esac
+
           STATUS=$(curl -sS -o /tmp/supabase_body.txt -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
