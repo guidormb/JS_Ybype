@@ -333,4 +333,89 @@ window.generarCuotasMasivas = async function(event) {
       btn.disabled = false;
     }
   }
+  // --- FACTURA INDIVIDUAL - VERSIÓN FINAL ---
+window.cargarSociosFacturaInd = async function() {
+  const selDestino = document.getElementById('sel-cliente-factura-ind');
+  const selOrigen = document.getElementById('sel-cliente');
+  if (!selDestino) return;
+
+  // 1. Si Cobrar ya cargó los socios, los copiamos. Es lo más rápido.
+  if (selOrigen && selOrigen.options.length > 1) {
+    selDestino.innerHTML = selOrigen.innerHTML;
+    return;
+  }
+
+  // 2. Si todavía no, los buscamos directo (por si se llama antes que cargarSocios)
+  try {
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .select('id, nro_cuenta, personas(nombre, apellido, cedula_ruc)')
+      .eq('activo', true)
+      .order('nro_cuenta');
+    if (error) throw error;
+    selDestino.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + (data || []).map(c => {
+      const p = c.personas || {};
+      const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
+      return `<option value="${c.id}">${escapeHtml(c.nro_cuenta || '')} - ${escapeHtml(nombre)} - ${escapeHtml(p.cedula_ruc || '')}</option>`;
+    }).join('');
+  } catch(e) {
+    console.warn('Error cargar socios factura ind:', e.message);
+  }
+};
+
+window.filtrarSociosFacturaInd = function() {
+  const filtro = (document.getElementById('filtro-socio-factura-ind')?.value || '').toLowerCase().trim();
+  const selOrigen = document.getElementById('sel-cliente');
+  const selDestino = document.getElementById('sel-cliente-factura-ind');
+  if (!selDestino || !selOrigen) return;
+
+  selDestino.innerHTML = '<option value="">-- Seleccioná Socio --</option>';
+  Array.from(selOrigen.options).forEach(opt => {
+    if (!opt.value) return;
+    if (!filtro || opt.text.toLowerCase().includes(filtro)) {
+      selDestino.appendChild(opt.cloneNode(true));
+    }
+  });
+};
+
+window.generarFacturaIndividual = async function(event) {
+  event.preventDefault();
+  const cliente_id = document.getElementById('sel-cliente-factura-ind')?.value || '';
+  const mes = String(document.getElementById('inp-mes-factura-ind')?.value || '').trim();
+  const tipo = document.getElementById('sel-tipo-factura-ind')?.value || 'cuota';
+  const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-factura-ind')?.value);
+
+  if (!cliente_id) return mostrarMensajeAdmin('factura-ind-msg', 'Seleccioná un socio.', true);
+  if (!/^\d{4}-\d{2}$/.test(mes)) return mostrarMensajeAdmin('factura-ind-msg', 'Elegí mes (AAAA-MM).', true);
+  if (!monto || monto <= 0) return mostrarMensajeAdmin('factura-ind-msg', 'Monto inválido.', true);
+
+  const btn = document.getElementById('btn-factura-ind');
+  const textoOriginal = btn ? btn.textContent : 'Emitir Factura';
+  if (btn) { btn.textContent = 'Emitiendo...'; btn.disabled = true; }
+
+  try {
+    if (tipo === 'cuota') {
+      const { data: existe, error: errExiste } = await supabaseClient
+        .from('facturas')
+        .select('id')
+        .eq('cliente_id', cliente_id)
+        .eq('mes', mes)
+        .limit(1);
+      if (errExiste) throw errExiste;
+      if (existe && existe.length > 0) throw new Error('Este socio ya tiene factura para ' + mes + '. Usá "Concepto extra" si es un cobro adicional.');
+    }
+
+    const { error: errInsert } = await supabaseClient
+      .from('facturas')
+      .insert([{ cliente_id, mes, monto, saldo_pendiente: monto, estado: 'pendiente' }]);
+    if (errInsert) throw errInsert;
+
+    if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
+    mostrarMensajeAdmin('factura-ind-msg', 'Factura de Gs. ' + monto.toLocaleString('es-PY') + ' emitida para ' + mes + '.', false);
+  } catch(e) {
+    mostrarMensajeAdmin('factura-ind-msg', 'Error: ' + (e?.message || e), true);
+  } finally {
+    if (btn) { btn.textContent = textoOriginal; btn.disabled = false; }
+  }
+}
 };

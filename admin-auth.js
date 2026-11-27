@@ -174,7 +174,8 @@ window.cargarDatosAdmin = async function() {
     window.cargarSocios ? window.cargarSocios() : Promise.resolve(),
     window.cargarPagosRecientes ? window.cargarPagosRecientes() : Promise.resolve(),
     window.cargarGastosRecientes ? window.cargarGastosRecientes() : Promise.resolve(),
-    window.cargarBalance ? window.cargarBalance() : Promise.resolve()
+    window.cargarBalance ? window.cargarBalance() : Promise.resolve(),
+    window.cargarSociosFacturaInd ? window.cargarSociosFacturaInd() : Promise.resolve()
   ]);
 };
 var cargarDatosAdmin = window.cargarDatosAdmin;

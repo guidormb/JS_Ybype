@@ -4,6 +4,7 @@
   'inp-monto-anticipo',
   'gasto-monto',
   'inp-monto-cuota',
+   'inp-monto-factura-ind',
   'edit-gasto-monto'
 ].forEach((id) => {
   const el = document.getElementById(id);
