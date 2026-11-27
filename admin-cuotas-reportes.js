@@ -333,19 +333,14 @@ window.generarCuotasMasivas = async function(event) {
       btn.disabled = false;
     }
   }
-  // --- FACTURA INDIVIDUAL - VERSIÓN FINAL ---
+};
+
+// --- FACTURA INDIVIDUAL - VERSIÓN LIMPIA Y FINAL ---
+let sociosFacturaIndCache = [];
+
 window.cargarSociosFacturaInd = async function() {
-  const selDestino = document.getElementById('sel-cliente-factura-ind');
-  const selOrigen = document.getElementById('sel-cliente');
-  if (!selDestino) return;
-
-  // 1. Si Cobrar ya cargó los socios, los copiamos. Es lo más rápido.
-  if (selOrigen && selOrigen.options.length > 1) {
-    selDestino.innerHTML = selOrigen.innerHTML;
-    return;
-  }
-
-  // 2. Si todavía no, los buscamos directo (por si se llama antes que cargarSocios)
+  const sel = document.getElementById('sel-cliente-factura-ind');
+  if (!sel) return;
   try {
     const { data, error } = await supabaseClient
       .from('clientes')
@@ -353,29 +348,31 @@ window.cargarSociosFacturaInd = async function() {
       .eq('activo', true)
       .order('nro_cuenta');
     if (error) throw error;
-    selDestino.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + (data || []).map(c => {
+    sociosFacturaIndCache = data || [];
+    sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + sociosFacturaIndCache.map(c => {
       const p = c.personas || {};
       const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
       return `<option value="${c.id}">${escapeHtml(c.nro_cuenta || '')} - ${escapeHtml(nombre)} - ${escapeHtml(p.cedula_ruc || '')}</option>`;
     }).join('');
   } catch(e) {
-    console.warn('Error cargar socios factura ind:', e.message);
+    console.error('Error cargar socios factura ind:', e);
   }
 };
 
 window.filtrarSociosFacturaInd = function() {
   const filtro = (document.getElementById('filtro-socio-factura-ind')?.value || '').toLowerCase().trim();
-  const selOrigen = document.getElementById('sel-cliente');
-  const selDestino = document.getElementById('sel-cliente-factura-ind');
-  if (!selDestino || !selOrigen) return;
-
-  selDestino.innerHTML = '<option value="">-- Seleccioná Socio --</option>';
-  Array.from(selOrigen.options).forEach(opt => {
-    if (!opt.value) return;
-    if (!filtro || opt.text.toLowerCase().includes(filtro)) {
-      selDestino.appendChild(opt.cloneNode(true));
-    }
+  const sel = document.getElementById('sel-cliente-factura-ind');
+  if (!sel) return;
+  const lista = !filtro ? sociosFacturaIndCache : sociosFacturaIndCache.filter(c => {
+    const p = c.personas || {};
+    const texto = `${c.nro_cuenta || ''} ${p.nombre || ''} ${p.apellido || ''} ${p.cedula_ruc || ''}`.toLowerCase();
+    return texto.includes(filtro);
   });
+  sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + lista.map(c => {
+    const p = c.personas || {};
+    const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
+    return `<option value="${c.id}">${escapeHtml(c.nro_cuenta || '')} - ${escapeHtml(nombre)} - ${escapeHtml(p.cedula_ruc || '')}</option>`;
+  }).join('');
 };
 
 window.generarFacturaIndividual = async function(event) {
@@ -417,5 +414,4 @@ window.generarFacturaIndividual = async function(event) {
   } finally {
     if (btn) { btn.textContent = textoOriginal; btn.disabled = false; }
   }
-}
 };
