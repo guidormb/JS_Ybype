@@ -375,11 +375,31 @@ window.filtrarSociosFacturaInd = function() {
   }).join('');
 };
 
+window.toggleConceptoOtroInd = function() {
+  const sel = document.getElementById('sel-concepto-factura-ind');
+  const wrap = document.getElementById('wrap-concepto-otro-ind');
+  if (!sel || !wrap) return;
+  if (sel.value === 'Otros') {
+    wrap.classList.remove('hidden');
+    document.getElementById('inp-concepto-otro-ind')?.focus();
+  } else {
+    wrap.classList.add('hidden');
+  }
+};
+
 window.generarFacturaIndividual = async function(event) {
   event.preventDefault();
   const cliente_id = document.getElementById('sel-cliente-factura-ind')?.value || '';
   const mes = String(document.getElementById('inp-mes-factura-ind')?.value || '').trim();
-  const tipo = document.getElementById('sel-tipo-factura-ind')?.value || 'cuota';
+  const conceptoSel = document.getElementById('sel-concepto-factura-ind')?.value || 'Cuota mensual';
+  let concepto = conceptoSel;
+
+  // Si eligió Otros, usa lo que escribió en el campo vacío
+  if (conceptoSel === 'Otros') {
+    concepto = String(document.getElementById('inp-concepto-otro-ind')?.value || '').trim();
+    if (!concepto) return mostrarMensajeAdmin('factura-ind-msg', 'Escribí el concepto para "Otros".', true);
+  }
+
   const monto = limpiarGuaraniesInput(document.getElementById('inp-monto-factura-ind')?.value);
 
   if (!cliente_id) return mostrarMensajeAdmin('factura-ind-msg', 'Seleccioná un socio.', true);
@@ -391,24 +411,29 @@ window.generarFacturaIndividual = async function(event) {
   if (btn) { btn.textContent = 'Emitiendo...'; btn.disabled = true; }
 
   try {
-    if (tipo === 'cuota') {
+    // Solo la Cuota mensual no se puede duplicar. Los demás conceptos sí se pueden repetir.
+    if (concepto === 'Cuota mensual') {
       const { data: existe, error: errExiste } = await supabaseClient
         .from('facturas')
         .select('id')
         .eq('cliente_id', cliente_id)
         .eq('mes', mes)
+        .eq('concepto', 'Cuota mensual')
         .limit(1);
       if (errExiste) throw errExiste;
-      if (existe && existe.length > 0) throw new Error('Este socio ya tiene factura para ' + mes + '. Usá "Concepto extra" si es un cobro adicional.');
+      if (existe && existe.length > 0) throw new Error('Este socio ya tiene Cuota mensual para ' + mes + '.');
     }
 
     const { error: errInsert } = await supabaseClient
       .from('facturas')
-      .insert([{ cliente_id, mes, monto, saldo_pendiente: monto, estado: 'pendiente' }]);
+      .insert([{ cliente_id, mes, monto, saldo_pendiente: monto, estado: 'pendiente', concepto }]);
     if (errInsert) throw errInsert;
 
     if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
-    mostrarMensajeAdmin('factura-ind-msg', 'Factura de Gs. ' + monto.toLocaleString('es-PY') + ' emitida para ' + mes + '.', false);
+    mostrarMensajeAdmin('factura-ind-msg', concepto + ' de Gs. ' + monto.toLocaleString('es-PY') + ' emitida para ' + mes + '.', false);
+    // Limpia el campo Otros para la próxima
+    const inpOtro = document.getElementById('inp-concepto-otro-ind');
+    if (inpOtro) inpOtro.value = '';
   } catch(e) {
     mostrarMensajeAdmin('factura-ind-msg', 'Error: ' + (e?.message || e), true);
   } finally {
