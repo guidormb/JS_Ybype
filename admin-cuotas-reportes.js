@@ -467,20 +467,61 @@ window.generarFacturaIndividual = async function(event) {
 // --- LISTA FACTURAS EMITIDAS - ÚLTIMAS 6 + BUSCADOR ---
 let facturasEmitidasIndCache = [];
 
+function escapeHtmlSeguro(t) {
+  return String(t ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [m]));
+}
+
 window.cargarFacturasEmitidasInd = async function() {
   const cont = document.getElementById('lista-facturas-emitidas-ind');
   if (!cont) return;
+  cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
   try {
-    const { data, error } = await supabaseClient
+    // 1. Trae facturas sin JOIN, para que no falle por nombre de relación
+    const { data: facturas, error: errF } = await supabaseClient
       .from('facturas')
-      .select('id, created_at, mes, monto, saldo_pendiente, estado, concepto, clientes(nro_cuenta, personas(nombre, apellido, cedula_ruc))')
+      .select('id, created_at, mes, monto, saldo_pendiente, estado, concepto, cliente_id')
       .order('created_at', { ascending: false })
       .limit(50);
-    if (error) throw error;
-    facturasEmitidasIndCache = data || [];
+    if (errF) throw errF;
+    
+    // 2. Trae los clientes de esas facturas
+    const idsClientes = [...new Set((facturas || []).map(f => f.cliente_id).filter(Boolean))];
+    let mapaClientes = {};
+    if (idsClientes.length > 0) {
+      const { data: clientes } = await supabaseClient
+        .from('clientes')
+        .select('*')
+        .in('id', idsClientes);
+      (clientes || []).forEach(c => { mapaClientes[c.id] = c; });
+    }
+    
+    // 3. Trae las personas de esos clientes
+    const idsPersonas = [...new Set(Object.values(mapaClientes).map(c => c.persona_id || c.personas_id || c.cliente_id).filter(Boolean))];
+    let mapaPersonas = {};
+    if (idsPersonas.length > 0) {
+      const { data: personas } = await supabaseClient
+        .from('personas')
+        .select('*')
+        .in('id', idsPersonas);
+      (personas || []).forEach(p => { mapaPersonas[p.id] = p; });
+    }
+    
+    facturasEmitidasIndCache = (facturas || []).map(f => {
+      const c = mapaClientes[f.cliente_id] || {};
+      // El cliente puede tener los datos directo o en personas
+      const p = mapaPersonas[c.persona_id || c.personas_id] || c || {};
+      return {
+        ...f,
+        _nro_cuenta: c.nro_cuenta || c.cuenta || '-',
+        _nombre: ((p.nombre || c.nombre || '') + ' ' + (p.apellido || c.apellido || '')).trim() || 'Sin nombre',
+        _cedula: p.cedula_ruc || p.cedula || c.cedula_ruc || c.cedula || '-'
+      };
+    });
+    
     renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
   } catch (e) {
-    cont.innerHTML = '<p class="text-xs text-red-500 text-center py-2">Error al cargar facturas: ' + (e?.message || e) + '</p>';
+    console.error('Error cargarFacturasEmitidasInd:', e);
+    cont.innerHTML = '<p class="text-xs text-red-500 text-center py-2">Error: ' + escapeHtmlSeguro(e?.message || e) + '</p>';
   }
 };
 
@@ -492,9 +533,6 @@ function renderFacturasEmitidasInd(lista) {
     return;
   }
   cont.innerHTML = lista.map(f => {
-    const c = f.clientes || {};
-    const p = c.personas || {};
-    const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
     const concepto = f.concepto || 'Cuota mensual';
     const fecha = f.created_at ? new Date(f.created_at).toLocaleDateString('es-PY', { timeZone: 'America/Asuncion' }) : '-';
     const esPagado = f.estado === 'pagado' || Number(f.saldo_pendiente || 0) <= 0;
@@ -503,8 +541,8 @@ function renderFacturasEmitidasInd(lista) {
       '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">PENDIENTE Gs. ' + Number(f.saldo_pendiente || 0).toLocaleString('es-PY') + '</span>';
     return `<div class="border border-slate-200 rounded-xl p-2.5 bg-slate-50 flex justify-between gap-2 items-start">
       <div class="min-w-0">
-        <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(c.nro_cuenta || '-')} - ${escapeHtml(nombre)}</p>
-        <p class="text-[11px] text-slate-500">CI: ${escapeHtml(p.cedula_ruc || '-')} | ${escapeHtml(concepto)} | Mes: ${escapeHtml(f.mes || '-')} | ${fecha}</p>
+        <p class="text-xs font-bold text-slate-800 truncate">${escapeHtmlSeguro(f._nro_cuenta)} - ${escapeHtmlSeguro(f._nombre)}</p>
+        <p class="text-[11px] text-slate-500">CI: ${escapeHtmlSeguro(f._cedula)} | ${escapeHtmlSeguro(concepto)} | Mes: ${escapeHtmlSeguro(f.mes)} | ${fecha}</p>
       </div>
       <div class="text-right shrink-0">
         <p class="text-xs font-extrabold text-slate-900 whitespace-nowrap">Gs. ${Number(f.monto || 0).toLocaleString('es-PY')}</p>
@@ -521,10 +559,19 @@ window.filtrarFacturasEmitidasInd = function() {
     return;
   }
   const lista = facturasEmitidasIndCache.filter(f => {
-    const c = f.clientes || {};
-    const p = c.personas || {};
-    const texto = `${c.nro_cuenta || ''} ${p.nombre || ''} ${p.apellido || ''} ${p.cedula_ruc || ''} ${f.concepto || ''} ${f.mes || ''}`.toLowerCase();
+    const texto = `${f._nro_cuenta || ''} ${f._nombre || ''} ${f._cedula || ''} ${f.concepto || ''} ${f.mes || ''}`.toLowerCase();
     return texto.includes(filtro);
   });
   renderFacturasEmitidasInd(lista.slice(0, 20));
 };
+
+// --- ESTO HACE QUE SE CARGUE SOLA, SIN DEPENDER DE OTRA FUNCIÓN ---
+// 1. Cuando cambia a la pestaña Cuotas
+const _btnCuotasOriginal = document.getElementById('tab-btn-cuotas');
+if (_btnCuotasOriginal) {
+  _btnCuotasOriginal.addEventListener('click', () => {
+    setTimeout(() => { if (typeof cargarFacturasEmitidasInd === 'function') cargarFacturasEmitidasInd(); }, 300);
+  });
+}
+// 2. Cuando la página ya cargó
+setTimeout(() => { if (typeof cargarFacturasEmitidasInd === 'function') cargarFacturasEmitidasInd(); }, 1000);
