@@ -317,15 +317,18 @@ padding: 16px !important;
   
   <!-- LISTA FACTURAS EMITIDAS -->
   <div class="mt-5 pt-4 border-t border-slate-200">
-    <h5 class="font-bold text-xs text-slate-700 uppercase mb-2">🧾 Últimas Facturas Emitidas</h5>
+    <div class="flex justify-between items-center mb-2">
+      <h5 class="font-bold text-xs text-slate-700 uppercase">🧾 Últimas Facturas Emitidas</h5>
+      <div class="flex gap-1 bg-slate-100 p-1 rounded-full">
+        <button type="button" id="btn-facturas-activas" onclick="cambiarFiltroFacturasEmitidas('activo')" class="px-2 py-1 rounded-full text-[11px] font-bold bg-white text-emerald-600 shadow-sm">Activas</button>
+        <button type="button" id="btn-facturas-anuladas" onclick="cambiarFiltroFacturasEmitidas('anulado')" class="px-2 py-1 rounded-full text-[11px] font-bold text-slate-500">Anuladas</button>
+      </div>
+    </div>
     <input type="text" id="filtro-facturas-emitidas-ind" placeholder="Buscar por socio, cuenta o cédula..." autocomplete="off" oninput="filtrarFacturasEmitidasInd()" class="w-full p-3 border border-slate-300 rounded-xl text-sm bg-yellow-50 mb-2" />
     <div id="lista-facturas-emitidas-ind" class="space-y-2">
       <p class="text-xs text-slate-500 text-center py-2">Cargando...</p>
     </div>
   </div>
-  </div>
-  </section>
-</div>
 </section>
 
 <section id="seccion-reportes" class="hidden space-y-4">

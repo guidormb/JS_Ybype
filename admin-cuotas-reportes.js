@@ -464,12 +464,49 @@ window.generarFacturaIndividual = async function(event) {
   }
 };
 
-// --- LISTA FACTURAS EMITIDAS - ÚLTIMAS 6 + BUSCADOR + ANULAR ---
+// --- LISTA FACTURAS EMITIDAS - ACTIVAS / ANULADAS + BUSCADOR + ANULAR ---
 let facturasEmitidasIndCache = [];
+let filtroFacturasEmitidasActual = 'activo';
 
 function escapeHtmlSeguro(t) {
   return String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
+
+function obtenerFacturasPorFiltroActual() {
+  const base = facturasEmitidasIndCache.filter((f) => {
+    const esAnulada = f.estado === 'anulado';
+    return filtroFacturasEmitidasActual === 'anulado' ? esAnulada : !esAnulada;
+  });
+
+  const filtroTexto = (document.getElementById('filtro-facturas-emitidas-ind')?.value || '').toLowerCase().trim();
+  if (!filtroTexto) {
+    return base.slice(0, 6);
+  }
+
+  return base.filter((f) => {
+    const texto = `${f._nro_cuenta || ''} ${f._nombre || ''} ${f._cedula || ''} ${f.concepto || ''} ${f.mes || ''} ${f.estado || ''}`.toLowerCase();
+    return texto.includes(filtroTexto);
+  }).slice(0, 20);
+}
+
+window.cambiarFiltroFacturasEmitidas = function(nuevoFiltro) {
+  filtroFacturasEmitidasActual = nuevoFiltro === 'anulado' ? 'anulado' : 'activo';
+
+  const btnActivas = document.getElementById('btn-facturas-activas');
+  const btnAnuladas = document.getElementById('btn-facturas-anuladas');
+
+  if (btnActivas && btnAnuladas) {
+    if (filtroFacturasEmitidasActual === 'activo') {
+      btnActivas.className = 'px-2 py-1 rounded-full text-[11px] font-bold bg-white text-emerald-600 shadow-sm';
+      btnAnuladas.className = 'px-2 py-1 rounded-full text-[11px] font-bold text-slate-500';
+    } else {
+      btnActivas.className = 'px-2 py-1 rounded-full text-[11px] font-bold text-slate-500';
+      btnAnuladas.className = 'px-2 py-1 rounded-full text-[11px] font-bold bg-white text-red-600 shadow-sm';
+    }
+  }
+
+  renderFacturasEmitidasInd(obtenerFacturasPorFiltroActual());
+};
 
 window.cargarFacturasEmitidasInd = async function() {
   const cont = document.getElementById('lista-facturas-emitidas-ind');
@@ -480,7 +517,7 @@ window.cargarFacturasEmitidasInd = async function() {
       .from('facturas')
       .select('id, created_at, mes, monto, saldo_pendiente, estado, concepto, cliente_id, motivo_anulacion, fecha_anulacion')
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(80);
     if (errF) throw errF;
 
     const idsClientes = [...new Set((facturas || []).map((f) => f.cliente_id).filter(Boolean))];
@@ -514,7 +551,7 @@ window.cargarFacturasEmitidasInd = async function() {
       };
     });
 
-    renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
+    renderFacturasEmitidasInd(obtenerFacturasPorFiltroActual());
   } catch (e) {
     console.error('Error cargarFacturasEmitidasInd:', e);
     cont.innerHTML = '<p class="text-xs text-red-500 text-center py-2">Error: ' + escapeHtmlSeguro(e?.message || e) + '</p>';
@@ -525,7 +562,10 @@ function renderFacturasEmitidasInd(lista) {
   const cont = document.getElementById('lista-facturas-emitidas-ind');
   if (!cont) return;
   if (!lista || lista.length === 0) {
-    cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">No hay facturas emitidas.</p>';
+    const vacioMsg = filtroFacturasEmitidasActual === 'anulado'
+      ? 'No hay facturas anuladas.'
+      : 'No hay facturas emitidas activas.';
+    cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">' + vacioMsg + '</p>';
     return;
   }
   cont.innerHTML = lista.map((f) => {
@@ -620,16 +660,7 @@ window.anularFacturaEmitida = async function(facturaId) {
 };
 
 window.filtrarFacturasEmitidasInd = function() {
-  const filtro = (document.getElementById('filtro-facturas-emitidas-ind')?.value || '').toLowerCase().trim();
-  if (!filtro) {
-    renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
-    return;
-  }
-  const lista = facturasEmitidasIndCache.filter((f) => {
-    const texto = `${f._nro_cuenta || ''} ${f._nombre || ''} ${f._cedula || ''} ${f.concepto || ''} ${f.mes || ''} ${f.estado || ''}`.toLowerCase();
-    return texto.includes(filtro);
-  });
-  renderFacturasEmitidasInd(lista.slice(0, 20));
+  renderFacturasEmitidasInd(obtenerFacturasPorFiltroActual());
 };
 
 const _btnCuotasOriginal = document.getElementById('tab-btn-cuotas');
