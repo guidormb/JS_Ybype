@@ -431,12 +431,100 @@ window.generarFacturaIndividual = async function(event) {
 
     if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
     mostrarMensajeAdmin('factura-ind-msg', concepto + ' de Gs. ' + monto.toLocaleString('es-PY') + ' emitida para ' + mes + '.', false);
-    // Limpia el campo Otros para la próxima
+    
+    // --- LIMPIAR TODO DESPUÉS DE GUARDAR ---
+    const filtroSocio = document.getElementById('filtro-socio-factura-ind');
+    if (filtroSocio) filtroSocio.value = '';
+    
+    const selSocio = document.getElementById('sel-cliente-factura-ind');
+    if (selSocio) selSocio.value = '';
+    
+    const selConcepto = document.getElementById('sel-concepto-factura-ind');
+    if (selConcepto) selConcepto.value = 'Cuota mensual';
+    
     const inpOtro = document.getElementById('inp-concepto-otro-ind');
     if (inpOtro) inpOtro.value = '';
+    if (typeof toggleConceptoOtroInd === 'function') toggleConceptoOtroInd();
+    
+    const inpMes = document.getElementById('inp-mes-factura-ind');
+    if (inpMes) inpMes.value = '';
+    
+    const inpMonto = document.getElementById('inp-monto-factura-ind');
+    if (inpMonto) inpMonto.value = '25.000';
+    
+    // Si había un filtro en la lista de facturas emitidas, también lo limpia para que muestre las últimas 6
+    const filtroLista = document.getElementById('filtro-facturas-emitidas-ind');
+    if (filtroLista) filtroLista.value = '';
+    
+    // Deja el cursor listo para buscar el próximo socio
+    if (filtroSocio) filtroSocio.focus();
   } catch(e) {
     mostrarMensajeAdmin('factura-ind-msg', 'Error: ' + (e?.message || e), true);
   } finally {
     if (btn) { btn.textContent = textoOriginal; btn.disabled = false; }
   }
+};
+// --- LISTA FACTURAS EMITIDAS - ÚLTIMAS 6 + BUSCADOR ---
+let facturasEmitidasIndCache = [];
+
+window.cargarFacturasEmitidasInd = async function() {
+  const cont = document.getElementById('lista-facturas-emitidas-ind');
+  if (!cont) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from('facturas')
+      .select('id, created_at, mes, monto, saldo_pendiente, estado, concepto, clientes(nro_cuenta, personas(nombre, apellido, cedula_ruc))')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    facturasEmitidasIndCache = data || [];
+    renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
+  } catch (e) {
+    cont.innerHTML = '<p class="text-xs text-red-500 text-center py-2">Error al cargar facturas: ' + (e?.message || e) + '</p>';
+  }
+};
+
+function renderFacturasEmitidasInd(lista) {
+  const cont = document.getElementById('lista-facturas-emitidas-ind');
+  if (!cont) return;
+  if (!lista || lista.length === 0) {
+    cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">No hay facturas emitidas.</p>';
+    return;
+  }
+  cont.innerHTML = lista.map(f => {
+    const c = f.clientes || {};
+    const p = c.personas || {};
+    const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
+    const concepto = f.concepto || 'Cuota mensual';
+    const fecha = f.created_at ? new Date(f.created_at).toLocaleDateString('es-PY', { timeZone: 'America/Asuncion' }) : '-';
+    const esPagado = f.estado === 'pagado' || Number(f.saldo_pendiente || 0) <= 0;
+    const badge = esPagado ?
+      '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold">PAGADO</span>' :
+      '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">PENDIENTE Gs. ' + Number(f.saldo_pendiente || 0).toLocaleString('es-PY') + '</span>';
+    return `<div class="border border-slate-200 rounded-xl p-2.5 bg-slate-50 flex justify-between gap-2 items-start">
+      <div class="min-w-0">
+        <p class="text-xs font-bold text-slate-800 truncate">${escapeHtml(c.nro_cuenta || '-')} - ${escapeHtml(nombre)}</p>
+        <p class="text-[11px] text-slate-500">CI: ${escapeHtml(p.cedula_ruc || '-')} | ${escapeHtml(concepto)} | Mes: ${escapeHtml(f.mes || '-')} | ${fecha}</p>
+      </div>
+      <div class="text-right shrink-0">
+        <p class="text-xs font-extrabold text-slate-900 whitespace-nowrap">Gs. ${Number(f.monto || 0).toLocaleString('es-PY')}</p>
+        <div class="mt-1">${badge}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.filtrarFacturasEmitidasInd = function() {
+  const filtro = (document.getElementById('filtro-facturas-emitidas-ind')?.value || '').toLowerCase().trim();
+  if (!filtro) {
+    renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
+    return;
+  }
+  const lista = facturasEmitidasIndCache.filter(f => {
+    const c = f.clientes || {};
+    const p = c.personas || {};
+    const texto = `${c.nro_cuenta || ''} ${p.nombre || ''} ${p.apellido || ''} ${p.cedula_ruc || ''} ${f.concepto || ''} ${f.mes || ''}`.toLowerCase();
+    return texto.includes(filtro);
+  });
+  renderFacturasEmitidasInd(lista.slice(0, 20));
 };
