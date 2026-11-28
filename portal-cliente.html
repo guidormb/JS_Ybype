@@ -194,7 +194,7 @@
         const{data:fac,error:e2}=await supabase.from('facturas').select('*').eq('id',facturaId).limit(1);
         if(e2) throw e2;
         const factura=fac?.[0];
-        if(!factura||factura.estado==='pagado'){mostrarMensajeSaldo('Esta factura ya no está pendiente.',true);await cargarFacturasCliente(clienteId);aplicandoSaldo=false;return;}
+        if(!factura||factura.estado==='anulado'||factura.estado==='pagado'){mostrarMensajeSaldo('Esta factura ya no está pendiente.',true);await cargarFacturasCliente(clienteId);aplicandoSaldo=false;return;}
         const saldoFactura=Number(factura.saldo_pendiente||0);
         if(saldoDisponible<=0||saldoFactura<=0){mostrarMensajeSaldo('No tenés saldo a favor suficiente.',true);aplicandoSaldo=false;return;}
         const aAplicar=Math.min(saldoDisponible,saldoFactura);
@@ -222,18 +222,22 @@
       const facturas=r.data||[];
       if(r.error||facturas.length===0){contadorEl.textContent='0 pendientes';actualizarDeudaTotal(0);contenedor.innerHTML='<div class="text-center py-6 bg-emerald-50/50 rounded-xl"><p class="text-sm font-bold text-emerald-700">¡Estás al día!</p></div>';return;}
       let pendientesCount=0;let deudaTotal=0;
-      facturas.forEach(f=>{if(f.estado!=='pagado'){pendientesCount++;deudaTotal+=Number(f.saldo_pendiente||0);}});
+      facturas.forEach(f=>{if(f.estado==='pendiente'&&Number(f.saldo_pendiente||0)>0){pendientesCount++;deudaTotal+=Number(f.saldo_pendiente||0);}});
       contadorEl.textContent=pendientesCount+' pendientes';
       actualizarDeudaTotal(deudaTotal);
       contenedor.innerHTML=facturas.map(f=>{
-        const esPendiente=f.estado!=='pagado'&&Number(f.saldo_pendiente||0)>0;
-        const badge=f.estado==='pagado'?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800';
+        const esAnulada=f.estado==='anulado';
+        const esPagada=!esAnulada&&(f.estado==='pagado'||Number(f.saldo_pendiente||0)<=0);
+        const esPendiente=!esAnulada&&!esPagada&&Number(f.saldo_pendiente||0)>0;
+        const estadoTexto=esAnulada?'ANULADA':(esPagada?'PAGADO':(f.estado||'PENDIENTE'));
+        const badge=esAnulada?'bg-red-100 text-red-800':(esPagada?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800');
+        const pendienteMostrar=esAnulada?0:Number(f.saldo_pendiente||0);
         const puedeUsarSaldoManual=cuentaActiva&&esPendiente&&saldoFavorActual>0&&!autoPagarActivo;
-        const montoSugerido=Math.min(saldoFavorActual,Number(f.saldo_pendiente||0));
+        const montoSugerido=Math.min(saldoFavorActual,pendienteMostrar);
         let accion='';
         if(puedeUsarSaldoManual) accion='<button type="button" onclick="pagarFacturaConSaldoFavor(\''+escapeHtml(f.id)+'\')" class="mt-2 bg-emerald-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">Pagar con saldo (Gs. '+Number(montoSugerido).toLocaleString('es-PY')+')</button>';
         else if(esPendiente&&saldoFavorActual>0&&autoPagarActivo) accion='<span class="inline-block text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Auto activo</span>';
-        return '<div class="border border-slate-200 rounded-xl p-3.5 flex justify-between items-center gap-2 bg-slate-50/60"><div><span class="text-xs font-bold text-slate-800">Mes: '+escapeHtml(f.mes)+'</span><span class="ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase '+badge+'">'+escapeHtml(f.estado)+'</span><p class="text-xs text-slate-500 mt-1">Monto: Gs. '+Number(f.monto).toLocaleString('es-PY')+'</p><p class="text-xs font-bold text-slate-700">Pendiente: <span class="text-blue-600">Gs. '+Number(f.saldo_pendiente).toLocaleString('es-PY')+'</span></p></div><div class="text-right">'+accion+'</div></div>';
+        return '<div class="border border-slate-200 rounded-xl p-3.5 flex justify-between items-center gap-2 '+(esAnulada?'bg-red-50/50 opacity-75':'bg-slate-50/60')+'"><div><span class="text-xs font-bold text-slate-800">Mes: '+escapeHtml(f.mes)+'</span><span class="ml-2 px-2 py-0.5 text-[10px] font-bold rounded-full uppercase '+badge+'">'+escapeHtml(estadoTexto)+'</span><p class="text-xs text-slate-500 mt-1">Monto: Gs. '+Number(f.monto).toLocaleString('es-PY')+'</p><p class="text-xs font-bold text-slate-700">Pendiente: <span class="text-blue-600">Gs. '+pendienteMostrar.toLocaleString('es-PY')+'</span></p></div><div class="text-right">'+accion+'</div></div>';
       }).join('');
     }
     window.cambiarContrasenaCliente = async function(event){

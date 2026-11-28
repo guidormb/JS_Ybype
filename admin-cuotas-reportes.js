@@ -1,4 +1,4 @@
-// admin-cuotas-reportes.js - Reportes + Balance + Cuotas
+// admin-cuotas-reportes.js - Reportes + Balance + Cuotas + Anulación de Facturas
 const OFFSET_ZONA_HORARIA = '-03:00';
 let generandoCuotasMasivas = false;
 
@@ -293,7 +293,8 @@ window.generarCuotasMasivas = async function(event) {
     const { data: existentes, error: errExistentes } = await supabaseClient
       .from('facturas')
       .select('cliente_id')
-      .eq('mes', mes);
+      .eq('mes', mes)
+      .neq('estado', 'anulado');
     if (errExistentes) throw errExistentes;
 
     const yaTienen = new Set((existentes || []).map((f) => f.cliente_id));
@@ -319,6 +320,7 @@ window.generarCuotasMasivas = async function(event) {
     if (errInsert) throw errInsert;
 
     if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
+    if (typeof cargarFacturasEmitidasInd === 'function') await cargarFacturasEmitidasInd();
     mostrarMensajeAdmin(
       'cuotas-msg',
       'Cuotas generadas: ' + (insertadas ? insertadas.length : nuevas.length) + ' socios. Ya tenían: ' + yaTienen.size,
@@ -349,12 +351,12 @@ window.cargarSociosFacturaInd = async function() {
       .order('nro_cuenta');
     if (error) throw error;
     sociosFacturaIndCache = data || [];
-    sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + sociosFacturaIndCache.map(c => {
+    sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + sociosFacturaIndCache.map((c) => {
       const p = c.personas || {};
       const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
       return `<option value="${c.id}">${escapeHtml(c.nro_cuenta || '')} - ${escapeHtml(nombre)} - ${escapeHtml(p.cedula_ruc || '')}</option>`;
     }).join('');
-  } catch(e) {
+  } catch (e) {
     console.error('Error cargar socios factura ind:', e);
   }
 };
@@ -363,12 +365,12 @@ window.filtrarSociosFacturaInd = function() {
   const filtro = (document.getElementById('filtro-socio-factura-ind')?.value || '').toLowerCase().trim();
   const sel = document.getElementById('sel-cliente-factura-ind');
   if (!sel) return;
-  const lista = !filtro ? sociosFacturaIndCache : sociosFacturaIndCache.filter(c => {
+  const lista = !filtro ? sociosFacturaIndCache : sociosFacturaIndCache.filter((c) => {
     const p = c.personas || {};
     const texto = `${c.nro_cuenta || ''} ${p.nombre || ''} ${p.apellido || ''} ${p.cedula_ruc || ''}`.toLowerCase();
     return texto.includes(filtro);
   });
-  sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + lista.map(c => {
+  sel.innerHTML = '<option value="">-- Seleccioná Socio --</option>' + lista.map((c) => {
     const p = c.personas || {};
     const nombre = ((p.nombre || '') + ' ' + (p.apellido || '')).trim() || 'Sin nombre';
     return `<option value="${c.id}">${escapeHtml(c.nro_cuenta || '')} - ${escapeHtml(nombre)} - ${escapeHtml(p.cedula_ruc || '')}</option>`;
@@ -394,7 +396,6 @@ window.generarFacturaIndividual = async function(event) {
   const conceptoSel = document.getElementById('sel-concepto-factura-ind')?.value || 'Cuota mensual';
   let concepto = conceptoSel;
 
-  // Si eligió Otros, usa lo que escribió en el campo vacío
   if (conceptoSel === 'Otros') {
     concepto = String(document.getElementById('inp-concepto-otro-ind')?.value || '').trim();
     if (!concepto) return mostrarMensajeAdmin('factura-ind-msg', 'Escribí el concepto para "Otros".', true);
@@ -411,7 +412,6 @@ window.generarFacturaIndividual = async function(event) {
   if (btn) { btn.textContent = 'Emitiendo...'; btn.disabled = true; }
 
   try {
-    // Solo la Cuota mensual no se puede duplicar. Los demás conceptos sí se pueden repetir.
     if (concepto === 'Cuota mensual') {
       const { data: existe, error: errExiste } = await supabaseClient
         .from('facturas')
@@ -419,6 +419,7 @@ window.generarFacturaIndividual = async function(event) {
         .eq('cliente_id', cliente_id)
         .eq('mes', mes)
         .eq('concepto', 'Cuota mensual')
+        .neq('estado', 'anulado')
         .limit(1);
       if (errExiste) throw errExiste;
       if (existe && existe.length > 0) throw new Error('Este socio ya tiene Cuota mensual para ' + mes + '.');
@@ -430,45 +431,44 @@ window.generarFacturaIndividual = async function(event) {
     if (errInsert) throw errInsert;
 
     if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
+    if (typeof cargarFacturasEmitidasInd === 'function') await cargarFacturasEmitidasInd();
     mostrarMensajeAdmin('factura-ind-msg', concepto + ' de Gs. ' + monto.toLocaleString('es-PY') + ' emitida para ' + mes + '.', false);
-    
-    // --- LIMPIAR TODO DESPUÉS DE GUARDAR ---
+
     const filtroSocio = document.getElementById('filtro-socio-factura-ind');
     if (filtroSocio) filtroSocio.value = '';
-    
+
     const selSocio = document.getElementById('sel-cliente-factura-ind');
     if (selSocio) selSocio.value = '';
-    
+
     const selConcepto = document.getElementById('sel-concepto-factura-ind');
     if (selConcepto) selConcepto.value = 'Cuota mensual';
-    
+
     const inpOtro = document.getElementById('inp-concepto-otro-ind');
     if (inpOtro) inpOtro.value = '';
     if (typeof toggleConceptoOtroInd === 'function') toggleConceptoOtroInd();
-    
+
     const inpMes = document.getElementById('inp-mes-factura-ind');
     if (inpMes) inpMes.value = '';
-    
+
     const inpMonto = document.getElementById('inp-monto-factura-ind');
     if (inpMonto) inpMonto.value = '25.000';
-    
-    // Si había un filtro en la lista de facturas emitidas, también lo limpia para que muestre las últimas 6
+
     const filtroLista = document.getElementById('filtro-facturas-emitidas-ind');
     if (filtroLista) filtroLista.value = '';
-    
-    // Deja el cursor listo para buscar el próximo socio
+
     if (filtroSocio) filtroSocio.focus();
-  } catch(e) {
+  } catch (e) {
     mostrarMensajeAdmin('factura-ind-msg', 'Error: ' + (e?.message || e), true);
   } finally {
     if (btn) { btn.textContent = textoOriginal; btn.disabled = false; }
   }
 };
-// --- LISTA FACTURAS EMITIDAS - ÚLTIMAS 6 + BUSCADOR ---
+
+// --- LISTA FACTURAS EMITIDAS - ÚLTIMAS 6 + BUSCADOR + ANULAR ---
 let facturasEmitidasIndCache = [];
 
 function escapeHtmlSeguro(t) {
-  return String(t ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [m]));
+  return String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
 window.cargarFacturasEmitidasInd = async function() {
@@ -476,39 +476,35 @@ window.cargarFacturasEmitidasInd = async function() {
   if (!cont) return;
   cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Cargando...</p>';
   try {
-    // 1. Trae facturas sin JOIN, para que no falle por nombre de relación
     const { data: facturas, error: errF } = await supabaseClient
       .from('facturas')
-      .select('id, created_at, mes, monto, saldo_pendiente, estado, concepto, cliente_id')
+      .select('id, created_at, mes, monto, saldo_pendiente, estado, concepto, cliente_id, motivo_anulacion, fecha_anulacion')
       .order('created_at', { ascending: false })
       .limit(50);
     if (errF) throw errF;
-    
-    // 2. Trae los clientes de esas facturas
-    const idsClientes = [...new Set((facturas || []).map(f => f.cliente_id).filter(Boolean))];
+
+    const idsClientes = [...new Set((facturas || []).map((f) => f.cliente_id).filter(Boolean))];
     let mapaClientes = {};
     if (idsClientes.length > 0) {
       const { data: clientes } = await supabaseClient
         .from('clientes')
         .select('*')
         .in('id', idsClientes);
-      (clientes || []).forEach(c => { mapaClientes[c.id] = c; });
+      (clientes || []).forEach((c) => { mapaClientes[c.id] = c; });
     }
-    
-    // 3. Trae las personas de esos clientes
-    const idsPersonas = [...new Set(Object.values(mapaClientes).map(c => c.persona_id || c.personas_id || c.cliente_id).filter(Boolean))];
+
+    const idsPersonas = [...new Set(Object.values(mapaClientes).map((c) => c.persona_id || c.personas_id || c.cliente_id).filter(Boolean))];
     let mapaPersonas = {};
     if (idsPersonas.length > 0) {
       const { data: personas } = await supabaseClient
         .from('personas')
         .select('*')
         .in('id', idsPersonas);
-      (personas || []).forEach(p => { mapaPersonas[p.id] = p; });
+      (personas || []).forEach((p) => { mapaPersonas[p.id] = p; });
     }
-    
-    facturasEmitidasIndCache = (facturas || []).map(f => {
+
+    facturasEmitidasIndCache = (facturas || []).map((f) => {
       const c = mapaClientes[f.cliente_id] || {};
-      // El cliente puede tener los datos directo o en personas
       const p = mapaPersonas[c.persona_id || c.personas_id] || c || {};
       return {
         ...f,
@@ -517,7 +513,7 @@ window.cargarFacturasEmitidasInd = async function() {
         _cedula: p.cedula_ruc || p.cedula || c.cedula_ruc || c.cedula || '-'
       };
     });
-    
+
     renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
   } catch (e) {
     console.error('Error cargarFacturasEmitidasInd:', e);
@@ -532,25 +528,96 @@ function renderFacturasEmitidasInd(lista) {
     cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">No hay facturas emitidas.</p>';
     return;
   }
-  cont.innerHTML = lista.map(f => {
+  cont.innerHTML = lista.map((f) => {
     const concepto = f.concepto || 'Cuota mensual';
     const fecha = f.created_at ? new Date(f.created_at).toLocaleDateString('es-PY', { timeZone: 'America/Asuncion' }) : '-';
-    const esPagado = f.estado === 'pagado' || Number(f.saldo_pendiente || 0) <= 0;
-    const badge = esPagado ?
-      '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold">PAGADO</span>' :
-      '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">PENDIENTE Gs. ' + Number(f.saldo_pendiente || 0).toLocaleString('es-PY') + '</span>';
-    return `<div class="border border-slate-200 rounded-xl p-2.5 bg-slate-50 flex justify-between gap-2 items-start">
+    const esAnulada = f.estado === 'anulado';
+    const esPagado = !esAnulada && (f.estado === 'pagado' || Number(f.saldo_pendiente || 0) <= 0);
+
+    let badge = '';
+    if (esAnulada) {
+      badge = '<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px] font-bold">ANULADA</span>';
+    } else if (esPagado) {
+      badge = '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold">PAGADO</span>';
+    } else {
+      badge = '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">PENDIENTE Gs. ' + Number(f.saldo_pendiente || 0).toLocaleString('es-PY') + '</span>';
+    }
+
+    const btnAnular = (!esAnulada && !esPagado)
+      ? '<button type="button" onclick="window.anularFacturaEmitida(\'' + escapeHtmlSeguro(f.id) + '\')" class="mt-1 text-[10px] font-bold bg-red-50 text-red-600 hover:bg-red-100 px-2 py-0.5 rounded-lg">Anular</button>'
+      : '';
+
+    return `<div class="border border-slate-200 rounded-xl p-2.5 ${esAnulada ? 'bg-red-50/50 opacity-75' : 'bg-slate-50'} flex justify-between gap-2 items-start">
       <div class="min-w-0">
         <p class="text-xs font-bold text-slate-800 truncate">${escapeHtmlSeguro(f._nro_cuenta)} - ${escapeHtmlSeguro(f._nombre)}</p>
         <p class="text-[11px] text-slate-500">CI: ${escapeHtmlSeguro(f._cedula)} | ${escapeHtmlSeguro(concepto)} | Mes: ${escapeHtmlSeguro(f.mes)} | ${fecha}</p>
+        ${esAnulada && f.motivo_anulacion ? '<p class="text-[10px] font-semibold text-red-600 mt-0.5">Motivo: ' + escapeHtmlSeguro(f.motivo_anulacion) + '</p>' : ''}
       </div>
-      <div class="text-right shrink-0">
-        <p class="text-xs font-extrabold text-slate-900 whitespace-nowrap">Gs. ${Number(f.monto || 0).toLocaleString('es-PY')}</p>
+      <div class="text-right shrink-0 flex flex-col items-end">
+        <p class="text-xs font-extrabold ${esAnulada ? 'line-through text-slate-400' : 'text-slate-900'} whitespace-nowrap">Gs. ${Number(f.monto || 0).toLocaleString('es-PY')}</p>
         <div class="mt-1">${badge}</div>
+        ${btnAnular}
       </div>
     </div>`;
   }).join('');
 }
+
+window.anularFacturaEmitida = async function(facturaId) {
+  if (!facturaId) return;
+  try {
+    const { data: fac, error: errLeer } = await supabaseClient
+      .from('facturas')
+      .select('id, mes, monto, saldo_pendiente, estado, concepto')
+      .eq('id', facturaId)
+      .single();
+    if (errLeer) throw errLeer;
+    if (!fac) throw new Error('Factura no encontrada.');
+    if (fac.estado === 'anulado') return alert('Esta factura ya está anulada.');
+
+    const { data: pagosActivos, error: errPagos } = await supabaseClient
+      .from('pagos')
+      .select('id, monto_pagado')
+      .eq('factura_id', facturaId)
+      .eq('estado', 'activo');
+    if (errPagos) throw errPagos;
+
+    if (pagosActivos && pagosActivos.length > 0) {
+      alert('⛔ Esta factura tiene cobros activos registrados.\n\nPrimero anulá el cobro en la pestaña "Cobrar" y luego anulá la factura.');
+      return;
+    }
+
+    const ok = confirm(
+      '¿Anular esta factura?\n\n' +
+      'Concepto: ' + (fac.concepto || 'Cuota mensual') + '\n' +
+      'Mes: ' + fac.mes + '\n' +
+      'Monto: Gs. ' + Number(fac.monto || 0).toLocaleString('es-PY')
+    );
+    if (!ok) return;
+
+    const motivoRaw = prompt('Motivo de anulación (obligatorio):', '');
+    if (motivoRaw === null) return;
+    const motivo = motivoRaw.trim();
+    if (!motivo) return alert('Tenés que escribir un motivo para anular.');
+
+    const { error: errUpd } = await supabaseClient
+      .from('facturas')
+      .update({
+        estado: 'anulado',
+        saldo_pendiente: 0,
+        motivo_anulacion: motivo,
+        fecha_anulacion: new Date().toISOString()
+      })
+      .eq('id', facturaId)
+      .neq('estado', 'anulado');
+    if (errUpd) throw errUpd;
+
+    if (typeof cargarDatosAdmin === 'function') await cargarDatosAdmin();
+    if (typeof cargarFacturasEmitidasInd === 'function') await cargarFacturasEmitidasInd();
+    mostrarMensajeAdmin('factura-ind-msg', 'Factura ' + fac.mes + ' anulada correctamente.', false);
+  } catch (e) {
+    alert('No se pudo anular la factura: ' + (e?.message || e));
+  }
+};
 
 window.filtrarFacturasEmitidasInd = function() {
   const filtro = (document.getElementById('filtro-facturas-emitidas-ind')?.value || '').toLowerCase().trim();
@@ -558,20 +625,17 @@ window.filtrarFacturasEmitidasInd = function() {
     renderFacturasEmitidasInd(facturasEmitidasIndCache.slice(0, 6));
     return;
   }
-  const lista = facturasEmitidasIndCache.filter(f => {
-    const texto = `${f._nro_cuenta || ''} ${f._nombre || ''} ${f._cedula || ''} ${f.concepto || ''} ${f.mes || ''}`.toLowerCase();
+  const lista = facturasEmitidasIndCache.filter((f) => {
+    const texto = `${f._nro_cuenta || ''} ${f._nombre || ''} ${f._cedula || ''} ${f.concepto || ''} ${f.mes || ''} ${f.estado || ''}`.toLowerCase();
     return texto.includes(filtro);
   });
   renderFacturasEmitidasInd(lista.slice(0, 20));
 };
 
-// --- ESTO HACE QUE SE CARGUE SOLA, SIN DEPENDER DE OTRA FUNCIÓN ---
-// 1. Cuando cambia a la pestaña Cuotas
 const _btnCuotasOriginal = document.getElementById('tab-btn-cuotas');
 if (_btnCuotasOriginal) {
   _btnCuotasOriginal.addEventListener('click', () => {
     setTimeout(() => { if (typeof cargarFacturasEmitidasInd === 'function') cargarFacturasEmitidasInd(); }, 300);
   });
 }
-// 2. Cuando la página ya cargó
 setTimeout(() => { if (typeof cargarFacturasEmitidasInd === 'function') cargarFacturasEmitidasInd(); }, 1000);

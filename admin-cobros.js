@@ -132,11 +132,12 @@ window.cargarFacturasSocioSeleccionado = async function () {
   }
 
   const { data: facturas, error } = await supabaseClient
-    .from('facturas')
-    .select('id, cliente_id, mes, monto, saldo_pendiente, estado')
-    .eq('cliente_id', clienteId)
-    .neq('estado', 'pagado')
-    .order('mes', { ascending: true });
+  .from('facturas')
+  .select('id, cliente_id, mes, monto, saldo_pendiente, estado, concepto')
+  .eq('cliente_id', clienteId)
+  .eq('estado', 'pendiente')
+  .gt('saldo_pendiente', 0)
+  .order('mes', { ascending: true });
 
   if (error) {
     console.warn('Error facturas:', error);
